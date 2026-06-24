@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><title>OT Storage Test</title></head>
+<body>
+<h2 style="font-family:sans-serif">Onetrack Storage Test</h2>
+<button onclick="runTest()" style="padding:10px 20px;font-size:14px">Run Test</button>
+<pre id="log" style="font-family:monospace;margin-top:20px;font-size:13px"></pre>
+<script src="storage.js"></script>
+<script>
+function log(msg) {
+  document.getElementById('log').textContent += msg + '\n';
+}
+async function runTest() {
+  log('Waiting for file link...');
+  OT.onReady(async () => {
+    log('✅ File linked!');
+    await OT.set('TEST_KEY', 'hello onetrack');
+    log('✅ Write done');
+    const val = await OT.get('TEST_KEY');
+    log('✅ Read back: ' + val);
+    const keys = await OT.keys();
+    log('✅ Keys in file: ' + keys.join(', '));
+    log('--- All good! ---');
+  });
+}
+</script>
+</body>
+</html>

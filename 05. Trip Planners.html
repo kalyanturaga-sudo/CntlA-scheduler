@@ -1,0 +1,2456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<title>Onetrack · 05. Trip Planners</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="storage.js"></script>
+<style>
+
+/* ===== GLOBAL LAYOUT CSS ===== */
+:root { --nav-width: 200px; }
+.topbar { position:fixed; top:0; left:var(--nav-width); right:0; height:48px; z-index:2000; }
+.panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; overflow:hidden; }
+.panel  { position:absolute; inset:0; opacity:0; pointer-events:none; overflow-y:auto; transition:opacity 0.15s; }
+.panel.active { opacity:1; pointer-events:all; }
+.panel .main  { margin-left:0 !important; padding-top:24px !important; }
+.panel .footer-actions { left:0 !important; }
+.footer-actions { position:fixed; bottom:0; left:var(--nav-width); right:0; background:var(--surface); border-top:2px solid var(--accent); padding:10px 24px; display:flex; align-items:center; gap:10px; z-index:50; }
+.footer-actions .btn { background:var(--surface); color:var(--text2); border:1px solid var(--border); border-bottom:2px solid transparent; transition:all 0.15s; }
+.footer-actions .btn:hover { color:var(--accent); border-color:var(--border); border-bottom-color:var(--accent); background:var(--accent-soft); transform:none; opacity:1; }
+.footer-actions .spacer { flex:1; }
+.build-stamp { font-size:10px; color:var(--text3); letter-spacing:0.06em; font-family:'DM Sans',sans-serif; white-space:nowrap; opacity:0.75; font-style:italic; }
+@media(max-width:700px){ :root{ --nav-width:0px; } .nav{ display:none; } }
+
+/* ===== TOPBAR ===== */
+.topbar {
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  box-shadow: 0 1px 8px rgba(0,0,0,0.05);
+}
+.topbar-logo {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px;
+  color: var(--accent, #c17b3f);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tab-strip {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-strip::-webkit-scrollbar { display:none; }
+.tab-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  background: none;
+  color: var(--text2, #6b6560);
+  user-select: none;
+}
+.tab-btn:hover { background: var(--surface2, #faf8f5); color: var(--text, #1a1714); }
+.tab-btn.active {
+  background: var(--accent-soft, rgba(193,123,63,0.12));
+  color: var(--accent, #c17b3f);
+  border-color: rgba(193,123,63,0.25);
+  font-weight: 600;
+}
+.tab-btn.dragging-tab { opacity: 0.4; }
+/* .master-dark-toggle removed */
+/*  width: 40px; height: 22px;
+  background: var(--border, rgba(0,0,0,0.08)); border-radius: 11px;
+  position: relative; cursor: pointer; border: none;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.master-dark-toggle::after {
+  content: ''; position: absolute;
+  width: 16px; height: 16px;
+  background: var(--text2, #6b6560); border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform 0.2s, background 0.2s;
+}
+[data-theme="dark"] .master-dark-toggle { background: var(--accent, #d4935a); }
+[data-theme="dark"] .master-dark-toggle::after { transform: translateX(18px); background: #fff; }
+
+/* ===== india CSS ===== */
+:root {
+  --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
+  --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
+  --accent:#c17b3f; --accent-soft:rgba(193,123,63,0.12);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  --radius: 16px;
+}
+[data-theme="dark"] {
+  --bg: #131210; --surface: #1e1c18; --surface2: #252320;
+  --border: rgba(255,255,255,0.08); --text: #f0ece6; --text2: #a09890; --text3: #6e6660;
+  --accent:#d4935a; --accent-soft:rgba(212,147,90,0.14);
+  --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+
+/* ── NAV ── */
+.nav {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--nav-width);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 24px 0; z-index: 100;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+}
+.nav-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--accent); padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.nav a { display: block; padding: 8px 20px; font-size: 13px; color: var(--text2); text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
+.nav a:hover { color: var(--text); background: var(--surface2); transform: translateX(4px); }
+.nav a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
+
+
+.main { margin-left: var(--nav-width); padding: 32px 32px 80px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+.header-left h1 { font-family: 'DM Serif Display', serif; font-size: 36px; font-weight: 400; }
+.header-left .subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.btn { padding: 8px 14px; border-radius: 10px; border: none; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-ghost { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); background: var(--surface2); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { opacity: 0.88; }
+.btn-print-color { background: rgba(100,140,200,0.10); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
+.btn-print-color:hover { background: rgba(100,140,200,0.18); color: #2a5a90; }
+.btn-danger { background: #e85c5c; color: #fff; }
+.btn-danger:hover { opacity: 0.88; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  min-height: 200px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+}
+.section:hover { box-shadow: var(--shadow-hover); }
+.section.drop-target { border-color: var(--accent); background: var(--accent-soft); }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  gap: 6px;
+}
+.section h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 14px; font-weight: 400;
+  color: var(--accent);
+  flex: 1;
+}
+.section-title-input {
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 14px;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  outline: none;
+}
+.section-edit-btn, .section-del-btn, .section-add-btn {
+  border: none; background: none; cursor: pointer;
+  font-size: 12px; color: var(--text3); padding: 2px 4px;
+  border-radius: 4px; transition: all 0.15s; flex-shrink: 0;
+}
+.section-edit-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.section-del-btn:hover { color: #e85c5c; background: rgba(232,92,92,0.1); }
+.section-add-btn { font-size: 16px; }
+.section-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.badge-today    { background: var(--accent); color: #fff; }
+.badge-tomorrow { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(193,123,63,0.3); }
+.badge-past     { background: rgba(0,0,0,0.06); color: var(--text3); border: 1px solid var(--border); }
+.badge-return   { background: rgba(100,140,200,0.12); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
+[data-theme="dark"] .badge-past { background: rgba(255,255,255,0.06); }
+.section.is-past { opacity: 0.7; }
+.section.is-past .section h2 { color: var(--text3); }
+.section.is-today { border-color: var(--accent); box-shadow: var(--shadow), 0 0 0 1.5px var(--accent); }
+
+.task { display: flex; align-items: center; gap: 6px; margin: 6px 0; padding: 5px 6px; border-radius: 8px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.7); transition: background 0.15s; }
+[data-theme="dark"] .task { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+.task:hover { background: rgba(255,255,255,0.85); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+[data-theme="dark"] .task:hover { background: rgba(255,255,255,0.08); }
+.task input[type=text] { flex: 1; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s, background 0.15s; }
+.task input[type=text]:focus { border-color: var(--accent); background: rgba(255,255,255,0.8); }
+[data-theme="dark"] .task input[type=text]:focus { background: rgba(255,255,255,0.06); }
+.task.completed .task-text { text-decoration: line-through; opacity: .45; }
+[data-theme="dark"] .task.completed .task-text { color: var(--text); }
+.task input[type=checkbox] { position:absolute;opacity:0;width:0;height:0;pointer-events:none; }
+.task button { border: none; background: none; cursor: pointer; font-size: 11px; color: var(--text3); padding: 2px 3px; border-radius: 4px; transition: all 0.15s; }
+.task button:hover { color: var(--text); background: rgba(0,0,0,0.07); }
+.task button:disabled { opacity: .2; cursor: default; }
+.drag-handle { cursor: grab; user-select: none; color: var(--text3); font-size: 13px; flex-shrink: 0; }
+.task.dragging { opacity: 0.3; }
+.task.subtask { margin-left: 22px; opacity: 0.88; }
+.task.subtask .drag-handle { font-size: 11px; }
+.sub-toggle-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 3px; border-radius:4px; transition:all 0.15s; flex-shrink:0; }
+.sub-toggle-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.task.subtask .sub-toggle-btn { color: var(--accent); opacity: 0.7; }
+
+/* Move-to-block button */
+.move-block-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 4px; border-radius:4px; transition:color 0.15s,background 0.15s; flex-shrink:0; }
+.move-block-btn:hover { color:var(--accent); background:var(--accent-soft); }
+
+/* Block portal */
+#india__blockPortal { position:fixed; z-index:99999; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.10); min-width:200px; max-width:240px; max-height:320px; overflow-y:auto; padding:5px; display:none; }
+#india__blockPortal.open { display:block; }
+#india__blockPortal .portal-title { font-size:10px; font-weight:600; color:var(--text3); padding:4px 10px 6px; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); margin-bottom:3px; position:sticky; top:0; background:var(--surface); }
+#india__blockPortal .portal-item { display:block; width:100%; text-align:left; padding:7px 12px; font-size:12px; font-family:'DM Sans',sans-serif; border:none; background:none; color:var(--text); cursor:pointer; border-radius:8px; }
+#india__blockPortal .portal-item:hover { background:var(--accent-soft); color:var(--accent); }
+#india__blockPortal .portal-item.current-block { opacity:0.4; cursor:default; pointer-events:none; font-style:italic; }
+
+.new-task input {
+  width: 100%; padding: 6px 10px;
+  font-style: italic; font-size: 13px;
+  border: 1.5px dashed rgba(0,0,0,0.14);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.35);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text2); outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+[data-theme="dark"] .new-task input { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+.new-task input:focus { border-color: var(--accent); font-style: normal; background: var(--surface); }
+
+/* Add block panel */
+.add-block-bar {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.add-block-bar input {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1.5px dashed var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  outline: none;
+  min-width: 220px;
+  transition: border-color 0.15s;
+}
+.add-block-bar input:focus { border-color: var(--accent); }
+
+/* Toast */
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a1714; color:#fff; padding:10px 20px; border-radius:40px; font-size:13px; z-index:9999; opacity:1; transition:opacity 0.4s; font-family:'DM Sans',sans-serif; pointer-events:none; }
+
+/* Calendar date input */
+.cal-date-wrap { display:flex; align-items:center; gap:6px; }
+.cal-date-wrap input[type=date] { padding:7px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; outline:none; }
+
+#panel-india .grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .grid { grid-template-columns: 1fr; } }
+
+/* ── Entry animation ── */
+.section { animation: fadeUp 0.35s ease both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ===== TASMANIA REDESIGN CSS ===== */
+
+/* Prep panels (3 at top) */
+.tas-prep-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 32px;
+}
+@media(max-width:900px){ .tas-prep-grid { grid-template-columns:1fr; } }
+
+.tas-prep-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius,16px);
+  box-shadow: var(--shadow);
+  overflow: visible;
+}
+.tas-prep-card-header {
+  padding: 14px 16px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+.tas-prep-card-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 15px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tas-prep-card-stats {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 500;
+}
+.tas-prep-card-progress {
+  height: 3px;
+  background: var(--border);
+  margin: 0 16px 10px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.tas-prep-card-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width .4s cubic-bezier(.4,0,.2,1);
+}
+.tas-prep-card-body { padding: 4px 12px 12px; }
+
+/* 2-column week grid */
+.tas-weeks-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media(max-width:900px){ .tas-weeks-grid { grid-template-columns: 1fr; } }
+
+/* Week group */
+.tas-week-group { margin-bottom: 0; }
+.tas-week-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 8px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid var(--accent);
+  cursor: pointer;
+  user-select: none;
+}
+.tas-week-header h3 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--accent);
+  flex: 1;
+}
+.tas-week-toggle {
+  font-size: 13px;
+  color: var(--text3);
+  transition: transform .2s;
+}
+.tas-week-toggle.collapsed { transform: rotate(-90deg); }
+.tas-week-body { display: flex; flex-direction: column; gap: 12px; }
+.tas-week-body.collapsed { display: none; }
+
+/* Day tabs (horizontal strip per week) */
+.tas-day-strip {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tas-day-strip::-webkit-scrollbar { display: none; }
+.tas-day-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 16px 8px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: all .15s;
+  flex-shrink: 0;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+}
+.tas-day-tab:hover { color: var(--text); background: var(--surface2); }
+.tas-day-tab.active {
+  color: var(--accent);
+  font-weight: 700;
+  border-bottom-color: var(--accent);
+  background: var(--accent-soft);
+}
+.tas-day-tab .tas-day-name { font-size: 13px; font-weight: 600; }
+.tas-day-tab .tas-day-date { font-size: 10px; color: var(--text3); }
+.tas-day-tab.active .tas-day-date { color: var(--accent); opacity: .75; }
+.tas-day-tab .tas-day-count {
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--border);
+  color: var(--text3);
+  padding: 1px 5px;
+  border-radius: 8px;
+  transition: all .15s;
+}
+.tas-day-tab.active .tas-day-count { background: var(--accent); color: #fff; }
+.tas-day-tab.has-tasks .tas-day-count { background: var(--accent-soft); color: var(--accent); }
+.tas-day-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius,16px);
+  box-shadow: var(--shadow);
+  padding: 14px 16px 12px;
+  min-height: 80px;
+}
+
+/* Tasks inside day cards and prep cards */
+.tas-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  padding: 5px 6px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.45);
+  border: 1px solid rgba(255,255,255,0.6);
+  transition: background .15s;
+}
+[data-theme="dark"] .tas-task {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.07);
+}
+.tas-task:hover { background: rgba(255,255,255,0.75); }
+[data-theme="dark"] .tas-task:hover { background: rgba(255,255,255,0.09); }
+.tas-task.completed input[type=text] { text-decoration: line-through; opacity: .42; }
+[data-theme="dark"] .tas-task.completed input[type=text] { color: var(--text); }
+.tas-task .tas-drag-handle { color: var(--text3); cursor: grab; font-size: 13px; padding: 0 2px; flex-shrink: 0; user-select: none; }
+.tas-task input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+.tas-task input[type=text] { flex:1; padding:3px 6px; border-radius:6px; border:1px solid transparent; background:transparent; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; transition:border-color .15s,background .15s; }
+.tas-task input[type=text]:focus { border-color:var(--accent); background:rgba(255,255,255,.8); }
+[data-theme="dark"] .tas-task input[type=text]:focus { background:rgba(255,255,255,.06); }
+.tas-task-btn { border:none; background:none; cursor:pointer; font-size:11px; color:var(--text3); padding:2px 3px; border-radius:4px; flex-shrink:0; transition:color .15s,background .15s; }
+.tas-task-btn:hover { color:var(--text); background:rgba(0,0,0,.07); }
+.tas-task-btn:disabled { opacity:.2; cursor:default; }
+
+/* Add input */
+.tas-add-row { margin-top: 6px; }
+.tas-add-input { width:100%; padding:6px 10px; border-radius:8px; border:1.5px dashed rgba(0,0,0,.13); background:rgba(255,255,255,.3); font-family:'DM Sans',sans-serif; font-size:13px; font-style:italic; color:var(--text2); outline:none; transition:border-color .15s,background .15s; }
+[data-theme="dark"] .tas-add-input { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); }
+.tas-add-input:focus { border-color:var(--accent); background:rgba(255,255,255,.7); font-style:normal; }
+/* ===== tasmania CSS (old, kept for compat) ===== */
+/* Tasmania shares the same design tokens from :root above */
+/* Tasmania-specific section h2 (static, no section-header wrapper) */
+#panel-tasmania .section h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--accent);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+#panel-tasmania .task { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+#panel-tasmania .task input[type=text] { flex: 1; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s; }
+#panel-tasmania .task input[type=text]:focus { border-color: var(--accent); background: var(--surface); }
+#panel-tasmania .task.completed input[type=text] { text-decoration: line-through; opacity: .45; }
+[data-theme="dark"] #panel-tasmania .task.completed input[type=text] { color: var(--text); }
+#panel-tasmania .task input[type=checkbox] { position:absolute;opacity:0;width:0;height:0;pointer-events:none; }
+#panel-tasmania .task button { border: none; background: none; cursor: pointer; font-size: 12px; color: var(--text3); padding: 2px 3px; border-radius: 4px; }
+#panel-tasmania .task button:hover { color: var(--text); background: var(--surface2); }
+#panel-tasmania .task button:disabled { opacity: .2; cursor: default; }
+
+
+/* ── PIN NAV ── */
+.nav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px 14px; border-bottom: 1px solid var(--border);
+  margin-bottom: 10px; gap: 6px;
+}
+.nav-header .nav-title { padding: 0; border-bottom: none; margin-bottom: 0; flex: 1; }
+.nav-header { display:flex; align-items:center; padding:0 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.nav-header .nav-title { padding:0; border-bottom:none; margin-bottom:0; }
+/* ── END PIN NAV ── */
+/* ── NAV LOGO CHECKBOX ── */
+.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+.logo-check svg{overflow:visible;display:block;}
+.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+/* ── END NAV LOGO CHECKBOX ── */
+
+/* ── TASK CHECKBOX STYLE B (overshoot tick) ── */
+.task-cb{
+  position:absolute;opacity:0;width:0;height:0;pointer-events:none;
+}
+.task-cb-svg{
+  display:inline-flex;align-items:center;justify-content:center;
+  flex-shrink:0;cursor:pointer;width:18px;height:18px;
+  overflow:visible;
+}
+.task-cb-svg svg{ overflow:visible;display:block; }
+.tcb-box{
+  fill:none;stroke:var(--accent);stroke-width:1.5;
+  transition:fill 0.25s,stroke 0.25s;
+}
+.tcb-tick{
+  fill:none;stroke:var(--accent);stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round;
+  stroke-dasharray:28;stroke-dashoffset:28;
+  transition:stroke 0.15s;
+}
+.task-cb-svg.tcb-on .tcb-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.task-cb-svg.tcb-on .tcb-tick{
+  stroke:#fff;
+  stroke-dashoffset:0;
+  transition:stroke-dashoffset 0.35s cubic-bezier(.2,0,.1,1) 0.12s,stroke 0.15s;
+}
+/* ── END TASK CHECKBOX ── */
+
+/* ── NAV COLLAPSE ── */
+:root { --nav-toggle-size: 22px; }
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--nav-toggle-size); height: var(--nav-toggle-size);
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* Collapsed nav */
+.nav.nav-collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* Shift content when nav is collapsed */
+body.nav-is-collapsed .main        { margin-left: 0 !important; }
+body.nav-is-collapsed .topbar      { left: 0 !important; }
+body.nav-is-collapsed .panels      { left: 0 !important; }
+body.nav-is-collapsed .footer-actions { left: 0 !important; }
+body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
+
+/* Floating "show nav" tab on left edge */
+#nav-show-tab {
+  display: none;
+  position: fixed; top: 50%; left: 0;
+  transform: translateY(-50%);
+  z-index: 9999;
+  writing-mode: vertical-lr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 6px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+#nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
+body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
+
+/* Smooth width transition on nav itself */
+.nav { transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease; }
+/* ── END NAV COLLAPSE ── */
+
+/* ── NAV HEADER NORMALIZED ── */
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+/* ── END NAV HEADER NORMALIZED ── */
+</style>
+</head>
+<body>
+<div id="nav-show-tab" title="Show sidebar">☰</div>
+
+<!-- ── NAV SIDEBAR ── -->
+<nav class="nav" id="onetrack-nav">
+  <div class="nav-header">
+    <div class="nav-title">
+      <span class="logo-check" id="logoCheck">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;display:block;overflow:visible;">
+          <rect class="logo-box" x="2" y="2" width="16" height="16" rx="4"/>
+          <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
+        </svg>
+      </span>
+      Onetrack
+    </div>
+    <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
+  </div>
+  <a href="00. Index.html">00. Index</a>
+  <a href="01. TT&amp;B.html">01. TT&amp;B</a>
+  <a href="02. Routines.html">02. Routines</a>
+  <a href="03. Jobs.html">03. Jobs</a>
+  <a href="04. Checklists.html">04. Checklists</a>
+  <a href="05. Trip Planners.html" class="active">05. Trip Planners</a>
+  <a href="06. Weekly Planners.html">06. Weekly Planne…</a>
+  <a href="07. Library-Backup.html">07. Library-Backup</a>
+  <a href="99. Settings.html">99. Settings</a>
+</nav>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="topbar-logo">✦ Trips</div>
+  <div class="tab-strip" id="tabStrip"></div>
+</div>
+
+<!-- ── PANELS ── -->
+<div class="panels">
+
+  <!-- ===== INDIA PANEL ===== -->
+  <div class="panel active" id="panel-india">
+    <div class="main">
+      <div class="header">
+        <div class="header-left">
+          <h1>India Trip Planner</h1>
+          <div class="subtitle">28 Mar 2026 – 18 Apr 2026</div>
+        </div>
+        <div class="header-right">
+          <button class="btn btn-ghost" onclick="indiaOpenPrintBW()" title="Black & white print / PDF">🖨 Print B&W</button>
+          <button class="btn btn-print-color" onclick="indiaOpenPrintColor()" title="Colour print / PDF">🎨 Colour Print</button>
+          <div class="cal-date-wrap">
+            <input type="date" id="india__calStartDate" title="Trip start date for calendar">
+            <button class="btn btn-accent" onclick="indiaDownloadCalendar()" title="Download .ics calendar">↓ Calendar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADD BLOCK BAR -->
+      <div class="add-block-bar">
+        <input type="text" id="india__newBlockName" placeholder="New block title… (e.g. Sat 19 Apr 2026)" maxlength="60">
+        <button class="btn btn-accent" onclick="indiaAddBlock()">+ Add Block</button>
+      </div>
+
+      <div class="grid" id="india__grid"></div>
+    </div>
+
+    <!-- Block portal for move-to-block -->
+    <div id="india__blockPortal">
+      <div class="portal-title">Move to block</div>
+      <div id="india__blockPortalItems"></div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer-actions">
+      <div class="spacer"></div>
+      <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Trip Planners · Built 02 Apr 26 · v2.2</span>
+      <div class="spacer"></div>
+    </div>
+  </div>
+
+  <!-- ===== TASMANIA PANEL ===== -->
+  <div class="panel" id="panel-tasmania">
+    <div class="main">
+      <div class="header">
+        <div class="header-left">
+          <h1>Tasmania Trip Planner</h1>
+          <div class="subtitle">20 Dec 2026 – 15 Jan 2027</div>
+        </div>
+      </div>
+
+      <!-- ── THREE PREP PANELS ── -->
+      <div class="tas-prep-grid">
+
+        <!-- Pre-Travel Prep -->
+        <div class="tas-prep-card">
+          <div class="tas-prep-card-header">
+            <div class="tas-prep-card-title">✈️ Pre-Travel Prep</div>
+            <div class="tas-prep-card-stats" id="tas-pretravel-stats"></div>
+          </div>
+          <div class="tas-prep-card-progress"><div class="tas-prep-card-progress-fill" id="tas-pretravel-fill" style="width:0%"></div></div>
+          <div class="tas-prep-card-body" id="tas-pretravel-body"></div>
+        </div>
+
+        <!-- Day Before Checklist -->
+        <div class="tas-prep-card">
+          <div class="tas-prep-card-header">
+            <div class="tas-prep-card-title">🌅 Day Before</div>
+            <div class="tas-prep-card-stats" id="tas-daybefore-stats"></div>
+          </div>
+          <div class="tas-prep-card-progress"><div class="tas-prep-card-progress-fill" id="tas-daybefore-fill" style="width:0%"></div></div>
+          <div class="tas-prep-card-body" id="tas-daybefore-body"></div>
+        </div>
+
+        <!-- End of Trip Checklist -->
+        <div class="tas-prep-card">
+          <div class="tas-prep-card-header">
+            <div class="tas-prep-card-title">🏁 End of Trip</div>
+            <div class="tas-prep-card-stats" id="tas-endtrip-stats"></div>
+          </div>
+          <div class="tas-prep-card-progress"><div class="tas-prep-card-progress-fill" id="tas-endtrip-fill" style="width:0%"></div></div>
+          <div class="tas-prep-card-body" id="tas-endtrip-body"></div>
+        </div>
+
+      </div>
+
+      <!-- ── WEEK-GROUPED DAYS ── -->
+      <div id="tasmania__weeks" class="tas-weeks-grid">
+
+        <!-- Week 1 · Dec 20 – 26 -->
+        <div class="tas-week-group" id="tas-week-1">
+          <div class="tas-week-header" onclick="tasToggleWeek('tas-week-1')">
+            <h3>Week 1 · Dec 20 – 26</h3>
+            <span class="tas-week-toggle" id="tas-week-1-toggle">▾</span>
+          </div>
+          <div class="tas-week-body" id="tas-week-1-body">
+            <div class="tas-day-strip" id="tas-week-1-strip">
+              <button class="tas-day-tab active" data-week="tas-week-1" data-day="Sun 20 Dec 2026" onclick="tasSwitchDay('tas-week-1','Sun 20 Dec 2026')">
+              <span class="tas-day-name">☀️ Sun</span>
+              <span class="tas-day-date">20 Dec 2026</span>
+              <span class="tas-day-count" id="tas-count-Sun-20-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Mon 21 Dec 2026" onclick="tasSwitchDay('tas-week-1','Mon 21 Dec 2026')">
+              <span class="tas-day-name">Mon</span>
+              <span class="tas-day-date">21 Dec</span>
+              <span class="tas-day-count" id="tas-count-Mon-21-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Tue 22 Dec 2026" onclick="tasSwitchDay('tas-week-1','Tue 22 Dec 2026')">
+              <span class="tas-day-name">Tue</span>
+              <span class="tas-day-date">22 Dec</span>
+              <span class="tas-day-count" id="tas-count-Tue-22-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Wed 23 Dec 2026" onclick="tasSwitchDay('tas-week-1','Wed 23 Dec 2026')">
+              <span class="tas-day-name">Wed</span>
+              <span class="tas-day-date">23 Dec</span>
+              <span class="tas-day-count" id="tas-count-Wed-23-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Thu 24 Dec 2026" onclick="tasSwitchDay('tas-week-1','Thu 24 Dec 2026')">
+              <span class="tas-day-name">🎄 Thu</span>
+              <span class="tas-day-date">24 Dec</span>
+              <span class="tas-day-count" id="tas-count-Thu-24-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Fri 25 Dec 2026" onclick="tasSwitchDay('tas-week-1','Fri 25 Dec 2026')">
+              <span class="tas-day-name">🎅 Fri</span>
+              <span class="tas-day-date">25 Dec</span>
+              <span class="tas-day-count" id="tas-count-Fri-25-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Sat 26 Dec 2026" onclick="tasSwitchDay('tas-week-1','Sat 26 Dec 2026')">
+              <span class="tas-day-name">Sat</span>
+              <span class="tas-day-date">26 Dec</span>
+              <span class="tas-day-count" id="tas-count-Sat-26-Dec-2026">0</span>
+            </button>
+            </div>
+            <div class="tas-day-content" id="tas-week-1-content"></div>
+          </div>
+        </div>
+
+        <!-- Week 2 · Dec 27 – Jan 2 -->
+        <div class="tas-week-group" id="tas-week-2">
+          <div class="tas-week-header" onclick="tasToggleWeek('tas-week-2')">
+            <h3>Week 2 · Dec 27 – Jan 2</h3>
+            <span class="tas-week-toggle" id="tas-week-2-toggle">▾</span>
+          </div>
+          <div class="tas-week-body" id="tas-week-2-body">
+            <div class="tas-day-strip" id="tas-week-2-strip">
+              <button class="tas-day-tab active" data-week="tas-week-2" data-day="Sun 27 Dec 2026" onclick="tasSwitchDay('tas-week-2','Sun 27 Dec 2026')">
+              <span class="tas-day-name">Sun</span>
+              <span class="tas-day-date">27 Dec</span>
+              <span class="tas-day-count" id="tas-count-Sun-27-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Mon 28 Dec 2026" onclick="tasSwitchDay('tas-week-2','Mon 28 Dec 2026')">
+              <span class="tas-day-name">Mon</span>
+              <span class="tas-day-date">28 Dec</span>
+              <span class="tas-day-count" id="tas-count-Mon-28-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Tue 29 Dec 2026" onclick="tasSwitchDay('tas-week-2','Tue 29 Dec 2026')">
+              <span class="tas-day-name">Tue</span>
+              <span class="tas-day-date">29 Dec</span>
+              <span class="tas-day-count" id="tas-count-Tue-29-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Wed 30 Dec 2026" onclick="tasSwitchDay('tas-week-2','Wed 30 Dec 2026')">
+              <span class="tas-day-name">Wed</span>
+              <span class="tas-day-date">30 Dec</span>
+              <span class="tas-day-count" id="tas-count-Wed-30-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Thu 31 Dec 2026" onclick="tasSwitchDay('tas-week-2','Thu 31 Dec 2026')">
+              <span class="tas-day-name">🎆 Thu</span>
+              <span class="tas-day-date">31 Dec</span>
+              <span class="tas-day-count" id="tas-count-Thu-31-Dec-2026">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Fri 01 Jan 2027" onclick="tasSwitchDay('tas-week-2','Fri 01 Jan 2027')">
+              <span class="tas-day-name">🎉 Fri</span>
+              <span class="tas-day-date">01 Jan</span>
+              <span class="tas-day-count" id="tas-count-Fri-01-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Sat 02 Jan 2027" onclick="tasSwitchDay('tas-week-2','Sat 02 Jan 2027')">
+              <span class="tas-day-name">Sat</span>
+              <span class="tas-day-date">02 Jan</span>
+              <span class="tas-day-count" id="tas-count-Sat-02-Jan-2027">0</span>
+            </button>
+            </div>
+            <div class="tas-day-content" id="tas-week-2-content"></div>
+          </div>
+        </div>
+
+        <!-- Week 3 · Jan 3 – 9 -->
+        <div class="tas-week-group" id="tas-week-3">
+          <div class="tas-week-header" onclick="tasToggleWeek('tas-week-3')">
+            <h3>Week 3 · Jan 3 – 9</h3>
+            <span class="tas-week-toggle" id="tas-week-3-toggle">▾</span>
+          </div>
+          <div class="tas-week-body" id="tas-week-3-body">
+            <div class="tas-day-strip" id="tas-week-3-strip">
+              <button class="tas-day-tab active" data-week="tas-week-3" data-day="Sun 03 Jan 2027" onclick="tasSwitchDay('tas-week-3','Sun 03 Jan 2027')">
+              <span class="tas-day-name">Sun</span>
+              <span class="tas-day-date">03 Jan</span>
+              <span class="tas-day-count" id="tas-count-Sun-03-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Mon 04 Jan 2027" onclick="tasSwitchDay('tas-week-3','Mon 04 Jan 2027')">
+              <span class="tas-day-name">Mon</span>
+              <span class="tas-day-date">04 Jan</span>
+              <span class="tas-day-count" id="tas-count-Mon-04-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Tue 05 Jan 2027" onclick="tasSwitchDay('tas-week-3','Tue 05 Jan 2027')">
+              <span class="tas-day-name">Tue</span>
+              <span class="tas-day-date">05 Jan</span>
+              <span class="tas-day-count" id="tas-count-Tue-05-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Wed 06 Jan 2027" onclick="tasSwitchDay('tas-week-3','Wed 06 Jan 2027')">
+              <span class="tas-day-name">Wed</span>
+              <span class="tas-day-date">06 Jan</span>
+              <span class="tas-day-count" id="tas-count-Wed-06-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Thu 07 Jan 2027" onclick="tasSwitchDay('tas-week-3','Thu 07 Jan 2027')">
+              <span class="tas-day-name">Thu</span>
+              <span class="tas-day-date">07 Jan</span>
+              <span class="tas-day-count" id="tas-count-Thu-07-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Fri 08 Jan 2027" onclick="tasSwitchDay('tas-week-3','Fri 08 Jan 2027')">
+              <span class="tas-day-name">Fri</span>
+              <span class="tas-day-date">08 Jan</span>
+              <span class="tas-day-count" id="tas-count-Fri-08-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Sat 09 Jan 2027" onclick="tasSwitchDay('tas-week-3','Sat 09 Jan 2027')">
+              <span class="tas-day-name">Sat</span>
+              <span class="tas-day-date">09 Jan</span>
+              <span class="tas-day-count" id="tas-count-Sat-09-Jan-2027">0</span>
+            </button>
+            </div>
+            <div class="tas-day-content" id="tas-week-3-content"></div>
+          </div>
+        </div>
+
+        <!-- Week 4 · Jan 10 – 15 -->
+        <div class="tas-week-group" id="tas-week-4">
+          <div class="tas-week-header" onclick="tasToggleWeek('tas-week-4')">
+            <h3>Week 4 · Jan 10 – 15</h3>
+            <span class="tas-week-toggle" id="tas-week-4-toggle">▾</span>
+          </div>
+          <div class="tas-week-body" id="tas-week-4-body">
+            <div class="tas-day-strip" id="tas-week-4-strip">
+              <button class="tas-day-tab active" data-week="tas-week-4" data-day="Sun 10 Jan 2027" onclick="tasSwitchDay('tas-week-4','Sun 10 Jan 2027')">
+              <span class="tas-day-name">Sun</span>
+              <span class="tas-day-date">10 Jan</span>
+              <span class="tas-day-count" id="tas-count-Sun-10-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Mon 11 Jan 2027" onclick="tasSwitchDay('tas-week-4','Mon 11 Jan 2027')">
+              <span class="tas-day-name">Mon</span>
+              <span class="tas-day-date">11 Jan</span>
+              <span class="tas-day-count" id="tas-count-Mon-11-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Tue 12 Jan 2027" onclick="tasSwitchDay('tas-week-4','Tue 12 Jan 2027')">
+              <span class="tas-day-name">Tue</span>
+              <span class="tas-day-date">12 Jan</span>
+              <span class="tas-day-count" id="tas-count-Tue-12-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Wed 13 Jan 2027" onclick="tasSwitchDay('tas-week-4','Wed 13 Jan 2027')">
+              <span class="tas-day-name">Wed</span>
+              <span class="tas-day-date">13 Jan</span>
+              <span class="tas-day-count" id="tas-count-Wed-13-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Thu 14 Jan 2027" onclick="tasSwitchDay('tas-week-4','Thu 14 Jan 2027')">
+              <span class="tas-day-name">Thu</span>
+              <span class="tas-day-date">14 Jan</span>
+              <span class="tas-day-count" id="tas-count-Thu-14-Jan-2027">0</span>
+            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Fri 15 Jan 2027" onclick="tasSwitchDay('tas-week-4','Fri 15 Jan 2027')">
+              <span class="tas-day-name">🏁 Fri</span>
+              <span class="tas-day-date">15 Jan</span>
+              <span class="tas-day-count" id="tas-count-Fri-15-Jan-2027">0</span>
+            </button>
+            </div>
+            <div class="tas-day-content" id="tas-week-4-content"></div>
+          </div>
+        </div>
+
+      </div><!-- /weeks -->
+    </div><!-- /main -->
+
+    <!-- FOOTER -->
+    <div class="footer-actions">
+      <div class="spacer"></div>
+      <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Trip Planners · v3.0</span>
+      <div class="spacer"></div>
+    </div>
+  </div>
+
+</div><!-- end .panels -->
+
+<!-- ===== TOPBAR TAB SWITCHER JS ===== -->
+<script>
+/* OT CACHE — populated on boot */
+var _otCache = {};
+function _cget(k){ var v=_otCache[k]; return (v===undefined)?null:v; }
+function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
+
+/* Master boot — load cache, apply theme + accent from Settings, then let each panel's OT.onReady fire */
+OT.onReady(async () => {
+  _otCache = await OT.getAll();
+  const html = document.documentElement;
+  // Dark mode — read-only, controlled by Settings tab
+  const dark = _cget("TODAY_DARK");
+  const isDark = (dark !== null ? dark === "1" : window.matchMedia("(prefers-color-scheme: dark)").matches);
+  html.dataset.theme = isDark ? "dark" : "";
+  // Accent colour — from Settings
+  function hexToSoft(hex, alpha) {
+    const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  const lightHex = _cget("ONETRACK_ACCENT") || "#c17b3f";
+  const darkHex  = _cget("ONETRACK_ACCENT_DARK") || "#d4935a";
+  const hex = isDark ? darkHex : lightHex;
+  const soft = hexToSoft(hex, isDark ? 0.14 : 0.12);
+  html.style.setProperty("--accent", hex);
+  html.style.setProperty("--accent-soft", soft);
+  // Font scale
+  const fs = parseFloat(_cget("ONETRACK_FONT_SCALE") || "1");
+  html.style.fontSize = (fs * 16) + "px";
+});
+</script>
+<script>
+(function(){
+  const TAB_ORDER_KEY  = "TRIP_PLANNERS_TAB_ORDER";
+  const ACTIVE_TAB_KEY = "TRIP_PLANNERS_ACTIVE_TAB";
+  const TAB_LABELS_KEY = "TRIP_PLANNERS_TAB_LABELS";
+
+  const TABS_DEFAULT = [
+    { id: "india",    label: "🇮🇳 India" },
+    { id: "tasmania", label: "🗺️ Tasmania" }
+  ];
+
+  let customLabels = (() => {
+    try { return JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){ return {}; }
+  })();
+
+  function getTabLabel(id) {
+    if (customLabels[id]) return customLabels[id];
+    const def = TABS_DEFAULT.find(t => t.id === id);
+    return def ? def.label : id;
+  }
+
+  function loadOrder(){
+    try {
+      const raw = _cget(TAB_ORDER_KEY);
+      if(raw){
+        const order = JSON.parse(raw);
+        if(Array.isArray(order) && order.length > 0) return order;
+      }
+    } catch(e){}
+    return TABS_DEFAULT.map(t=>t.id);
+  }
+
+  function saveOrder(order){ _cset(TAB_ORDER_KEY, JSON.stringify(order)); }
+
+  let tabOrder = loadOrder();
+  let activeTab = _cget(ACTIVE_TAB_KEY) || tabOrder[0];
+
+  function activatePanel(id){
+    const label = getTabLabel(id).replace(/[^\w\s]/g,"").trim();
+    document.title = "Onetrack · Trip Planners · " + label;
+    activeTab = id;
+    _cset(ACTIVE_TAB_KEY, id);
+    document.querySelectorAll(".panel").forEach(p=>{
+      p.classList.toggle("active", p.id === "panel-" + id);
+    });
+    renderTabs();
+  }
+
+  function renameTab(id) {
+    const current = getTabLabel(id);
+    const newLabel = prompt("Rename tab:", current);
+    if (newLabel && newLabel.trim() && newLabel.trim() !== current) {
+      customLabels[id] = newLabel.trim();
+      _cset(TAB_LABELS_KEY, JSON.stringify(customLabels));
+      renderTabs();
+    }
+  }
+
+  function deleteTab(id) {
+    const label = getTabLabel(id);
+    const isDef = TABS_DEFAULT.some(t => t.id === id);
+    const msg = isDef
+      ? `Hide "${label}" tab? It's a built-in tab — data is kept.`
+      : `Delete "${label}" tab? This cannot be undone.`;
+    if (!confirm(msg)) return;
+    tabOrder = tabOrder.filter(t => t !== id);
+    saveOrder(tabOrder);
+    if (activeTab === id && tabOrder.length > 0) activatePanel(tabOrder[0]);
+    renderTabs();
+  }
+
+  let dragSrc = null;
+
+  function renderTabs(){
+    const strip = document.getElementById("tabStrip");
+    strip.innerHTML = "";
+    tabOrder.forEach(id=>{
+      const wrap = document.createElement("span");
+      wrap.style.cssText = "display:inline-flex;align-items:center;gap:2px;position:relative;";
+
+      const btn = document.createElement("button");
+      btn.className = "tab-btn" + (id===activeTab?" active":"");
+      btn.textContent = getTabLabel(id);
+      btn.dataset.tabId = id;
+      btn.draggable = true;
+      btn.onclick = ()=> activatePanel(id);
+      btn.ondragstart = e=>{ dragSrc=id; btn.classList.add("dragging-tab"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("",id); };
+      btn.ondragend   = ()=>{ btn.classList.remove("dragging-tab"); dragSrc=null; renderTabs(); };
+      btn.ondragover  = e=>{ if(dragSrc&&dragSrc!==id){ e.preventDefault(); } };
+      btn.ondrop      = e=>{
+        e.preventDefault();
+        if(!dragSrc||dragSrc===id) return;
+        const from = tabOrder.indexOf(dragSrc);
+        const to   = tabOrder.indexOf(id);
+        tabOrder.splice(to,0,tabOrder.splice(from,1)[0]);
+        saveOrder(tabOrder); renderTabs();
+      };
+
+      // ✏ Rename button
+      const renBtn = document.createElement("button");
+      renBtn.title = "Rename tab";
+      renBtn.textContent = "✏";
+      renBtn.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:var(--text3);padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
+      renBtn.onclick = e => { e.stopPropagation(); renameTab(id); };
+
+      // ✕ Delete button
+      const delBtn = document.createElement("button");
+      delBtn.title = "Delete tab";
+      delBtn.textContent = "✕";
+      delBtn.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:#e85c5c;padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
+      delBtn.onclick = e => { e.stopPropagation(); deleteTab(id); };
+
+      wrap.addEventListener("mouseenter", () => { renBtn.style.opacity="1"; delBtn.style.opacity="1"; });
+      wrap.addEventListener("mouseleave", () => { renBtn.style.opacity="0"; delBtn.style.opacity="0"; });
+
+      wrap.appendChild(btn);
+      wrap.appendChild(renBtn);
+      wrap.appendChild(delBtn);
+      strip.appendChild(wrap);
+    });
+  }
+
+  // Ensure correct panel visibility on load
+  document.querySelectorAll(".panel").forEach(p=>{ p.classList.remove("active"); });
+  const initialPanel = document.getElementById("panel-" + activeTab);
+  if(initialPanel) initialPanel.classList.add("active");
+
+  renderTabs();
+})();
+</script>
+
+<!-- ===== THEME: read-only, controlled via 99. Settings ===== -->
+<script>
+(function(){
+  const DARK_KEY = "TODAY_DARK";
+  const html = document.documentElement;
+  const sysDark = ()=> window.matchMedia("(prefers-color-scheme: dark)").matches;
+  function resolveTheme(){ const o=_cget(DARK_KEY); return o!==null?o==="1":sysDark(); }
+  html.dataset.theme = resolveTheme() ? "dark" : "";
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>{
+    if(_cget(DARK_KEY)===null){ html.dataset.theme=sysDark()?"dark":""; }
+  });
+})();
+</script>
+
+<!-- ===== INDIA JS ===== -->
+<script>
+(function(){
+const STORAGE_KEY    = "INDIA_TRIP_DAILY_TASKS_V4";
+const STORAGE_KEY_V3 = "INDIA_TRIP_DAILY_TASKS_V3";
+const DARK_KEY    = "TODAY_DARK";
+
+/* ── Default blocks ── */
+const DEFAULT_DAYS = [
+  "PRE_TRAVEL","RETURN_PREP",
+  "Sat 28 Mar 2026","Sun 29 Mar 2026","Mon 30 Mar 2026","Tue 31 Mar 2026",
+  "Wed 01 Apr 2026","Thu 02 Apr 2026","Fri 03 Apr 2026","Sat 04 Apr 2026",
+  "Sun 05 Apr 2026","Mon 06 Apr 2026","Tue 07 Apr 2026","Wed 08 Apr 2026",
+  "Thu 09 Apr 2026","Fri 10 Apr 2026","Sat 11 Apr 2026","Sun 12 Apr 2026",
+  "Mon 13 Apr 2026","Tue 14 Apr 2026","Wed 15 Apr 2026","Thu 16 Apr 2026",
+  "Fri 17 Apr 2026","Sat 18 Apr 2026"
+];
+
+/* ── Storage ── */
+function loadData(){
+  const raw = _cget(STORAGE_KEY);
+  if(raw){ try { return JSON.parse(raw); } catch(e){} }
+  const rawV3 = _cget(STORAGE_KEY_V3);
+  if(rawV3){ try { return JSON.parse(rawV3); } catch(e){} }
+  const PREPOP = {
+    "PRE_TRAVEL": [
+      "Esha Letter for singapore airlines",
+      "call icici bank and prep them",
+      "call pf guy",
+      "send money to India",
+      "GST holiday scheme",
+      "set up appointment with hair to",
+      "Buy tickets for Dhurandhar",
+      "Pause rohans music/swimming/",
+      "singapore ticket online check in",
+      "Printed India e-visa and attachments",
+      "print singapore airlines tickets and docs",
+      "arrange for Esha's sim card in india",
+      "can you buy apple watch band",
+      "call dell and move your ticket to",
+      "order checkbooks",
+      "activate debit cards etc"
+    ],
+    "RETURN_PREP": [],
+    "Sat 28 Mar 2026": [],
+    "Sun 29 Mar 2026": [],
+    "Mon 30 Mar 2026": ["Meet konda plan for dinner/lunch"],
+    "Tue 31 Mar 2026": [],
+    "Wed 01 Apr 2026": [],
+    "Thu 02 Apr 2026": [],
+    "Fri 03 Apr 2026": [],
+    "Sat 04 Apr 2026": [],
+    "Sun 05 Apr 2026": [],
+    "Mon 06 Apr 2026": [],
+    "Tue 07 Apr 2026": [],
+    "Wed 08 Apr 2026": [],
+    "Thu 09 Apr 2026": [],
+    "Fri 10 Apr 2026": [],
+    "Sat 11 Apr 2026": [],
+    "Sun 12 Apr 2026": [],
+    "Mon 13 Apr 2026": [],
+    "Tue 14 Apr 2026": [],
+    "Wed 15 Apr 2026": [],
+    "Thu 16 Apr 2026": [],
+    "Fri 17 Apr 2026": [],
+    "Sat 18 Apr 2026": []
+  };
+  const obj = { _order: [...DEFAULT_DAYS], blocks: {} };
+  DEFAULT_DAYS.forEach(d => {
+    const tasks = (PREPOP[d] || []).map(t => ({ text: t, done: false, sub: false }));
+    obj.blocks[d] = { title: d, tasks };
+  });
+  saveData(obj); return obj;
+}
+
+function saveData(d){ _cset(STORAGE_KEY, JSON.stringify(d)); }
+
+function migrateIfNeeded(obj){
+  if(!obj._order){
+    const keys = Object.keys(obj);
+    const newObj = { _order: keys, blocks: {} };
+    keys.forEach(k => {
+      const tasks = Array.isArray(obj[k]) ? obj[k] : [];
+      const norm = tasks.map(t => typeof t==="string"
+        ? { text:t, done:false, sub:false }
+        : { text:t.text||"", done:!!t.done, sub:!!t.sub }
+      );
+      newObj.blocks[k] = { title: k, tasks: norm };
+    });
+    saveData(newObj); return newObj;
+  }
+  return obj;
+}
+
+let state = migrateIfNeeded(loadData());
+
+function getRawBlocks(){ return state._order.map(k => ({ key: k, ...state.blocks[k] })); }
+function save(){ saveData(state); }
+
+/* ── Date parsing ── */
+const MONTH_MAP_PARSE = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseBlockDate(title){
+  const m = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+  if(m){
+    const mo = MONTH_MAP_PARSE[m[2].toLowerCase()];
+    const d = new Date(parseInt(m[3]), mo, parseInt(m[1]));
+    d.setHours(0,0,0,0);
+    return d;
+  }
+  return null;
+}
+
+function todayMidnight(){
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+/*
+  Smart ordering:
+  Slot 0 → Today's block
+  Slot 1 → Tomorrow's block
+  Slot 2 → RETURN_PREP (always pinned to position 3, col 1 row 1)
+  Then   → future days (ascending)
+  Then   → past days (most recent first, so closest past is first)
+  Last   → PRE_TRAVEL
+*/
+function getBlocks(){
+  const today = todayMidnight();
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+
+  const all = getRawBlocks();
+
+  const todayKey    = state._order.find(k => { const d=parseBlockDate(state.blocks[k].title); return d && d.getTime()===today.getTime(); });
+  const tomorrowKey = state._order.find(k => { const d=parseBlockDate(state.blocks[k].title); return d && d.getTime()===tomorrow.getTime(); });
+  const returnKey   = state._order.find(k => k==="RETURN_PREP");
+  const preTravelKey= state._order.find(k => k==="PRE_TRAVEL");
+
+  const pinned = new Set([todayKey, tomorrowKey, returnKey, preTravelKey].filter(Boolean));
+
+  // Future days (after tomorrow), ascending
+  const futureDays = state._order.filter(k=>{
+    if(pinned.has(k)) return false;
+    const d = parseBlockDate(state.blocks[k].title);
+    return d && d.getTime() > tomorrow.getTime();
+  }).sort((a,b)=>{
+    return parseBlockDate(state.blocks[a].title) - parseBlockDate(state.blocks[b].title);
+  });
+
+  // Past days (before today), most recent first
+  const pastDays = state._order.filter(k=>{
+    if(pinned.has(k)) return false;
+    const d = parseBlockDate(state.blocks[k].title);
+    return d && d.getTime() < today.getTime();
+  }).sort((a,b)=>{
+    return parseBlockDate(state.blocks[b].title) - parseBlockDate(state.blocks[a].title);
+  });
+
+  // Custom blocks (no parseable date, not special keys)
+  const customBlocks = state._order.filter(k=>{
+    if(pinned.has(k)) return false;
+    const d = parseBlockDate(state.blocks[k].title);
+    return !d;
+  });
+
+  // Build final order: today, tomorrow, RETURN_PREP, future, custom, past, PRE_TRAVEL
+  const ordered = [
+    todayKey,
+    tomorrowKey,
+    returnKey,
+    ...futureDays,
+    ...customBlocks,
+    ...pastDays,
+    preTravelKey
+  ].filter(Boolean);
+
+  return ordered.map(k => ({ key: k, ...state.blocks[k] }));
+}
+
+/* Set default calendar date */
+document.getElementById("india__calStartDate").value = "2026-03-28";
+
+/* ── Drag state ── */
+let drag = null;
+
+/* ── Block portal state ── */
+let blockPortalState = null;
+
+/* ── Toast ── */
+function showToast(msg){
+  document.querySelectorAll(".toast").forEach(t=>t.remove());
+  const t=document.createElement("div");
+  t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity="0"; setTimeout(()=>t.remove(),400); },2200);
+}
+
+/* ── Add Block ── */
+function indiaAddBlock(){
+  const inp = document.getElementById("india__newBlockName");
+  const title = inp.value.trim();
+  if(!title){ inp.focus(); return; }
+  const key = "custom_" + Date.now();
+  state._order.push(key);
+  state.blocks[key] = { title, tasks: [] };
+  save(); inp.value=""; render();
+  setTimeout(()=>{
+    const el = document.querySelector(`[data-key="${key}"]`);
+    if(el) el.scrollIntoView({ behavior:"smooth", block:"center" });
+  }, 100);
+  showToast(`✓ Block "${title}" added`);
+}
+window.indiaAddBlock = indiaAddBlock;
+
+document.getElementById("india__newBlockName").addEventListener("keydown", e=>{
+  if(e.key==="Enter") indiaAddBlock();
+});
+
+/* ── Delete Block ── */
+function deleteBlock(key){
+  const b = state.blocks[key];
+  const label = b.title;
+  const taskCount = b.tasks.length;
+  const msg = taskCount>0
+    ? `Delete "${label}" and its ${taskCount} task(s)?`
+    : `Delete "${label}"?`;
+  if(!confirm(msg)) return;
+  state._order = state._order.filter(k=>k!==key);
+  delete state.blocks[key];
+  save(); render();
+  showToast(`🗑 "${label}" deleted`);
+}
+
+/* ── Edit Block Title ── */
+function startEditTitle(key, headerEl){
+  const h2 = headerEl.querySelector("h2");
+  const currentTitle = state.blocks[key].title;
+  const inp = document.createElement("input");
+  inp.className = "section-title-input";
+  inp.value = currentTitle;
+  h2.replaceWith(inp);
+  inp.focus(); inp.select();
+
+  function commit(){
+    const val = inp.value.trim() || currentTitle;
+    state.blocks[key].title = val;
+    save();
+    const newH2 = document.createElement("h2");
+    newH2.textContent = val;
+    inp.replaceWith(newH2);
+  }
+  inp.onblur = commit;
+  inp.onkeydown = e=>{
+    if(e.key==="Enter"){ inp.blur(); }
+    if(e.key==="Escape"){ inp.value=currentTitle; inp.blur(); }
+  };
+}
+
+/* ── Move task to block portal ── */
+function openBlockPortal(btn, fromKey, itemIdx){
+  const portal = document.getElementById("india__blockPortal");
+  const list   = document.getElementById("india__blockPortalItems");
+  list.innerHTML = "";
+
+  const blocks = getBlocks();
+  blocks.forEach(b=>{
+    const el = document.createElement("button");
+    el.className = "portal-item" + (b.key===fromKey?" current-block":"");
+    el.textContent = b.title;
+    if(b.key===fromKey){
+      el.title = "Task is already in this block";
+    } else {
+      el.onclick=()=>{
+        const moved = state.blocks[fromKey].tasks.splice(itemIdx,1)[0];
+        state.blocks[b.key].tasks.push(moved);
+        save(); closeBlockPortal(); render();
+        setTimeout(()=>{
+          const destEl = document.querySelector(`[data-key="${b.key}"]`);
+          if(destEl){
+            destEl.scrollIntoView({ behavior:"smooth", block:"center" });
+            destEl.style.outline = "2px solid var(--accent)";
+            destEl.style.outlineOffset = "2px";
+            setTimeout(()=>{ destEl.style.outline=""; destEl.style.outlineOffset=""; },1500);
+          }
+        },100);
+        showToast(`↗ Moved to "${b.title}"`);
+      };
+    }
+    list.appendChild(el);
+  });
+
+  const rect = btn.getBoundingClientRect();
+  const portalH = Math.min(320, blocks.length * 38 + 40);
+  let top = rect.bottom + 6;
+  if(top + portalH > window.innerHeight - 20) top = rect.top - portalH - 6;
+  portal.style.top  = top + "px";
+  portal.style.left = Math.min(rect.left, window.innerWidth - 250) + "px";
+  portal.classList.add("open");
+  blockPortalState = { fromKey, itemIdx };
+}
+
+function closeBlockPortal(){
+  document.getElementById("india__blockPortal").classList.remove("open");
+  blockPortalState = null;
+}
+document.addEventListener("click", e=>{
+  if(!e.target.closest("#india__blockPortal") && !e.target.closest(".move-block-btn")) closeBlockPortal();
+});
+
+/* ── Parent-child helpers ── */
+
+// Build a flat list of "groups": each group is { parentIdx, childIdxs[] }
+// A task at index i is a parent if it is NOT sub and has at least one sub task after it
+// A sub task belongs to the nearest non-sub task above it
+function buildGroups(tasks){
+  // Returns array of group objects indexed by parent task index
+  const groups = {}; // parentIdx -> [childIdx, ...]
+  let currentParent = null;
+  tasks.forEach((t, i) => {
+    if(!t.sub){
+      currentParent = i;
+      groups[i] = [];
+    } else {
+      if(currentParent !== null){
+        groups[currentParent].push(i);
+      }
+    }
+  });
+  return groups;
+}
+
+// Given a task index, find its parent index (-1 if it IS a parent or orphan)
+function findParent(tasks, idx){
+  if(!tasks[idx].sub) return -1;
+  for(let i = idx - 1; i >= 0; i--){
+    if(!tasks[i].sub) return i;
+  }
+  return -1;
+}
+
+/* ── Sort: done GROUPS sink to bottom, preserving relative order ── */
+// A group is "done" only if the parent AND all children are done
+function sortDoneToBottom(tasks){
+  const groups = buildGroups(tasks);
+  // Gather parent indices in order
+  const parentIdxs = Object.keys(groups).map(Number);
+
+  // Build ordered list of group "slices" [parentIdx, ...childIdxs]
+  const slices = parentIdxs.map(pi => [pi, ...groups[pi]]);
+  // Also pick up any orphan subtasks (sub=true but no parent above — edge case)
+  const accounted = new Set(slices.flat());
+  const orphans = tasks.map((_,i)=>i).filter(i=>!accounted.has(i));
+
+  const groupDone = slice => slice.every(i => tasks[i].done);
+
+  const undoneSlices = slices.filter(s => !groupDone(s));
+  const doneSlices   = slices.filter(s =>  groupDone(s));
+
+  // Rebuild flat array
+  const result = [];
+  [...undoneSlices, ...doneSlices].forEach(slice => {
+    slice.forEach(i => result.push(tasks[i]));
+  });
+  // Append orphans (shouldn't normally exist)
+  orphans.forEach(i => result.push(tasks[i]));
+  return result;
+}
+
+/* ── Render ── */
+function render(){
+  const grid = document.getElementById("india__grid");
+  grid.innerHTML = "";
+
+  const today    = todayMidnight();
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+
+  getBlocks().forEach((block, blockIdx)=>{
+    const { key, title, tasks } = block;
+
+    const blockDate = parseBlockDate(title);
+    const isToday    = blockDate && blockDate.getTime() === today.getTime();
+    const isTomorrow = blockDate && blockDate.getTime() === tomorrow.getTime();
+    const isPast     = blockDate && blockDate.getTime() < today.getTime();
+    const isReturn   = key === "RETURN_PREP";
+    const isPreTravel= key === "PRE_TRAVEL";
+
+    const sec = document.createElement("div");
+    sec.className = "section"
+      + (isToday    ? " is-today" : "")
+      + (isPast     ? " is-past"  : "");
+    sec.dataset.key = key;
+    sec.style.animationDelay = (blockIdx * 0.04) + "s";
+
+    /* Header */
+    const hdr = document.createElement("div");
+    hdr.className = "section-header";
+
+    const h2 = document.createElement("h2");
+    h2.textContent = title;
+
+    // Badge
+    let badgeEl = null;
+    if(isToday){
+      badgeEl = document.createElement("span");
+      badgeEl.className = "section-badge badge-today";
+      badgeEl.textContent = "Today";
+    } else if(isTomorrow){
+      badgeEl = document.createElement("span");
+      badgeEl.className = "section-badge badge-tomorrow";
+      badgeEl.textContent = "Tomorrow";
+    } else if(isPast){
+      badgeEl = document.createElement("span");
+      badgeEl.className = "section-badge badge-past";
+      badgeEl.textContent = "Past";
+    } else if(isReturn){
+      badgeEl = document.createElement("span");
+      badgeEl.className = "section-badge badge-return";
+      badgeEl.textContent = "Return";
+    } else if(isPreTravel){
+      badgeEl = document.createElement("span");
+      badgeEl.className = "section-badge badge-past";
+      badgeEl.textContent = "Pre-Travel";
+    }
+
+    const editBtn = document.createElement("button");
+    editBtn.className = "section-edit-btn";
+    editBtn.textContent = "✎";
+    editBtn.title = "Edit block title";
+    editBtn.onclick = ()=> startEditTitle(key, hdr);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "section-del-btn";
+    delBtn.textContent = "🗑";
+    delBtn.title = "Delete block";
+    delBtn.onclick = ()=> deleteBlock(key);
+
+    hdr.appendChild(h2);
+    if(badgeEl) hdr.appendChild(badgeEl);
+    hdr.appendChild(editBtn);
+    hdr.appendChild(delBtn);
+    sec.appendChild(hdr);
+
+    /* New task input — at the TOP */
+    const add = document.createElement("div");
+    add.className = "new-task";
+    add.innerHTML = `<input placeholder="Add task and press Enter…">`;
+    const inp = add.querySelector("input");
+    inp.onkeydown = e=>{
+      if(e.key==="Enter"){
+        const val = inp.value.trim();
+        if(!val) return;
+        tasks.unshift({ text: val, done: false, sub: false });
+        save(); render();
+        setTimeout(()=>{
+          const sec2 = document.querySelector(`[data-key="${key}"]`);
+          if(sec2) sec2.querySelector(".new-task input")?.focus();
+        },0);
+      }
+    };
+    sec.appendChild(add);
+
+    /* Tasks */
+    tasks.forEach((item, i)=>{
+      const row = document.createElement("div");
+      row.className = "task" + (item.done?" completed":"") + (item.sub?" subtask":"");
+      row.innerHTML = `
+        <span class="drag-handle" title="Drag">⋮⋮</span>
+        <input type="checkbox" ${item.done?"checked":""}>
+        <input type="text" class="task-text" value="${esc(item.text)}">
+        <button class="sub-toggle-btn" title="${item.sub?"↰ Unindent (break child link)":"↳ Indent (make child of task above)"}">${item.sub?"↰":"↳"}</button>
+        <button class="move-block-btn" title="Move to block">⇄</button>
+        <button title="Remove">✕</button>
+      `;
+
+      const [handle] = row.querySelectorAll(".drag-handle");
+      const [cb, tx] = row.querySelectorAll("input");
+      const subBtn  = row.querySelector(".sub-toggle-btn");
+      const moveBtn = row.querySelector(".move-block-btn");
+      const delTaskBtn = row.querySelector("button[title='Remove']");
+
+      /* Drag */
+      handle.onpointerdown = ()=> row.draggable = true;
+      row.onpointerup = ()=> row.draggable = false;
+      row.ondragstart = e=>{ drag={key,index:i}; row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("",""); };
+      row.ondragend = ()=>{ row.classList.remove("dragging"); row.draggable=false; drag=null; };
+
+      /* Drop zone on section */
+      sec.ondragover = e=>{ if(!drag) return; e.preventDefault(); sec.classList.add("drop-target"); };
+      sec.ondragleave = ()=> sec.classList.remove("drop-target");
+      sec.ondrop = e=>{
+        if(!drag) return; e.preventDefault();
+        sec.classList.remove("drop-target");
+        const fromKey = drag.key, fromIdx = drag.index, toKey = key;
+        const moved = state.blocks[fromKey].tasks.splice(fromIdx,1)[0];
+        let toIdx = getDropIndex(sec, e.clientY);
+        if(fromKey===toKey && fromIdx<toIdx) toIdx--;
+        state.blocks[toKey].tasks.splice(toIdx,0,moved);
+        save(); drag=null; render();
+      };
+
+      /* Checkbox — parent/child aware, sink to bottom on check */
+      cb.onchange = ()=>{
+        item.done = cb.checked;
+        const ts = state.blocks[key].tasks;
+        const groups = buildGroups(ts);
+
+        if(!item.sub){
+          // Parent checked/unchecked → propagate to all children
+          const children = groups[i] || [];
+          children.forEach(ci => { ts[ci].done = cb.checked; });
+        } else {
+          // Child toggled → check if all siblings + this are done → auto-check parent
+          const parentIdx = findParent(ts, i);
+          if(parentIdx !== -1){
+            const siblings = groups[parentIdx] || [];
+            const allDone = siblings.every(ci => ts[ci].done);
+            ts[parentIdx].done = allDone;
+          }
+        }
+
+        state.blocks[key].tasks = sortDoneToBottom(ts);
+        save(); render();
+      };
+
+      /* Text edit — save on input, blur (exit) on Enter */
+      tx.oninput  = e=>{ item.text = e.target.value; save(); };
+      tx.onkeydown = e=>{ if(e.key==="Enter"){ item.text=tx.value.trim()||item.text; save(); tx.blur(); } };
+
+      /* Subtask toggle — indent = become child of task above; unindent = break relationship */
+      subBtn.onclick = ()=>{
+        const ts = state.blocks[key].tasks;
+        if(!item.sub){
+          // Indenting: become child of nearest task above (must exist)
+          if(i === 0) return; // no task above, can't indent
+          item.sub = true;
+          // If all children of the new parent are done, mark parent done too
+          const parentIdx = findParent(ts, i);
+          if(parentIdx !== -1){
+            const groups = buildGroups(ts);
+            const siblings = groups[parentIdx] || [];
+            // include newly-indented task
+            const allDone = [...siblings, i].every(ci => ts[ci].done);
+            ts[parentIdx].done = allDone;
+          }
+        } else {
+          // Un-indenting: break relationship
+          item.sub = false;
+          // Reset its done state doesn't need change, but re-sort may move it
+        }
+        save(); render();
+      };
+
+      moveBtn.onclick = e=>{ e.stopPropagation(); openBlockPortal(moveBtn, key, i); };
+      delTaskBtn.onclick = ()=>{ tasks.splice(i,1); save(); render(); };
+
+      sec.appendChild(row);
+    });
+
+    grid.appendChild(sec);
+  });
+}
+
+function getDropIndex(sec, clientY){
+  const rows = Array.from(sec.querySelectorAll(".task:not(.dragging)"));
+  for(let i=0;i<rows.length;i++){
+    const r=rows[i].getBoundingClientRect();
+    if(clientY < r.top+r.height/2) return i;
+  }
+  return rows.length;
+}
+
+function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+
+/* ── Roll unfinished tasks from past days to next day ──
+   Runs once per device (flagged in localStorage).
+   Rules:
+   · Skip PRE_TRAVEL and RETURN_PREP entirely.
+   · For each past day (before today), in chronological order,
+     move any unfinished (done=false) tasks to the immediately
+     next day block in the trip sequence.
+   · Mar 28 is the first trip day — nothing rolls into it.
+   · The last past day's tasks roll into the next available day
+     (could be today or a future day).
+   · Already-done tasks stay where they are.
+*/
+const ROLLOVER_KEY = "INDIA_ROLLOVER_DONE_V1";
+function rollUnfinishedTasks(){
+  if(_cget(ROLLOVER_KEY)) return; // already ran
+
+  const today = todayMidnight();
+
+  // Build ordered list of date-keyed trip blocks only (no PRE_TRAVEL / RETURN_PREP)
+  const tripKeys = state._order.filter(k => {
+    if(k === "PRE_TRAVEL" || k === "RETURN_PREP") return false;
+    return parseBlockDate(state.blocks[k].title) !== null;
+  });
+  // Sort chronologically
+  tripKeys.sort((a,b) => parseBlockDate(state.blocks[a].title) - parseBlockDate(state.blocks[b].title));
+
+  // Walk through each day that is PAST (before today), oldest first
+  for(let i = 0; i < tripKeys.length; i++){
+    const key = tripKeys[i];
+    const blockDate = parseBlockDate(state.blocks[key].title);
+    if(!blockDate || blockDate.getTime() >= today.getTime()) continue; // skip today & future
+
+    // Find the next day block in the sequence
+    const nextKey = tripKeys[i + 1];
+    if(!nextKey) continue; // no next day (shouldn't happen, but guard)
+
+    // Move unfinished tasks to next day
+    const unfinished = state.blocks[key].tasks.filter(t => !t.done);
+    const remaining  = state.blocks[key].tasks.filter(t =>  t.done);
+
+    if(unfinished.length > 0){
+      state.blocks[key].tasks = remaining;
+      state.blocks[nextKey].tasks = [...unfinished, ...state.blocks[nextKey].tasks];
+    }
+  }
+
+  save();
+  _cset(ROLLOVER_KEY, "1");
+}
+
+rollUnfinishedTasks();
+
+/* Boot — wait for OT then render */
+OT.onReady(async () => {
+  if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
+  render();
+});
+
+/* ── CALENDAR DOWNLOAD (.ics) ── */
+function indiaDownloadCalendar(){
+  const startVal = document.getElementById("india__calStartDate").value;
+  if(!startVal){ alert("Please select a start date for the calendar"); return; }
+
+  const blocks = getBlocks();
+  let totalEvents = 0;
+  let ics = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//India Trip Planner//EN\nCALSCALE:GREGORIAN\n";
+
+  const [sy,sm,sd] = startVal.split("-").map(Number);
+  const tripStart = new Date(sy,sm-1,sd);
+
+  const MONTH_MAP = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+
+  function parseBlockDate(title){
+    const m = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
+    if(m){
+      const mo = MONTH_MAP[m[2].toLowerCase()];
+      return new Date(parseInt(m[3]), mo, parseInt(m[1]));
+    }
+    return null;
+  }
+
+  function fmtDate(dt){
+    const y=dt.getFullYear(), mo=String(dt.getMonth()+1).padStart(2,"0"), d=String(dt.getDate()).padStart(2,"0");
+    return `${y}${mo}${d}`;
+  }
+
+  function uid(){ return 'india-' + Math.random().toString(36).substr(2,9); }
+  function escIcs(s){ return (s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+
+  blocks.forEach(block=>{
+    if(!block.tasks.length) return;
+
+    let blockDate = parseBlockDate(block.title);
+    if(!blockDate){
+      if(block.key==="PRE_TRAVEL"){
+        blockDate = new Date(tripStart.getTime() - 7*24*60*60*1000);
+      } else if(block.key==="RETURN_PREP"){
+        blockDate = new Date(tripStart.getTime() + 21*24*60*60*1000);
+      } else {
+        return;
+      }
+    }
+
+    const dateStr = fmtDate(blockDate);
+
+    block.tasks.forEach(task=>{
+      const summary = escIcs(task.text);
+      const desc = escIcs(`Block: ${block.title}${task.done?" [✓ Done]":""}`);
+      ics += [
+        "BEGIN:VEVENT",
+        `UID:${uid()}@india-trip-planner`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${desc}`,
+        `DTSTART;VALUE=DATE:${dateStr}`,
+        `DTEND;VALUE=DATE:${dateStr}`,
+        `STATUS:${task.done?"COMPLETED":"NEEDS-ACTION"}`,
+        "END:VEVENT"
+      ].join("\n") + "\n";
+      totalEvents++;
+    });
+  });
+
+  ics += "END:VCALENDAR";
+
+  if(!totalEvents){ alert("No tasks found to export. Add tasks to date blocks first."); return; }
+
+  const blob = new Blob([ics], { type:"text/calendar;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "India_Trip_2026.ics";
+  a.click();
+  showToast(`↓ Calendar exported (${totalEvents} events)`);
+}
+window.indiaDownloadCalendar = indiaDownloadCalendar;
+
+/* ── PRINT B&W ── */
+function indiaOpenPrintBW(){
+  const blocks = getBlocks();
+  let sectionsHTML = "";
+
+  blocks.forEach(block=>{
+    const tasks = block.tasks;
+    const done  = tasks.filter(t=>t.done).length;
+    const label = block.title;
+
+    const taskRows = tasks.length > 0
+      ? tasks.map(t=>{
+          const strike = t.done ? "text-decoration:line-through;color:#aaa;" : "";
+          const box = t.done
+            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:7px;flex-shrink:0;background:#333;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
+            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:7px;flex-shrink:0;"></span>`;
+          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;">
+            ${box}<span style="font-size:12px;${strike}flex:1;">${escPrint(t.text)}</span>
+          </div>`;
+        }).join("")
+      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
+
+    sectionsHTML += `
+      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;margin-bottom:0;">
+        <div style="padding:8px 12px 6px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
+          <span style="font-size:12px;font-weight:700;letter-spacing:0.02em;">${escPrint(label)}</span>
+          <span style="font-size:10px;color:#888;">${done}/${tasks.length}</span>
+        </div>
+        <div style="padding:4px 12px 8px;">${taskRows}</div>
+      </div>`;
+  });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Onetrack · Trip Planners</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',Georgia,sans-serif;font-weight:300;background:#fff;color:#111;padding:20px 24px;font-size:10.5pt;line-height:1.5;}
+    @page{size:A4;margin:14mm 12mm;}
+    @media print{body{padding:0;}.print-bar{display:none!important;}}
+    .print-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 24px;display:flex;align-items:center;gap:12px;z-index:99;margin-bottom:20px;}
+    .print-bar span{font-size:10pt;color:#555;flex:1;}
+    .print-bar button{padding:7px 20px;border:1.5px solid #111;border-radius:6px;background:#111;color:#fff;font-size:9pt;cursor:pointer;}
+    .print-bar .close{background:transparent;color:#888;border-color:#ccc;padding:7px 14px;}
+  </style></head><body>
+  <div class="print-bar">
+    <span>Ready to print — File → Print → Save as PDF</span>
+    <button onclick="window.print()">⎙ Print / Save as PDF</button>
+    <button class="close" onclick="window.close()">✕ Close</button>
+  </div>
+  <div style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;font-weight:400;letter-spacing:-0.01em;">India Trip Planner</div>
+      <div style="font-size:11px;color:#666;margin-top:3px;letter-spacing:0.05em;text-transform:uppercase;">28 March – 18 April 2026</div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
+  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:10px;color:#aaa;font-style:italic;">
+    <span>✦ India Trip Planner</span>
+    <span>Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
+  </div>
+</body></html>`;
+
+  const w = window.open("","_blank");
+  w.document.write(html); w.document.close();
+  w.onload=()=>{ w.focus(); };
+}
+window.indiaOpenPrintBW = indiaOpenPrintBW;
+
+/* ── PRINT COLOUR ── */
+function indiaOpenPrintColor(){
+  const blocks = getBlocks();
+
+  const PALETTES = [
+    { bg:'#fdf4e3', hdr:'#f8e9c8', accent:'#a07030', border:'#e5cfa0' },
+    { bg:'#fdeedd', hdr:'#f8e0c0', accent:'#b06020', border:'#e8c898' },
+    { bg:'#fde6dc', hdr:'#f8d4c4', accent:'#b04a30', border:'#e8b8a8' },
+    { bg:'#fff0e0', hdr:'#fce4c4', accent:'#c17b3f', border:'#f0d0a0' },
+    { bg:'#e8f4e8', hdr:'#d4ecd4', accent:'#2e7a3c', border:'#a8d4a8' },
+    { bg:'#e4eef8', hdr:'#ccdaee', accent:'#2e5e96', border:'#a8c4de' },
+  ];
+
+  let sectionsHTML = "";
+
+  blocks.forEach((block, bi)=>{
+    const pal = PALETTES[bi % PALETTES.length];
+    const tasks = block.tasks;
+    const done  = tasks.filter(t=>t.done).length;
+    const total = tasks.length;
+    const pct   = total ? Math.round(done/total*100) : 0;
+
+    const taskRows = tasks.length > 0
+      ? tasks.map(t=>{
+          const strike = t.done ? `text-decoration:line-through;color:${pal.accent};opacity:0.5;` : "";
+          const box = t.done
+            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:7px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
+            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:7px;flex-shrink:0;background:#fff;"></span>`;
+          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid ${pal.hdr};">
+            ${box}<span style="font-size:12px;${strike}flex:1;color:#1a1714;">${escPrint(t.text)}</span>
+          </div>`;
+        }).join("")
+      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
+
+    const barFill = total ? `<div style="height:4px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>` : "";
+
+    sectionsHTML += `
+      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid ${pal.border};border-radius:8px;overflow:hidden;background:${pal.bg};margin-bottom:0;">
+        <div style="padding:8px 12px 6px;border-bottom:1.5px solid ${pal.border};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};">
+          <span style="font-family:'DM Serif Display',Georgia,serif;font-size:13px;font-weight:400;color:${pal.accent};">${escPrint(block.title)}</span>
+          <span style="font-size:10px;color:${pal.accent};opacity:0.7;font-weight:600;">${done}/${total}</span>
+        </div>
+        ${barFill}
+        <div style="padding:0 12px 8px;">${taskRows}</div>
+      </div>`;
+  });
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Onetrack · Trip Planners</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',Georgia,sans-serif;background:#fff;color:#1a1714;padding:20px 24px;}
+    @page{size:A4;margin:12mm 10mm;}
+    @media print{body{padding:0;}.print-bar{display:none!important;}}
+    .print-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 24px;display:flex;align-items:center;gap:12px;z-index:99;margin-bottom:20px;}
+    .print-bar span{font-size:10pt;color:#555;flex:1;}
+    .print-bar button{padding:7px 20px;border:1.5px solid #c17b3f;border-radius:6px;background:#c17b3f;color:#fff;font-size:9pt;cursor:pointer;}
+    .print-bar .close{background:transparent;color:#888;border-color:#ccc;padding:7px 14px;}
+  
+</style></head><body>
+  <div class="print-bar">
+    <span>Ready to print in colour — File → Print → Save as PDF</span>
+    <button onclick="window.print()">🎨 Print Colour</button>
+    <button class="close" onclick="window.close()">✕ Close</button>
+  </div>
+  <div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-weight:400;letter-spacing:-0.01em;color:#3a2e20;">India Trip Planner</div>
+      <div style="font-size:12px;color:#7a6a56;margin-top:4px;font-style:italic;">28 March – 18 April 2026 · Day-by-Day</div>
+    </div>
+    <div style="font-size:10px;color:#9a8878;text-align:right;">Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
+  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:10px;color:#b0a898;font-style:italic;">✦ India Trip Planner</span>
+    <span style="font-size:10px;color:#b0a898;">${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
+  </div>
+  </body></html>`;
+
+  const w = window.open("","_blank");
+  w.document.write(html); w.document.close();
+  w.onload=()=>{ w.focus(); };
+}
+window.indiaOpenPrintColor = indiaOpenPrintColor;
+
+function escPrint(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+})();
+</script>
+
+<!-- ===== TASMANIA JS (REDESIGN) ===== -->
+<script>
+(function(){
+
+// ── Storage keys ──
+const DAY_KEY      = "DEC_JAN_TASKS_2026_2027";      // existing - preserved
+const PRETRAVEL_KEY= "TAS_PRETRAVEL_V1";
+const DAYBEFORE_KEY= "TAS_DAYBEFORE_V1";
+const ENDTRIP_KEY  = "TAS_ENDTRIP_V1";
+const WEEK_STATE_KEY = "TAS_WEEK_STATE_V1";
+const DAY_STATE_KEY  = "TAS_DAY_STATE_V1";
+
+// ── All trip days ──
+const ALL_DAYS = [
+  "Sun 20 Dec 2026","Mon 21 Dec 2026","Tue 22 Dec 2026","Wed 23 Dec 2026","Thu 24 Dec 2026","Fri 25 Dec 2026","Sat 26 Dec 2026",
+  "Sun 27 Dec 2026","Mon 28 Dec 2026","Tue 29 Dec 2026","Wed 30 Dec 2026","Thu 31 Dec 2026","Fri 01 Jan 2027","Sat 02 Jan 2027",
+  "Sun 03 Jan 2027","Mon 04 Jan 2027","Tue 05 Jan 2027","Wed 06 Jan 2027","Thu 07 Jan 2027","Fri 08 Jan 2027","Sat 09 Jan 2027",
+  "Sun 10 Jan 2027","Mon 11 Jan 2027","Tue 12 Jan 2027","Wed 13 Jan 2027","Thu 14 Jan 2027","Fri 15 Jan 2027"
+];
+
+// ── Default prep items ──
+const DEFAULT_PRETRAVEL = [
+  {text:"Book accommodation",done:false},{text:"Book flights",done:false},
+  {text:"Arrange car hire or transport",done:false},{text:"Notify bank of travel",done:false},
+  {text:"Travel insurance sorted",done:false},{text:"Pack bags",done:false},
+  {text:"Check weather forecast",done:false},{text:"Download offline maps",done:false},
+  {text:"Exchange or arrange cash",done:false},{text:"Charge all devices",done:false},
+];
+const DEFAULT_DAYBEFORE = [
+  {text:"Confirm all bookings",done:false},{text:"Pack hand luggage",done:false},
+  {text:"Set alarms",done:false},{text:"Prepare snacks for travel",done:false},
+  {text:"Check transport to airport/station",done:false},{text:"Iron and lay out clothes",done:false},
+  {text:"Charge phone and devices",done:false},{text:"Print or download tickets",done:false},
+];
+const DEFAULT_ENDTRIP = [
+  {text:"Check out of accommodation",done:false},{text:"Return hire car",done:false},
+  {text:"Collect all belongings from room",done:false},{text:"Settle any outstanding bills",done:false},
+  {text:"Back up photos",done:false},{text:"Unpack and do laundry",done:false},
+  {text:"Write trip notes / journal",done:false},{text:"Thank hosts / leave reviews",done:false},
+];
+
+// ── Load / save helpers ──
+function loadDays(){
+  const r = _cget(DAY_KEY);
+  if(r) return JSON.parse(r);
+  const obj={}; ALL_DAYS.forEach(d=>obj[d]=[]); return obj;
+}
+function saveDays(d){ _cset(DAY_KEY, JSON.stringify(d)); }
+
+function loadPrep(key, defaults){
+  try { const r=_cget(key); if(r) return JSON.parse(r); } catch(e){}
+  return defaults.map((t,i)=>({...t,id:key+'_'+i}));
+}
+function savePrep(key,data){ _cset(key,JSON.stringify(data)); }
+
+// ── Week & day collapse state ──
+function loadWeekState(){
+  try { return JSON.parse(_cget(WEEK_STATE_KEY))||{}; } catch(e){ return {}; }
+}
+function saveWeekState(s){ _cset(WEEK_STATE_KEY,JSON.stringify(s)); }
+function loadDayState(){
+  try { return JSON.parse(_cget(DAY_STATE_KEY))||{}; } catch(e){ return {}; }
+}
+function saveDayState(s){ _cset(DAY_STATE_KEY,JSON.stringify(s)); }
+
+// ── Active day per week (in-memory) ──
+const _activeDayPerWeek = {};
+
+// ── Switch day tab ──
+window.tasSwitchDay = function(weekId, dayKey){
+  _activeDayPerWeek[weekId] = dayKey;
+  // Update tab active states
+  document.querySelectorAll(`.tas-day-tab[data-week="${weekId}"]`).forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.day === dayKey);
+  });
+  // Render that day's content
+  renderDayContent(weekId, dayKey);
+  // Save active day state
+  const state = loadDayState(); state[weekId] = dayKey; saveDayState(state);
+};
+
+// ── Toggle week collapse ──
+window.tasToggleWeek = function(weekId){
+  const body = document.getElementById(weekId+'-body');
+  const toggle = document.getElementById(weekId+'-toggle');
+  if(!body||!toggle) return;
+  const collapsed = body.classList.toggle('collapsed');
+  toggle.classList.toggle('collapsed', collapsed);
+  const state = loadWeekState(); state[weekId] = collapsed; saveWeekState(state);
+};
+
+// ── Restore collapse + active day state on load ──
+function restoreCollapseState(){
+  const wState = loadWeekState();
+  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+    if(wState[wid]){
+      const body = document.getElementById(wid+'-body');
+      const toggle = document.getElementById(wid+'-toggle');
+      if(body) body.classList.add('collapsed');
+      if(toggle) toggle.classList.add('collapsed');
+    }
+  });
+  // Restore active day per week (saved day key)
+  const dState = loadDayState();
+  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+    const strip = document.getElementById(wid+'-strip');
+    if(!strip) return;
+    const tabs = [...strip.querySelectorAll('.tas-day-tab')];
+    if(!tabs.length) return;
+    const savedDay = dState[wid];
+    const targetDay = (savedDay && tabs.find(t=>t.dataset.day===savedDay))
+      ? savedDay
+      : tabs[0].dataset.day;
+    _activeDayPerWeek[wid] = targetDay;
+    tabs.forEach(t=>t.classList.toggle('active', t.dataset.day===targetDay));
+  });
+}
+
+// ── Render a prep panel ──
+function renderPrep(storageKey, defaults, bodyId, fillId, statsId){
+  const items = loadPrep(storageKey, defaults);
+  const body = document.getElementById(bodyId);
+  if(!body) return;
+  body.innerHTML = '';
+
+  const done = items.filter(t=>t.done).length;
+  const total = items.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const fillEl = document.getElementById(fillId);
+  const statsEl = document.getElementById(statsId);
+  if(fillEl) fillEl.style.width = pct+'%';
+  if(statsEl) statsEl.textContent = total ? done+'/'+total : '';
+
+  // Add input at top
+  const addRow = document.createElement('div');
+  addRow.className = 'tas-add-row';
+  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add item… (Enter to save)">';
+  addRow.querySelector('input').onkeydown = e => {
+    if(e.key==='Enter'){
+      const val = e.target.value.trim(); if(!val) return;
+      items.unshift({text:val, done:false, id:storageKey+'_'+Date.now()});
+      savePrep(storageKey, items);
+      renderPrep(storageKey, defaults, bodyId, fillId, statsId);
+      setTimeout(()=>body.querySelector('.tas-add-input')?.focus(), 0);
+    }
+  };
+  body.appendChild(addRow);
+
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'tas-task' + (item.done ? ' completed' : '');
+    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
+    const [cb, tx, del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
+    cb.onchange = () => { item.done=cb.checked; savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
+    tx.oninput  = e => { item.text=e.target.value; savePrep(storageKey,items); };
+    del.onclick = () => { items.splice(i,1); savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
+    // Drag reorder
+    const grip = row.querySelector('.tas-drag-handle');
+    let dragSrc = null;
+    grip.onpointerdown = () => { row.draggable=true; };
+    grip.onpointerup   = () => { row.draggable=false; };
+    grip.onmouseleave  = () => { row.draggable=false; };
+    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
+    body.addEventListener('dragover',  e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if(dragSrc===null||dragSrc===i) return;
+      items.splice(i,0,items.splice(dragSrc,1)[0]);
+      savePrep(storageKey,items);
+      renderPrep(storageKey,defaults,bodyId,fillId,statsId);
+    });
+    body.appendChild(row);
+  });
+}
+
+// ── Update tab count badges (called after any data change) ──
+function updateTabCounts(){
+  const data = loadDays();
+  document.querySelectorAll('.tas-day-tab').forEach(tab=>{
+    const key = tab.dataset.day;
+    const items = data[key]||[];
+    const done = items.filter(t=>t.done).length;
+    const total = items.length;
+    const countEl = tab.querySelector('.tas-day-count');
+    if(countEl){
+      countEl.textContent = total ? done+'/'+total : '0';
+      tab.classList.toggle('has-tasks', total > 0);
+    }
+  });
+}
+
+// ── Render a single day's content into its week content pane ──
+function renderDayContent(weekId, dayKey){
+  const data = loadDays();
+  if(!data[dayKey]) data[dayKey]=[];
+  const items = data[dayKey];
+  const contentEl = document.getElementById(weekId+'-content');
+  if(!contentEl) return;
+  contentEl.innerHTML = '';
+
+  // Add input
+  const addRow = document.createElement('div');
+  addRow.className = 'tas-add-row';
+  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add task… (Enter to save)">';
+  addRow.querySelector('input').onkeydown = e => {
+    if(e.key==='Enter'){
+      const val = e.target.value.trim(); if(!val) return;
+      data[dayKey].push({text:val, done:false});
+      saveDays(data);
+      renderDayContent(weekId, dayKey);
+      updateTabCounts();
+      setTimeout(()=>contentEl.querySelector('.tas-add-input')?.focus(),0);
+    }
+  };
+  contentEl.appendChild(addRow);
+
+  if(items.length === 0){
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:20px 0;text-align:center;font-size:13px;color:var(--text3);font-style:italic;';
+    empty.textContent = 'Nothing planned — add a task above';
+    contentEl.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'tas-task' + (item.done?' completed':'');
+    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
+    const [cb,tx,del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
+    cb.onchange = () => { item.done=cb.checked; saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
+    tx.oninput  = e => { item.text=e.target.value; saveDays(data); };
+    del.onclick = () => { items.splice(i,1); saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
+    const grip = row.querySelector('.tas-drag-handle');
+    let dayDragSrc = null;
+    grip.onpointerdown = () => { row.draggable=true; };
+    grip.onpointerup   = () => { row.draggable=false; };
+    grip.onmouseleave  = () => { row.draggable=false; };
+    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dayDragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
+    contentEl.addEventListener('dragover', e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if(dayDragSrc===null||dayDragSrc===i) return;
+      items.splice(i,0,items.splice(dayDragSrc,1)[0]);
+      saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts();
+    });
+    contentEl.appendChild(row);
+  });
+}
+
+// ── Render all active day tabs on load ──
+function renderDays(){
+  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+    const activeDay = _activeDayPerWeek[wid];
+    if(activeDay) renderDayContent(wid, activeDay);
+  });
+  updateTabCounts();
+}
+
+// ── Upgrade checkboxes ──
+function upgradeCbs(container){
+  container.querySelectorAll('input[type=checkbox]:not([data-tcb])').forEach(cb=>{
+    cb.setAttribute('data-tcb','1');
+    const wrap = document.createElement('span');
+    wrap.className = 'task-cb-svg' + (cb.checked?' tcb-on':'');
+    wrap.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;"><rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/><path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/></svg>';
+    cb.parentNode.insertBefore(wrap, cb.nextSibling);
+    wrap.onclick = e => { e.stopPropagation(); cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); wrap.classList.toggle('tcb-on',cb.checked); };
+    cb.addEventListener('change', ()=> wrap.classList.toggle('tcb-on',cb.checked));
+  });
+}
+
+// MutationObserver to upgrade checkboxes as rows are added
+new MutationObserver(muts=>{
+  muts.forEach(m=>m.addedNodes.forEach(n=>{
+    if(n.nodeType!==1) return;
+    upgradeCbs(n.querySelectorAll?n:document);
+  }));
+}).observe(document.getElementById('panel-tasmania')||document.body, {childList:true,subtree:true});
+
+// ── INIT ──
+OT.onReady(async () => {
+  if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
+  renderPrep(PRETRAVEL_KEY, DEFAULT_PRETRAVEL, 'tas-pretravel-body', 'tas-pretravel-fill', 'tas-pretravel-stats');
+  renderPrep(DAYBEFORE_KEY, DEFAULT_DAYBEFORE, 'tas-daybefore-body', 'tas-daybefore-fill', 'tas-daybefore-stats');
+  renderPrep(ENDTRIP_KEY,   DEFAULT_ENDTRIP,   'tas-endtrip-body',   'tas-endtrip-fill',   'tas-endtrip-stats');
+  restoreCollapseState();
+  renderDays();
+});
+
+})();
+</script>
+
+
+<script>
+(function(){
+  var el=document.getElementById("logoCheck");
+  if(!el)return;
+  var checked=false;
+  function runCheck(){
+    el.classList.remove("uncheck","is-checked");
+    void el.offsetWidth;
+    el.classList.add("animating");
+    el.addEventListener("animationend",function done(e){
+      if(e.animationName==="logoTickDraw"){
+        el.removeEventListener("animationend",done);
+        el.classList.remove("animating");
+        el.classList.add("is-checked");
+        checked=true;
+      }
+    });
+  }
+  function runUncheck(){
+    el.classList.remove("animating","is-checked");
+    void el.offsetWidth;
+    el.classList.add("uncheck");
+    el.addEventListener("animationend",function done(e){
+      if(e.animationName==="logoBoxUnfill"){
+        el.removeEventListener("animationend",done);
+        el.classList.remove("uncheck");
+        checked=false;
+      }
+    });
+  }
+  setTimeout(runCheck,500);
+  el.addEventListener("click",function(){ if(checked){runUncheck();}else{runCheck();} });
+})();
+</script>
+
+
+<script>
+/* ── Task checkbox B (overshoot tick) ── */
+(function(){
+  function upgradeCb(cb){
+    if(cb._cbUpgraded) return;
+    cb._cbUpgraded = true;
+    var svgWrap = document.createElement('span');
+    svgWrap.className = 'task-cb-svg' + (cb.checked ? ' tcb-on' : '');
+    svgWrap.innerHTML =
+      '<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;">' +
+        '<rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/>' +
+        '<path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/>' +
+      '</svg>';
+    cb.parentNode.insertBefore(svgWrap, cb.nextSibling);
+    svgWrap.addEventListener('click', function(e){
+      e.stopPropagation();
+      cb.checked = !cb.checked;
+      var evt = new Event('change', {bubbles:true});
+      cb.dispatchEvent(evt);
+      svgWrap.classList.toggle('tcb-on', cb.checked);
+    });
+    cb.addEventListener('change', function(){
+      svgWrap.classList.toggle('tcb-on', cb.checked);
+    });
+  }
+  function upgradeAll(){
+    document.querySelectorAll('.task input[type=checkbox]:not([data-tcb])').forEach(function(cb){
+      cb.setAttribute('data-tcb','1'); upgradeCb(cb);
+    });
+  }
+  upgradeAll();
+  var obs = new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if(n.nodeType!==1) return;
+        if(n.matches && n.matches('.task input[type=checkbox]')){ upgradeCb(n); n.setAttribute('data-tcb','1'); }
+        if(n.querySelectorAll) n.querySelectorAll('.task input[type=checkbox]:not([data-tcb])').forEach(function(cb){
+          cb.setAttribute('data-tcb','1'); upgradeCb(cb);
+        });
+      });
+    });
+  });
+  obs.observe(document.body, {childList:true, subtree:true});
+})();
+</script>
+
+<script>
+/* ── Nav collapse/expand ── */
+(function(){
+  var KEY = 'ONETRACK_NAV_COLLAPSED';
+  var nav = document.getElementById('onetrack-nav');
+  var btn = document.getElementById('nav-toggle-btn');
+  var tab = document.getElementById('nav-show-tab');
+  if (!nav) return;
+
+  function isCollapsed() { return _cget('ONETRACK_NAV_COLLAPSED') === '1'; }
+
+  function applyState(collapsed, animate) {
+    if (!animate) { nav.style.transition = 'none'; }
+    if (collapsed) {
+      nav.classList.add('nav-collapsed');
+      document.body.classList.add('nav-is-collapsed');
+      if (btn) btn.textContent = '›';
+      if (btn) btn.title = 'Show sidebar';
+    } else {
+      nav.classList.remove('nav-collapsed');
+      document.body.classList.remove('nav-is-collapsed');
+      if (btn) btn.textContent = '‹';
+      if (btn) btn.title = 'Hide sidebar';
+    }
+    if (!animate) {
+      // Force reflow then restore transition
+      void nav.offsetWidth;
+      nav.style.transition = '';
+    }
+  }
+
+  // Apply on load (no animation)
+  applyState(isCollapsed(), false);
+
+  // Toggle button in nav header
+  if (btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var next = !isCollapsed();
+      _cset('ONETRACK_NAV_COLLAPSED', next ? '1' : '0');
+      applyState(next, true);
+    });
+  }
+
+  // Floating show-tab click
+  if (tab) {
+    tab.addEventListener('click', function() {
+      _cset('ONETRACK_NAV_COLLAPSED', '0');
+      applyState(false, true);
+    });
+  }
+})();
+</script>
+</body>
+</html>
+<!--
+═══════════════════════════════════════════════════════════════════
+  VERSION HISTORY — 81. Trip Planners.html
+═══════════════════════════════════════════════════════════════════
+  v2.2· 02 Apr 2026
+      - Auto-rollover: on first load, unfinished tasks from past trip
+        days (Mar 28 – yesterday) are cascaded forward to the next day.
+        PRE_TRAVEL and RETURN_PREP are untouched. Runs once per device
+        (flagged in localStorage as INDIA_ROLLOVER_DONE_V1).
+
+  v2  · 30 Mar 2026
+      - Parent-child task logic: indent (↳) makes a task a child of
+        the task directly above it; unindent (↰) breaks the relationship
+      - Checking a parent auto-checks all children; checking all children
+        auto-checks the parent and sinks the whole group to bottom
+      - Smart date-aware block ordering: Today (col 1), Tomorrow (col 2),
+        Return Prep (col 3) always pinned to row 1; future days follow
+        in ascending order; past days sink to bottom; Pre-Travel last
+      - Today badge (accent glow border), Tomorrow badge, Past badge,
+        Return badge, Pre-Travel badge — all reading system date live
+      - Footer bazel added to all tabs matching 11. Days-Tasks style
+
+  v1  · 28 Mar 2026
+      - Initial tabbed single-file architecture (India + Tasmania panels)
+      - India panel: dynamic blocks stored in localStorage, add/delete/
+        rename blocks, drag-and-drop tasks within and across blocks
+      - Move-to-block portal (⇄), done tasks sink to bottom
+      - Subtask indent toggle (↳), print B&W and colour, .ics calendar export
+      - Tasmania panel: static day grid with localStorage task persistence
+      - Shared topbar tab switcher with drag-to-reorder, dark mode toggle
+═══════════════════════════════════════════════════════════════════
+-->

@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Onetrack · 07. Library-Backup</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="storage.js"></script>
+<style>
+/* ── GLOBAL VARS ── */
+:root {
+  --bg: #f5f2ee;
+  --surface: #ffffff;
+  --surface2: #faf8f5;
+  --border: rgba(0,0,0,0.08);
+  --text: #1a1714;
+  --text2: #6b6560;
+  --text3: #9e9891;
+  --accent:#c17b3f;
+  --accent-soft:rgba(193,123,63,0.12);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  --radius: 16px;
+  --nav-width: 200px;
+
+  --btn-s-color: #3b8c6e;
+  --btn-r-color: #c17b3f;
+  --btn-h-color: #5b7fc4;
+  --btn-a-color: #b55a7a;
+  --btn-l-color: #7b5cbf;
+
+  --error: #c0392b;
+  --green: #2d7a4f;
+  --green-soft: rgba(45,122,79,0.1);
+  --green-br: rgba(45,122,79,0.25);
+  --red: #c0392b;
+  --red-soft: rgba(192,57,43,0.08);
+  --red-br: rgba(192,57,43,0.2);
+}
+[data-theme="dark"] {
+  --bg: #131210;
+  --surface: #1e1c18;
+  --surface2: #252320;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0ece6;
+  --text2: #a09890;
+  --text3: #6e6660;
+  --accent:#d4935a;
+  --accent-soft:rgba(212,147,90,0.14);
+  --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+
+  --btn-s-color: #4db88a;
+  --btn-r-color: #d4935a;
+  --btn-h-color: #7a9fd4;
+  --btn-a-color: #d47a9a;
+  --btn-l-color: #9a7cd4;
+  --error: #e06060;
+  --green: #3a9e66;
+  --green-soft: rgba(58,158,102,0.12);
+  --green-br: rgba(58,158,102,0.28);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; transition: background 0.3s, color 0.3s; }
+
+/* ── NAV ── */
+.nav {
+  position: fixed;
+  left: 0; top: 0; bottom: 0;
+  width: var(--nav-width);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  z-index: 100;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+}
+.nav-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.nav a {
+  display: block;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text2);
+  text-decoration: none;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nav a:hover { color: var(--text); background: var(--surface2); transform: translateX(4px); }
+.nav a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
+
+/* ── TOPBAR ── */
+.topbar {
+  position: fixed;
+  top: 0; left: var(--nav-width); right: 0;
+  height: 48px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: stretch;
+  z-index: 2000;
+  user-select: none;
+}
+.tab-strip {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  padding: 0 4px;
+  gap: 1px;
+}
+.tab-strip::-webkit-scrollbar { display: none; }
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 18px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text2);
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.tab:hover { color: var(--text); background: var(--surface2); }
+.tab.active { color: var(--accent); font-weight: 600; border-bottom-color: var(--accent); background: var(--accent-soft); }
+.tab.dragging { opacity: 0.4; }
+.tab.drag-over { box-shadow: -3px 0 0 var(--accent); }
+.tab-icon { font-size: 14px; }
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-left: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.master-dark-toggle {
+  width: 40px; height: 22px;
+  background: var(--border);
+  border-radius: 11px;
+  position: relative;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.master-dark-toggle::after {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  background: var(--text2);
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: transform 0.2s, background 0.2s;
+}
+[data-theme="dark"] .master-dark-toggle { background: var(--accent); }
+[data-theme="dark"] .master-dark-toggle::after { transform: translateX(18px); background: #fff; }
+
+/* ── PANELS ── */
+.panels {
+  position: fixed;
+  top: 48px; left: var(--nav-width); right: 0; bottom: 0;
+  overflow: hidden;
+}
+.panel {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: opacity 0.15s;
+}
+.panel.active { opacity: 1; pointer-events: all; }
+
+/* ── FOOTER BEZEL ── */
+.footer-actions {
+  position: fixed;
+  bottom: 0; left: var(--nav-width); right: 0;
+  background: var(--surface);
+  border-top: 2px solid var(--accent);
+  padding: 12px 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 50;
+}
+.footer-actions .spacer { flex: 1; }
+.build-stamp {
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+  opacity: 0.75;
+  font-style: italic;
+}
+
+/* ── SHARED CARD / SECTION ── */
+.main { padding: 28px 32px 80px; max-width: 900px; }
+.container { max-width: 860px; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.card-inner { padding: 20px 22px; }
+.card-inner.card-hover { transition: box-shadow 0.2s; }
+.card-inner.card-hover:hover { box-shadow: var(--shadow-hover); }
+.card-hdr {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.card-hdr-title { font-weight: 600; font-size: 14px; }
+.card-hdr-sub { font-size: 11px; color: var(--text3); }
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text3);
+  margin-bottom: 12px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.header-left h1 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 36px;
+  font-weight: 400;
+  color: var(--text);
+  line-height: 1;
+}
+.header-left h1 span { color: var(--accent); font-style: italic; }
+.header-left .sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn:hover { color: var(--text); background: var(--surface2); }
+.btn-backup { background: var(--green-soft); color: var(--green); border-color: var(--green-br); font-size: 15px; padding: 12px 28px; }
+.btn-backup:hover { background: var(--green); color: #fff; }
+.btn-restore { background: rgba(58,107,160,.1); color: #3a6ba0; border-color: rgba(58,107,160,.25); }
+.btn-restore:hover { background: rgba(58,107,160,.18); }
+.btn-clear { background: var(--red-soft); color: var(--red); border-color: var(--red-br); }
+.btn-clear:hover { background: var(--red); color: #fff; }
+
+/* ── LIBRARY SEARCH STYLES ── */
+.action-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.action-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface2);
+  color: var(--text2);
+  transition: all 0.15s ease;
+}
+.action-btn:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.action-btn.active { color: #fff; border-color: transparent; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.btn-s.active { background: var(--btn-s-color); }
+.btn-r.active { background: var(--btn-r-color); }
+.btn-h.active { background: var(--btn-h-color); }
+.btn-a.active { background: var(--btn-a-color); }
+.btn-l.active { background: var(--btn-l-color); }
+.key-hint { font-size: 0.7em; opacity: 0.65; margin-right: 2px; }
+
+.sub-row {
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid var(--accent);
+  animation: fadeIn 0.2s ease;
+}
+.sub-row.visible { display: flex; }
+.mode-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface2);
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.mode-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.mode-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+
+.search-row { display: none; margin-top: 14px; animation: fadeIn 0.2s ease; }
+.search-row.visible { display: block; }
+.search-input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.search-input::placeholder { color: var(--text3); font-style: italic; }
+
+.lib-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.quick-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  background: var(--surface2);
+  color: var(--text2);
+  transition: all 0.15s;
+}
+.quick-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+.lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 6px;
+}
+.lib-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  background: var(--surface2);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.lib-item:hover { background: var(--surface); border-color: rgba(193,123,63,0.3); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.lib-item.selected { background: var(--accent-soft); border-color: var(--accent); }
+.lib-check {
+  width: 15px; height: 15px;
+  border: 1.5px solid var(--text3);
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+.lib-item.selected .lib-check { border-color: var(--accent); background: var(--accent); }
+.lib-check svg { display: none; }
+.lib-item.selected .lib-check svg { display: block; }
+.lib-num { font-size: 11px; color: var(--text3); min-width: 18px; }
+.lib-name { font-size: 13px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; }
+.lib-flag { font-size: 10px; font-weight: 600; color: var(--text3); padding: 2px 6px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); letter-spacing: 0.5px; }
+
+.go-row { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+.go-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 28px;
+  background: var(--accent);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.go-btn:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(193,123,63,0.35); }
+.go-btn:active { transform: translateY(0); }
+.go-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: none; }
+.sel-count { font-size: 13px; color: var(--text3); }
+.sel-count span { color: var(--accent); font-weight: 600; }
+
+.err-msg {
+  display: none;
+  font-size: 13px; color: var(--error);
+  padding: 10px 14px;
+  border: 1px solid rgba(192,57,43,0.2);
+  border-radius: 10px;
+  background: rgba(192,57,43,0.06);
+  margin-top: 12px;
+  animation: shake 0.3s ease;
+}
+.err-msg.visible { display: block; }
+
+.lib-log {
+  display: none;
+  margin-top: 14px; padding: 12px 16px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(193,123,63,0.2);
+  border-radius: 10px;
+  font-size: 13px; color: var(--accent); line-height: 1.8;
+}
+.lib-log.visible { display: block; }
+
+/* ── BACKUP STYLES ── */
+.hero {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+.hero::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--green), #4db87a); }
+.hero-icon { font-size: 44px; margin-bottom: 12px; }
+.hero-title { font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--text); margin-bottom: 6px; }
+.hero-sub { font-size: 13px; color: var(--text3); margin-bottom: 20px; line-height: 1.6; }
+.hero-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+.stats { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.chip { background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 6px 14px; font-size: 12px; color: var(--text2); box-shadow: var(--shadow); }
+.chip strong { color: var(--text); font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { padding: 9px 16px; text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); letter-spacing: .5px; text-transform: uppercase; border-bottom: 1px solid var(--border); background: var(--surface2); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+.key-name { font-family: monospace; font-size: 12px; background: var(--surface2); padding: 2px 7px; border-radius: 5px; border: 1px solid var(--border); color: var(--accent); }
+.size-pill { font-size: 11px; color: var(--text3); }
+.dot-green { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); margin-right: 5px; }
+.dot-gray { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--text3); margin-right: 5px; }
+
+.restore-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  transition: border-color .2s, background .2s;
+  cursor: pointer;
+}
+.restore-zone:hover, .restore-zone.drag-over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.restore-zone input { display: none; }
+
+.bk-log { background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); padding: 12px 16px; font-size: 12px; color: var(--text2); font-family: monospace; max-height: 160px; overflow-y: auto; line-height: 1.8; }
+.log-ok { color: var(--green); }
+.log-err { color: var(--red); }
+.log-info { color: #3a6ba0; }
+
+.tag-stale { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #FCEBEB; color: #791F1F; }
+.tag-ok { display: inline-block; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #EAF3DE; color: #27500A; }
+.clean-empty { padding: 16px 18px; font-size: 13px; color: var(--text3); font-style: italic; }
+.hist-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.hist-row:last-child { border-bottom: none; }
+.hist-name { flex: 1; font-size: 13px; font-weight: 500; }
+.hist-meta { font-size: 11px; color: var(--text3); }
+.hist-dl { padding: 3px 10px; border-radius: 7px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 11px; font-family: 'DM Sans', sans-serif; cursor: pointer; }
+.hist-dl:hover { background: var(--surface2); color: var(--text); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@media (max-width: 600px) {
+  :root { --nav-width: 0px; }
+  .nav { display: none; }
+  .topbar { left: 0; }
+  .panels { left: 0; }
+  .footer-actions { left: 0; }
+  .main { padding: 20px 16px 80px; }
+  .lib-grid { grid-template-columns: 1fr 1fr; }
+}
+
+
+/* ── PIN NAV ── */
+.nav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px 14px; border-bottom: 1px solid var(--border);
+  margin-bottom: 10px; gap: 6px;
+}
+.nav-header .nav-title { padding: 0; border-bottom: none; margin-bottom: 0; flex: 1; }
+.nav-header { display:flex; align-items:center; padding:0 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px; }
+.nav-header .nav-title { padding:0; border-bottom:none; margin-bottom:0; }
+/* ── NAV LOGO CHECKBOX ── */
+.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+.logo-check svg{overflow:visible;display:block;}
+.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+/* ── END NAV LOGO CHECKBOX ── */
+
+/* ── NAV COLLAPSE ── */
+:root { --nav-toggle-size: 22px; }
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--nav-toggle-size); height: var(--nav-toggle-size);
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* Collapsed nav */
+.nav.nav-collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* Shift content when nav is collapsed */
+body.nav-is-collapsed .main        { margin-left: 0 !important; }
+body.nav-is-collapsed .topbar      { left: 0 !important; }
+body.nav-is-collapsed .panels      { left: 0 !important; }
+body.nav-is-collapsed .footer-actions { left: 0 !important; }
+body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
+
+/* Floating "show nav" tab on left edge */
+#nav-show-tab {
+  display: none;
+  position: fixed; top: 50%; left: 0;
+  transform: translateY(-50%);
+  z-index: 9999;
+  writing-mode: vertical-lr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 6px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+#nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
+body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
+
+/* Smooth width transition on nav itself */
+.nav { transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease; }
+/* ── END NAV COLLAPSE ── */
+
+/* ── NAV HEADER NORMALIZED ── */
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+/* ── END NAV HEADER NORMALIZED ── */
+</style>
+</head>
+<body>
+<div id="nav-show-tab" title="Show sidebar">☰</div>
+
+<!-- ── SIDE NAV ── -->
+<nav class="nav" id="onetrack-nav">
+  <div class="nav-header">
+    <div class="nav-title">
+      <span class="logo-check" id="logoCheck">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;display:block;overflow:visible;">
+          <rect class="logo-box" x="2" y="2" width="16" height="16" rx="4"/>
+          <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
+        </svg>
+      </span>
+      Onetrack
+    </div>
+    <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
+  </div>
+  <a href="00. Index.html">00. Index</a>
+  <a href="01. TT&amp;B.html">01. TT&amp;B</a>
+  <a href="02. Routines.html">02. Routines</a>
+  <a href="03. Jobs.html">03. Jobs</a>
+  <a href="04. Checklists.html">04. Checklists</a>
+  <a href="05. Trip Planners.html">05. Trip Planners</a>
+  <a href="06. Weekly Planners.html">06. Weekly Planne…</a>
+  <a href="07. Library-Backup.html" class="active">07. Library-Backup</a>
+  <a href="99. Settings.html">99. Settings</a>
+</nav>
+
+<!-- ── TOP TAB BAR ── -->
+<div class="topbar">
+  <div class="tab-strip" id="tabStrip">
+    <div class="tab active" data-panel="panel-library" draggable="true" id="tab-library">
+      <span class="tab-icon">📚</span> Library Search
+    </div>
+    <div class="tab" data-panel="panel-backup" draggable="true" id="tab-backup">
+      <span class="tab-icon">💾</span> Backup
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button class="master-dark-toggle" id="masterDarkToggle" title="Toggle dark mode"></button>
+  </div>
+</div>
+
+<!-- ── PANELS ── -->
+<div class="panels">
+
+<!-- ════════════════════════════════════════════
+     PANEL 1 · LIBRARY SEARCH
+     ════════════════════════════════════════════ -->
+<div class="panel active" id="panel-library">
+<div class="main">
+<div class="container">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Library <span>Search</span></h1>
+      <div class="sub">OverDrive · Multi-library opener</div>
+    </div>
+    <div class="header-right">
+      <span class="badge">OverDrive</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-inner">
+      <div class="section-label">Action</div>
+      <div class="action-row">
+        <button class="action-btn btn-s" data-action="S">Search</button>
+        <button class="action-btn btn-r" data-action="R">Releases</button>
+        <button class="action-btn btn-h" data-action="H">Holds</button>
+        <button class="action-btn btn-a" data-action="A">Audiobooks</button>
+        <button class="action-btn btn-l" data-action="L">Loans</button>
+      </div>
+      <div class="sub-row" id="lib-mode-row">
+        <div class="section-label" style="width:100%;margin-bottom:0">Mode</div>
+        <button class="mode-btn" data-mode="F">Full Catalog</button>
+        <button class="mode-btn" data-mode="A">Audiobooks Only</button>
+        <button class="mode-btn" data-mode="V">Audiobooks (Available Now)</button>
+      </div>
+      <div class="search-row" id="lib-search-row">
+        <input class="search-input" id="lib-search-input" type="text" placeholder="Enter search term…" autocomplete="off">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-inner">
+      <div class="section-label">Libraries</div>
+      <div class="lib-controls">
+        <button class="quick-btn" id="lib-btn-all">All</button>
+        <button class="quick-btn" id="lib-btn-na">NA</button>
+        <button class="quick-btn" id="lib-btn-au">AU</button>
+        <button class="quick-btn" id="lib-btn-none">None</button>
+      </div>
+      <div class="lib-grid" id="lib-grid"></div>
+    </div>
+  </div>
+
+  <div class="go-row">
+    <button class="go-btn" id="go-btn" disabled>Open Libraries</button>
+    <div class="sel-count"><span id="sel-num">0</span> selected</div>
+  </div>
+
+  <div class="err-msg" id="lib-err-msg"></div>
+  <div class="lib-log" id="lib-log"></div>
+
+</div>
+</div>
+
+<div class="footer-actions">
+  <div class="spacer"></div>
+  <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Library-Backup · Built 31 Mar 26 · v2.1</span>
+  <div class="spacer"></div>
+</div>
+</div><!-- /panel-library -->
+
+<!-- ════════════════════════════════════════════
+     PANEL 2 · BACKUP
+     ════════════════════════════════════════════ -->
+<div class="panel" id="panel-backup">
+<div class="main">
+
+  <!-- STATS -->
+  <div class="stats" id="bk-statsBar"></div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-icon">💾</div>
+    <div class="hero-title">One-click backup</div>
+    <div class="hero-sub">Captures every key stored by every page in your planner.<br>Save the file somewhere safe — you can restore it any time.</div>
+    <div class="hero-actions">
+      <button class="btn btn-backup" onclick="doBackup()">⬇ Download backup now</button>
+    </div>
+    <div style="margin-top:14px;font-size:11px;color:var(--text3);" id="bk-lastBackupMsg"></div>
+  </div>
+
+  <!-- KEYS TABLE -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-hdr-title">Current localStorage contents</div>
+        <div class="card-hdr-sub" id="bk-keysSub">Scanning…</div>
+      </div>
+      <button class="btn" onclick="refreshKeys()" style="font-size:12px;padding:5px 12px;">↺ Refresh</button>
+    </div>
+    <div id="bk-keysTable"></div>
+  </div>
+
+  <!-- RESTORE -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-hdr-title">Restore from backup</div>
+        <div class="card-hdr-sub">Load a previously saved JSON file back into localStorage</div>
+      </div>
+    </div>
+    <div style="padding:16px;">
+      <div class="restore-zone" id="bk-dropZone" onclick="document.getElementById('bk-fileInput').click()"
+           ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
+        <input type="file" id="bk-fileInput" accept=".json" onchange="loadFile(this.files[0])">
+        <div style="font-size:22px;margin-bottom:6px;">📂</div>
+        <div>Click to choose a backup file, or drag and drop here</div>
+        <div style="font-size:11px;margin-top:4px;">Accepts <code>data_DD-MMM-YY-HH-SS.json</code> files</div>
+      </div>
+      <div id="bk-restoreLog" class="bk-log" style="margin-top:12px;display:none;"></div>
+    </div>
+  </div>
+
+  <!-- HOUSEKEEPING -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-hdr-title">🧹 Housekeeping — remove stale keys</div>
+        <div class="card-hdr-sub" id="bk-cleanSub">Checking for old/superseded keys…</div>
+      </div>
+      <button class="btn btn-clear" id="bk-cleanBtn" onclick="doCleanup()" style="display:none;">Delete stale keys</button>
+    </div>
+    <div id="bk-cleanTable"></div>
+    <div id="bk-cleanLog" class="bk-log" style="margin:0 16px 16px;display:none;"></div>
+  </div>
+
+  <!-- BACKUP HISTORY -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-hdr-title">Backup history</div>
+        <div class="card-hdr-sub">Re-download any backup taken this session</div>
+      </div>
+      <button class="btn btn-clear" onclick="clearHistory()" style="font-size:11px;padding:4px 10px;">Clear</button>
+    </div>
+    <div id="bk-histList"></div>
+  </div>
+
+</div>
+
+<div class="footer-actions">
+  <div class="spacer"></div>
+  <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Library-Backup · Built 31 Mar 26 · v2.1</span>
+  <div class="spacer"></div>
+</div>
+</div><!-- /panel-backup -->
+
+</div><!-- /panels -->
+
+<!-- ══════════════════════════════════════════
+     SCRIPTS
+     ══════════════════════════════════════════ -->
+<script>
+/* ── OT CACHE ── */
+let _otCache = {};
+function _cget(k){ const v=_otCache[k]; return (v===undefined)?null:v; }
+function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
+function _cdel(k){ delete _otCache[k]; OT.remove(k); }
+</script>
+<script>
+/* ── DARK MODE ── */
+const DARK_KEY = 'TODAY_DARK';
+const html = document.documentElement;
+function resolveTheme() {
+  const saved = _cget(DARK_KEY);
+  if (saved !== null) return saved === '1';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+html.setAttribute('data-theme', resolveTheme() ? 'dark' : '');
+document.getElementById('masterDarkToggle').addEventListener('click', () => {
+  const next = html.getAttribute('data-theme') === 'dark' ? '' : 'dark';
+  html.setAttribute('data-theme', next);
+  _cset(DARK_KEY, next ? '1' : '0');
+});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+  if (_cget(DARK_KEY) === null) {
+    html.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : '');
+  }
+});
+
+/* ── TAB SWITCHING ── */
+const TAB_ORDER_KEY = 'LIB_BACKUP_TAB_ORDER';
+
+const TAB_TITLES = {
+  'panel-library': 'Onetrack · Library Search',
+  'panel-backup':  'Onetrack · Backup',
+};
+
+function switchTab(panelId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === panelId));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === panelId));
+  document.title = TAB_TITLES[panelId] || 'Onetrack · Library & Backup';
+  if (panelId === 'panel-backup') refreshKeys();
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => switchTab(tab.dataset.panel));
+});
+
+/* ── TAB DRAG-AND-DROP REORDER ── */
+let dragSrcTab = null;
+const tabStrip = document.getElementById('tabStrip');
+
+function saveTabs() {
+  const order = [...tabStrip.querySelectorAll('.tab')].map(t => t.id);
+  _cset(TAB_ORDER_KEY, JSON.stringify(order));
+}
+
+function restoreTabs() {
+  try {
+    const order = JSON.parse(_cget(TAB_ORDER_KEY));
+    if (!order) return;
+    order.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) tabStrip.appendChild(el);
+    });
+  } catch(e) {}
+}
+
+tabStrip.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('dragstart', e => {
+    dragSrcTab = tab;
+    setTimeout(() => tab.classList.add('dragging'), 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  tab.addEventListener('dragend', () => {
+    tab.classList.remove('dragging');
+    tabStrip.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
+    saveTabs();
+  });
+  tab.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    tabStrip.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
+    if (tab !== dragSrcTab) tab.classList.add('drag-over');
+  });
+  tab.addEventListener('drop', e => {
+    e.preventDefault();
+    if (dragSrcTab && dragSrcTab !== tab) {
+      const tabs = [...tabStrip.querySelectorAll('.tab')];
+      const srcIdx = tabs.indexOf(dragSrcTab);
+      const tgtIdx = tabs.indexOf(tab);
+      if (srcIdx < tgtIdx) tab.after(dragSrcTab);
+      else tab.before(dragSrcTab);
+    }
+    tab.classList.remove('drag-over');
+  });
+});
+
+restoreTabs();
+
+/* ══════════════════════════════════════════
+   LIBRARY SEARCH LOGIC
+   ══════════════════════════════════════════ */
+const LIB_STORAGE_KEY = 'ONETRACK_LIBRARIES';
+
+/* Default seed list — only used the FIRST time ever (when ONETRACK_LIBRARIES
+   doesn't exist yet in onetrack-data.json). After that, the JSON file is the
+   source of truth and this array is ignored. */
+const DEFAULT_LIBRARIES = [
+  { id:1,  name:"Santa Clara County Library",   region:"NA", base:"https://santaclara.overdrive.com" },
+  { id:2,  name:"NCDL Pleasanton Library",      region:"NA", base:"https://ncdl.overdrive.com" },
+  { id:3,  name:"Kern County Library",          region:"NA", base:"https://kern.overdrive.com" },
+  { id:4,  name:"Flower Mound Public Library",  region:"NA", base:"https://flowermound.overdrive.com" },
+  { id:5,  name:"Frisco Public Library",        region:"NA", base:"https://frisco.overdrive.com" },
+  { id:6,  name:"Houston Public Library",       region:"NA", base:"https://houstonlibrary.overdrive.com" },
+  { id:7,  name:"Johnson County Library",       region:"NA", base:"https://jocolibrary.overdrive.com" },
+  { id:8,  name:"Forsyth County Library",       region:"NA", base:"https://forsyth.overdrive.com" },
+  { id:9,  name:"Broward County Library",       region:"NA", base:"https://broward.overdrive.com" },
+  { id:10, name:"Loudoun County Library",       region:"NA", base:"https://lcpl.overdrive.com" },
+  { id:11, name:"Fairfax County Library",       region:"NA", base:"https://fairfax.overdrive.com" },
+  { id:12, name:"NJ-Stella Library",            region:"NA", base:"https://elibrarynj.overdrive.com/elibrarynj-87-171/content" },
+  { id:13, name:"Toronto Public Library",       region:"NA", base:"https://toronto.overdrive.com" },
+  { id:14, name:"Blacktown Library",            region:"AU", base:"https://blacktown.overdrive.com" },
+  { id:15, name:"City of Sydney Library",       region:"AU", base:"https://cityofsydney.overdrive.com" },
+  { id:16, name:"Hornsby Shire Library",        region:"AU", base:"https://hornsby.overdrive.com" },
+  { id:17, name:"Parramatta Library",           region:"AU", base:"https://parralibrary.overdrive.com" },
+  { id:18, name:"The Hills Shire Library",      region:"AU", base:"https://thehills.overdrive.com" },
+];
+
+/* LIBRARIES starts empty and is populated from onetrack-data.json once
+   storage is ready — see loadLibraries() / OT.onReady() below. */
+let LIBRARIES = [];
+
+let selectedAction = null, selectedMode = null;
+let selectedLibs = new Set();
+
+function buildUrl(base, action, query, mode) {
+  const q = query ? encodeURIComponent(query) : '';
+  if (action === 'S') {
+    if (mode === 'F') return `${base}/search?query=${q}&sortBy=releasedate&language=en`;
+    return `${base}/search/title?query=${q}&mediaType=audiobook&language=en&sortBy=releasedate`;
+  }
+  if (action === 'R') {
+    if (mode === 'F') return `${base}/search/title?sortBy=releasedate&subject=111&language=en`;
+    if (mode === 'V') return `${base}/search/title?mediaType=audiobook&sortBy=releasedate&subject=111&language=en&showOnlyAvailable=true`;
+    return `${base}/search/title?mediaType=audiobook&sortBy=releasedate&subject=111&language=en`;
+  }
+  if (action === 'H') return `${base}/account/holds`;
+  if (action === 'A') return `${base}/search/title?mediaType=audiobook&sortBy=releasedate&subject=111&language=en`;
+  if (action === 'L') return `${base}/account/loans`;
+}
+
+const libGrid = document.getElementById('lib-grid');
+
+function renderLibGrid() {
+  libGrid.innerHTML = '';
+  LIBRARIES.forEach(lib => {
+    const el = document.createElement('div');
+    el.className = 'lib-item';
+    el.dataset.id = lib.id;
+    el.innerHTML = `
+      <div class="lib-check">
+        <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+          <path d="M1 3.5L3.5 6L8 1" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <span class="lib-num">${lib.id}.</span>
+      <span class="lib-name">${lib.name}</span>
+      <span class="lib-flag">${lib.region}</span>`;
+    el.addEventListener('click', () => {
+      if (selectedLibs.has(lib.id)) { selectedLibs.delete(lib.id); el.classList.remove('selected'); }
+      else { selectedLibs.add(lib.id); el.classList.add('selected'); }
+      updateCount();
+    });
+    libGrid.appendChild(el);
+  });
+}
+
+/* ── Load library list from onetrack-data.json (seed defaults on first run) ── */
+async function loadLibraries() {
+  let raw = null;
+  try { raw = await OT.get(LIB_STORAGE_KEY); } catch (e) { raw = null; }
+
+  if (raw) {
+    try { LIBRARIES = JSON.parse(raw); }
+    catch (e) { LIBRARIES = DEFAULT_LIBRARIES; }
+  } else {
+    // First time ever — seed onetrack-data.json with the default list
+    LIBRARIES = DEFAULT_LIBRARIES;
+    try { await OT.set(LIB_STORAGE_KEY, JSON.stringify(DEFAULT_LIBRARIES)); } catch (e) {}
+  }
+
+  renderLibGrid();
+  // Re-apply any group selection state cleanly after a (re)render
+  selectedLibs.clear();
+  updateCount();
+}
+
+OT.onReady(async () => { await loadLibraries(); });
+
+function libSelectGroup(filter) {
+  document.querySelectorAll('.lib-item').forEach(el => {
+    const id = +el.dataset.id;
+    const lib = LIBRARIES.find(l => l.id === id);
+    const match = filter === 'all' || (filter === 'none' ? false : lib.region === filter);
+    if (match) { selectedLibs.add(id); el.classList.add('selected'); }
+    else { selectedLibs.delete(id); el.classList.remove('selected'); }
+  });
+  updateCount();
+}
+
+document.getElementById('lib-btn-all').addEventListener('click', () => libSelectGroup('all'));
+document.getElementById('lib-btn-na').addEventListener('click', () => libSelectGroup('NA'));
+document.getElementById('lib-btn-au').addEventListener('click', () => libSelectGroup('AU'));
+document.getElementById('lib-btn-none').addEventListener('click', () => libSelectGroup('none'));
+
+function updateCount() {
+  document.getElementById('sel-num').textContent = selectedLibs.size;
+  document.getElementById('go-btn').disabled = selectedLibs.size === 0 || !selectedAction;
+}
+
+document.querySelectorAll('.action-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedAction = btn.dataset.action;
+    selectedMode = null;
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    const modeRow = document.getElementById('lib-mode-row');
+    const searchRow = document.getElementById('lib-search-row');
+    if (['S','R'].includes(selectedAction)) modeRow.classList.add('visible');
+    else { modeRow.classList.remove('visible'); searchRow.classList.remove('visible'); }
+    if (selectedAction !== 'S') searchRow.classList.remove('visible');
+    libHideError(); updateCount();
+  });
+});
+
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMode = btn.dataset.mode;
+    const searchRow = document.getElementById('lib-search-row');
+    if (selectedAction === 'S') { searchRow.classList.add('visible'); document.getElementById('lib-search-input').focus(); }
+    else searchRow.classList.remove('visible');
+    libHideError(); updateCount();
+  });
+});
+
+function libShowError(msg) {
+  const el = document.getElementById('lib-err-msg');
+  el.textContent = msg; el.classList.add('visible');
+  setTimeout(() => el.classList.remove('visible'), 3500);
+}
+function libHideError() { document.getElementById('lib-err-msg').classList.remove('visible'); }
+
+document.getElementById('go-btn').addEventListener('click', () => {
+  if (!selectedAction) { libShowError('Please select an action.'); return; }
+  if (['S','R'].includes(selectedAction) && !selectedMode) { libShowError('Please select a mode.'); return; }
+  const query = document.getElementById('lib-search-input').value.trim();
+  if (selectedAction === 'S' && !query) { libShowError('Please enter a search term.'); return; }
+  if (selectedLibs.size === 0) { libShowError('Please select at least one library.'); return; }
+  const log = document.getElementById('lib-log');
+  const ids = [...selectedLibs];
+  let lines = [];
+  ids.forEach((id, i) => {
+    setTimeout(() => {
+      const lib = LIBRARIES.find(l => l.id === id);
+      window.open(buildUrl(lib.base, selectedAction, query, selectedMode), '_blank');
+      lines.push(`▸ Opened ${lib.name}`);
+      log.innerHTML = lines.join('<br>');
+      log.classList.add('visible');
+    }, i * 300);
+  });
+});
+
+document.getElementById('lib-search-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('go-btn').click();
+});
+
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (document.getElementById('panel-library').classList.contains('active')) {
+    const map = { s:'S', r:'R', h:'H', a:'A', l:'L' };
+    const k = e.key.toLowerCase();
+    if (map[k]) document.querySelector(`.action-btn[data-action="${map[k]}"]`)?.click();
+    if (e.key === 'f' || e.key === 'F') document.querySelector('.mode-btn[data-mode="F"]')?.click();
+  }
+});
+
+/* ══════════════════════════════════════════
+   BACKUP LOGIC
+   ══════════════════════════════════════════ */
+const BACKUP_HIST_KEY = 'planner_backup_history';
+
+const KNOWN = {
+  'TODAY_BLOCKS_V2':    '02. Today',
+  'TODAY_INTENTION':    '02. Today — intention',
+  'TODAY_DARK':         '02. Today — theme',
+  'TOMORROW_BLOCKS_V2': '03. Tomorrow',
+  'jht5':               '26. Jobs Priority & Tracking',
+  'jht4':               '26. Jobs Priority & Tracking (old)',
+  'jht_th':             '26. Jobs Priority — theme',
+  'planner_backup_history': 'Backup page — history',
+};
+
+function friendlyName(key) { return KNOWN[key] || key; }
+
+function ts() {
+  const n = new Date();
+  const mm = String(n.getMonth()+1).padStart(2,'0');
+  const dd = String(n.getDate()).padStart(2,'0');
+  const yy = String(n.getFullYear()).slice(-2);
+  const hh = String(n.getHours()).padStart(2,'0');
+  const ss = String(n.getSeconds()).padStart(2,'0');
+  return `${mm}${dd}${yy}${hh}${ss}`;
+}
+
+function getAllKeys() {
+  return Object.keys(_otCache).sort();
+}
+
+function byteSize(str) {
+  const b = new Blob([str]).size;
+  return b < 1024 ? b + ' B' : (b/1024).toFixed(1) + ' KB';
+}
+
+function refreshKeys() {
+  const keys = getAllKeys();
+  const sub = document.getElementById('bk-keysSub');
+  const tbl = document.getElementById('bk-keysTable');
+  const statsBar = document.getElementById('bk-statsBar');
+
+  const totalSize = keys.reduce((s,k) => s + new Blob([_cget(k)||'']).size, 0);
+  sub.textContent = `${keys.length} key${keys.length !== 1 ? 's' : ''} found · ${(totalSize/1024).toFixed(1)} KB total`;
+
+  const dataKeys = keys.filter(k => k !== DARK_KEY && k !== 'planner_backup_history' && !k.endsWith('_th') && !k.endsWith('DARK') && !k.endsWith('INTENTION'));
+  statsBar.innerHTML = `
+    <div class="chip">Total keys <strong>${keys.length}</strong></div>
+    <div class="chip">Data keys <strong>${dataKeys.length}</strong></div>
+    <div class="chip">Total size <strong>${(totalSize/1024).toFixed(1)} KB</strong></div>
+    <div class="chip">Last backup <strong id="bk-lastBkpChip">—</strong></div>
+  `;
+  updateLastBackupChip();
+
+  if (keys.length === 0) {
+    tbl.innerHTML = `<div style="padding:20px 18px;font-size:13px;color:var(--text3);font-style:italic;">No data found. Open your planner pages first to generate data.</div>`;
+    return;
+  }
+
+  let h = `<table><thead><tr><th>Key</th><th>Page</th><th>Size</th><th>Preview</th></tr></thead><tbody>`;
+  keys.forEach(k => {
+    const val = _cget(k) || '';
+    const sz = byteSize(val);
+    let preview = val.length > 60 ? val.slice(0,60) + '…' : val;
+    try { const p = JSON.parse(val); preview = Array.isArray(p) ? `[array · ${p.length} items]` : typeof p === 'object' ? `{object · ${Object.keys(p).length} keys}` : preview; } catch(e){}
+    const known = KNOWN[k];
+    h += `<tr>
+      <td><span class="key-name">${k}</span></td>
+      <td><span class="${known ? 'dot-green' : 'dot-gray'}"></span>${friendlyName(k)}</td>
+      <td><span class="size-pill">${sz}</span></td>
+      <td style="font-size:11px;color:var(--text3);font-family:monospace;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  tbl.innerHTML = h;
+}
+
+function doBackup() {
+  const keys = getAllKeys();
+  const snapshot = {};
+  keys.forEach(k => {
+    try { snapshot[k] = JSON.parse(_cget(k)); }
+    catch(e) { snapshot[k] = _cget(k); }
+  });
+
+  const stamp = ts();
+  const fname = `data_${stamp}.json`;
+  const payload = {
+    exported: new Date().toISOString(),
+    source: 'Library-Backup.html — Planner',
+    keyCount: keys.length,
+    keys: keys,
+    data: snapshot
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  const hist = getHistory();
+  hist.unshift({ fname, stamp, keyCount: keys.length, size: byteSize(JSON.stringify(payload)), payload: JSON.stringify(payload) });
+  _cset(BACKUP_HIST_KEY, JSON.stringify(hist.slice(0, 20)));
+
+  document.getElementById('bk-lastBackupMsg').textContent = `Last backup: ${fname}`;
+  updateLastBackupChip();
+  renderHistory();
+  refreshKeys();
+}
+
+function dzOver(e) { e.preventDefault(); document.getElementById('bk-dropZone').classList.add('drag-over'); }
+function dzLeave(e) { document.getElementById('bk-dropZone').classList.remove('drag-over'); }
+function dzDrop(e) { e.preventDefault(); document.getElementById('bk-dropZone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); }
+
+function loadFile(file) {
+  if (!file) return;
+  const log = document.getElementById('bk-restoreLog');
+  log.style.display = 'block';
+  log.innerHTML = `<span class="log-info">Reading ${file.name}…</span><br>`;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      if (!payload.data) throw new Error('Invalid backup file — missing "data" field.');
+      const keys = Object.keys(payload.data);
+      if (!confirm(`Restore ${keys.length} keys from "${file.name}"?\n\nThis will OVERWRITE existing data for those keys. Cannot be undone.`)) {
+        log.innerHTML += `<span class="log-info">Restore cancelled.</span>`;
+        return;
+      }
+      let ok = 0, err = 0;
+      keys.forEach(k => {
+        if (k === BACKUP_HIST_KEY) return;
+        try {
+          const val = typeof payload.data[k] === 'string' ? payload.data[k] : JSON.stringify(payload.data[k]);
+          _cset(k, val);
+          log.innerHTML += `<span class="log-ok">✓ ${k}</span><br>`;
+          ok++;
+        } catch(ex) {
+          log.innerHTML += `<span class="log-err">✕ ${k}: ${ex.message}</span><br>`;
+          err++;
+        }
+      });
+      log.innerHTML += `<br><strong class="${err ? 'log-err' : 'log-ok'}">${ok} restored${err ? `, ${err} failed` : ' — all good!'}`;
+      refreshKeys();
+    } catch(ex) {
+      log.innerHTML += `<span class="log-err">✕ Error: ${ex.message}</span>`;
+    }
+  };
+  reader.readAsText(file);
+}
+
+function getHistory() {
+  try { return JSON.parse(_cget(BACKUP_HIST_KEY)) || []; } catch(e) { return []; }
+}
+
+function renderHistory() {
+  const hist = getHistory();
+  const el = document.getElementById('bk-histList');
+  if (!hist.length) {
+    el.innerHTML = `<div class="hist-row" style="font-size:13px;color:var(--text3);font-style:italic;">No backups taken this session yet.</div>`;
+    return;
+  }
+  el.innerHTML = hist.map((h,i) => `
+    <div class="hist-row">
+      <div>
+        <div class="hist-name">${h.fname}</div>
+        <div class="hist-meta">${h.keyCount} keys · ${h.size}</div>
+      </div>
+      <button class="hist-dl" onclick="reDownload(${i})">⬇ Download</button>
+    </div>
+  `).join('');
+}
+
+function reDownload(i) {
+  const hist = getHistory();
+  const h = hist[i];
+  if (!h) return;
+  const blob = new Blob([h.payload], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = h.fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function clearHistory() {
+  if (!confirm('Clear backup history? (Does not delete your actual planner data.)')) return;
+  _cdel(BACKUP_HIST_KEY);
+  renderHistory();
+}
+
+function updateLastBackupChip() {
+  const hist = getHistory();
+  const el = document.getElementById('bk-lastBkpChip');
+  if (el) el.textContent = hist.length ? hist[0].stamp : '—';
+}
+
+const STALE_KEYS = [
+  { key: 'PT_ROLE_CHECKLIST',       reason: 'Superseded by PT_ROLE_CHECKLIST_V3',      page: '21. CL-PT Job' },
+  { key: 'PT_ROLE_CHECKLIST_V2',    reason: 'Superseded by PT_ROLE_CHECKLIST_V3',      page: '21. CL-PT Job' },
+  { key: 'WEEKLY_MEAL_PLANNER_V1',  reason: 'Superseded by WEEKLY_MEAL_PLANNER_V3',    page: '31. Weekly Meal' },
+  { key: 'WEEKLY_MEAL_PLANNER_V2',  reason: 'Superseded by WEEKLY_MEAL_PLANNER_V3',    page: '31. Weekly Meal' },
+  { key: 'WEEKLY_MASTER_V1',        reason: 'Superseded by WEEKLY_FULL_V5',            page: '32. Weekly Exercise' },
+  { key: 'WEEKLY_MASTER_SUGGEST_V1',reason: 'Superseded by WEEKLY_FULL_SUGGEST_V5',    page: '32. Weekly Exercise' },
+  { key: 'jht4',                    reason: 'Superseded by jht5 (latest jobs tracker)', page: '26. Jobs Tracker' },
+  { key: 'TODAY_BLOCKS_MAIN',       reason: 'Superseded by TODAY_BLOCKS_V2',           page: '02. Today' },
+  { key: 'jobhunt_theme',           reason: 'Old theme key from earlier jobs tracker',  page: '26. Jobs Tracker (old)' },
+];
+
+function renderCleanup() {
+  const present = STALE_KEYS.filter(s => _cget(s.key) !== null);
+  const sub = document.getElementById('bk-cleanSub');
+  const tbl = document.getElementById('bk-cleanTable');
+  const btn = document.getElementById('bk-cleanBtn');
+
+  if (present.length === 0) {
+    sub.textContent = 'All clean — no stale keys found.';
+    btn.style.display = 'none';
+    tbl.innerHTML = `<div class="clean-empty">Nothing to clean up. Your data file is tidy.</div>`;
+    return;
+  }
+
+  sub.textContent = `${present.length} stale key${present.length > 1 ? 's' : ''} found — safe to delete`;
+  btn.style.display = '';
+  btn.textContent = `🗑 Delete ${present.length} stale key${present.length > 1 ? 's' : ''}`;
+
+  let h = `<table><thead><tr><th>Key</th><th>Page</th><th>Why stale</th><th>Size</th></tr></thead><tbody>`;
+  present.forEach(s => {
+    const val = _cget(s.key) || '';
+    h += `<tr>
+      <td><span class="key-name">${s.key}</span></td>
+      <td style="font-size:12px;">${s.page}</td>
+      <td style="font-size:11px;color:var(--text3);">${s.reason}</td>
+      <td><span class="size-pill">${byteSize(val)}</span></td>
+    </tr>`;
+  });
+  h += '</tbody></table>';
+  tbl.innerHTML = h;
+}
+
+function doCleanup() {
+  const present = STALE_KEYS.filter(s => _cget(s.key) !== null);
+  if (present.length === 0) return;
+  if (!confirm(`Delete ${present.length} stale keys?\n\n${present.map(s=>s.key).join('\n')}\n\nTip: take a backup first if unsure.`)) return;
+
+  const log = document.getElementById('bk-cleanLog');
+  log.style.display = 'block';
+  log.innerHTML = '';
+  let deleted = 0;
+  present.forEach(s => {
+    try {
+      _cdel(s.key);
+      log.innerHTML += `<span class="log-ok">✓ Deleted ${s.key}</span><br>`;
+      deleted++;
+    } catch(e) {
+      log.innerHTML += `<span class="log-err">✕ ${s.key}: ${e.message}</span><br>`;
+    }
+  });
+  log.innerHTML += `<br><strong class="log-ok">Done — ${deleted} key${deleted>1?'s':''} removed.</strong>`;
+  renderCleanup();
+  refreshKeys();
+}
+
+/* ── INIT ── */
+OT.onReady(async () => {
+  _otCache = await OT.getAll();
+  // Apply dark mode from file
+  html.setAttribute('data-theme', resolveTheme() ? 'dark' : '');
+  refreshKeys();
+  renderCleanup();
+  renderHistory();
+  const hist = getHistory();
+  if (hist.length) document.getElementById('bk-lastBackupMsg').textContent = `Last backup: ${hist[0].fname}`;
+});
+</script>
+
+
+<script>
+(function(){
+  var el=document.getElementById("logoCheck");
+  if(!el)return;
+  var checked=false;
+  function runCheck(){
+    el.classList.remove("uncheck","is-checked");
+    void el.offsetWidth;
+    el.classList.add("animating");
+    el.addEventListener("animationend",function done(e){
+      if(e.animationName==="logoTickDraw"){
+        el.removeEventListener("animationend",done);
+        el.classList.remove("animating");
+        el.classList.add("is-checked");
+        checked=true;
+      }
+    });
+  }
+  function runUncheck(){
+    el.classList.remove("animating","is-checked");
+    void el.offsetWidth;
+    el.classList.add("uncheck");
+    el.addEventListener("animationend",function done(e){
+      if(e.animationName==="logoBoxUnfill"){
+        el.removeEventListener("animationend",done);
+        el.classList.remove("uncheck");
+        checked=false;
+      }
+    });
+  }
+  setTimeout(runCheck,500);
+  el.addEventListener("click",function(){ if(checked){runUncheck();}else{runCheck();} });
+})();
+</script>
+
+<script>
+/* ── Nav collapse/expand ── */
+(function(){
+  var KEY = 'ONETRACK_NAV_COLLAPSED';
+  var nav = document.getElementById('onetrack-nav');
+  var btn = document.getElementById('nav-toggle-btn');
+  var tab = document.getElementById('nav-show-tab');
+  if (!nav) return;
+
+  function isCollapsed() { return _cget('ONETRACK_NAV_COLLAPSED') === '1'; }
+
+  function applyState(collapsed, animate) {
+    if (!animate) { nav.style.transition = 'none'; }
+    if (collapsed) {
+      nav.classList.add('nav-collapsed');
+      document.body.classList.add('nav-is-collapsed');
+      if (btn) btn.textContent = '›';
+      if (btn) btn.title = 'Show sidebar';
+    } else {
+      nav.classList.remove('nav-collapsed');
+      document.body.classList.remove('nav-is-collapsed');
+      if (btn) btn.textContent = '‹';
+      if (btn) btn.title = 'Hide sidebar';
+    }
+    if (!animate) {
+      // Force reflow then restore transition
+      void nav.offsetWidth;
+      nav.style.transition = '';
+    }
+  }
+
+  // Apply on load (no animation)
+  applyState(isCollapsed(), false);
+
+  // Toggle button in nav header
+  if (btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var next = !isCollapsed();
+      _cset('ONETRACK_NAV_COLLAPSED', next ? '1' : '0');
+      applyState(next, true);
+    });
+  }
+
+  // Floating show-tab click
+  if (tab) {
+    tab.addEventListener('click', function() {
+      _cset('ONETRACK_NAV_COLLAPSED', '0');
+      applyState(false, true);
+    });
+  }
+})();
+</script>
+</body>
+</html>
+
+<!--
+═══════════════════════════════════════════════════════════════════
+  VERSION HISTORY — Library-Backup.html
+═══════════════════════════════════════════════════════════════════
+  v1  · 31 Mar 2026
+      - Merged 99. Backup.html and 100. Library Search.html into
+        a single tabbed file following the Onetrack architecture
+      - Library Search is tab 1 (default), Backup is tab 2
+      - Tabs are drag-and-drop rearrangeable; order saved to localStorage
+      - Renamed from Dharma → Onetrack throughout
+      - Redesigned footer bezel matches Days-Tasks v8 style:
+        centered build stamp, fixed bottom bar, surface background
+      - Single dark-mode toggle in topbar controls both panels
+      - Removed planner-storage.js dependency (was unused)
+      - All DOM IDs namespaced (bk- / lib-) to avoid collisions
+      - Nav updated to reference new filename without numbering
+═══════════════════════════════════════════════════════════════════
+-->

@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<title>Onetrack · 99. Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="storage.js"></script>
+<style>
+  :root {
+    --bg: #f5f2ee;
+    --surface: #ffffff;
+    --surface2: #faf8f5;
+    --border: rgba(0,0,0,0.08);
+    --text: #1a1714;
+    --text2: #6b6560;
+    --text3: #9e9891;
+    --accent:#c17b3f;
+    --accent-soft:rgba(193,123,63,0.12);
+    --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+    --radius: 16px;
+    --nav-width: 200px;
+    --green: #3a8c5c;
+    --green-soft: rgba(58,140,92,0.12);
+    --red: #c0392b;
+    --red-soft: rgba(192,57,43,0.10);
+  }
+  [data-theme="dark"] {
+    --bg: #131210;
+    --surface: #1e1c18;
+    --surface2: #252320;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0ece6;
+    --text2: #a09890;
+    --text3: #6e6660;
+    --accent:#d4935a;
+    --accent-soft:rgba(212,147,90,0.14);
+    --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+    --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+    --green: #4aab72;
+    --green-soft: rgba(74,171,114,0.14);
+    --red-soft: rgba(220,80,60,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── NAV ── */
+  .nav {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: var(--nav-width);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0; z-index: 100;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+  }
+  .nav-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px 14px; border-bottom: 1px solid var(--border);
+    margin-bottom: 10px; gap: 6px;
+  }
+  .nav-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px; color: var(--accent);
+    display: flex; align-items: center; gap: 8px;
+    flex: 1;
+  }
+  .nav a {
+    display: block; padding: 8px 20px;
+    font-size: 13px; font-weight: 400;
+    color: var(--text2); text-decoration: none;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .nav a:hover { color: var(--text); background: var(--surface2); transform: translateX(4px); }
+  .nav a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: var(--nav-width);
+    padding: 48px 48px 100px;
+    max-width: calc(var(--nav-width) + 760px);
+  }
+
+  /* ── PAGE HEADER ── */
+  .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 40px;
+  }
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 44px; font-weight: 400;
+    color: var(--text); line-height: 1;
+  }
+  .page-subtitle {
+    font-size: 14px; color: var(--text3); margin-top: 6px;
+    font-weight: 400;
+  }
+
+  /* ── SECTION ── */
+  .section {
+    margin-bottom: 32px;
+    animation: fadeUp 0.35s ease both;
+  }
+  .section:nth-child(1) { animation-delay: 0.04s; }
+  .section:nth-child(2) { animation-delay: 0.08s; }
+  .section:nth-child(3) { animation-delay: 0.12s; }
+  .section:nth-child(4) { animation-delay: 0.16s; }
+  .section:nth-child(5) { animation-delay: 0.20s; }
+  .section:nth-child(6) { animation-delay: 0.24s; }
+
+  .section-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--text3); letter-spacing: 0.10em;
+    text-transform: uppercase; margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  /* ── SETTING ROW ── */
+  .setting-row {
+    display: flex; align-items: center;
+    padding: 16px 22px;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    transition: background 0.15s;
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-row:hover { background: var(--surface2); }
+
+  .setting-icon {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .setting-info { flex: 1; min-width: 0; }
+  .setting-label {
+    font-size: 14px; font-weight: 500; color: var(--text);
+  }
+  .setting-desc {
+    font-size: 12px; color: var(--text3); margin-top: 2px;
+    line-height: 1.4;
+  }
+  .setting-control { flex-shrink: 0; }
+
+  /* ── TOGGLE ── */
+  .toggle {
+    width: 44px; height: 24px;
+    background: var(--border);
+    border-radius: 12px;
+    position: relative; cursor: pointer; border: none;
+    transition: background 0.2s;
+    outline: none;
+  }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 18px; height: 18px;
+    background: #fff; border-radius: 50%;
+    top: 3px; left: 3px;
+    transition: transform 0.22s cubic-bezier(.4,0,.2,1), background 0.2s;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(20px); }
+  .toggle.on-green { background: var(--green); }
+  .toggle.on-green::after { transform: translateX(20px); }
+
+  /* ── SEGMENT CONTROL ── */
+  .segment {
+    display: flex; gap: 2px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px;
+  }
+  .seg-btn {
+    padding: 5px 13px;
+    font-size: 12px; font-weight: 500;
+    border-radius: 8px; border: none;
+    background: transparent; color: var(--text2);
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .seg-btn:hover { color: var(--text); }
+  .seg-btn.active {
+    background: var(--surface);
+    color: var(--accent); font-weight: 600;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  }
+
+  /* ── SELECT ── */
+  .setting-select {
+    appearance: none;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    padding: 7px 30px 7px 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239e9891' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    min-width: 160px;
+  }
+  .setting-select:focus { border-color: var(--accent); }
+  [data-theme="dark"] .setting-select { color-scheme: dark; }
+
+  /* ── COLOR SWATCHES ── */
+  .swatch-row {
+    display: flex; gap: 8px; align-items: center;
+  }
+  .swatch {
+    width: 28px; height: 28px; border-radius: 50%;
+    cursor: pointer; border: 2px solid transparent;
+    transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .swatch:hover { transform: scale(1.15); }
+  .swatch.active { border-color: var(--text); transform: scale(1.12); }
+
+  /* ── DANGER ZONE ── */
+  .danger-row { display: flex; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--border); gap: 16px; }
+  .danger-row:last-child { border-bottom: none; }
+  .danger-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--red-soft); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .danger-info { flex: 1; }
+  .danger-label { font-size: 14px; font-weight: 500; color: var(--text); }
+  .danger-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .danger-btn {
+    background: var(--red-soft);
+    color: var(--red);
+    border: 1px solid rgba(192,57,43,0.20);
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 600;
+    padding: 7px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .danger-btn:hover { background: var(--red); color: #fff; }
+
+  /* ── ABOUT / BUILD ── */
+  .about-card {
+    background: var(--accent-soft);
+    border: 1px solid rgba(193,123,63,0.18);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .about-logo {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px; color: var(--accent); flex-shrink: 0;
+  }
+  .about-meta { flex: 1; }
+  .about-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .about-build { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%) translateY(12px);
+    background: var(--text); color: var(--bg);
+    font-size: 13px; font-weight: 500;
+    padding: 10px 20px; border-radius: 100px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.18);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    z-index: 9999; white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1; transform: translateX(-50%) translateY(0);
+  }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    position: fixed; bottom: 0; left: var(--nav-width); right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .build-stamp {
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 0.06em;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap; opacity: 0.75; font-style: italic;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 700px) {
+    :root { --nav-width: 0px; }
+    .nav { display: none; }
+    .main { padding: 24px 16px 100px; }
+    .page-footer { left: 0; }
+  }
+
+  /* ── NAV LOGO CHECKBOX ── */
+  .logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+  .logo-check svg{overflow:visible;display:block;}
+  .logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+  .logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+  .logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+  .logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+  .logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+  .logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+  .logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+  .logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+  @keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+  @keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+  @keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+  @keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+
+  /* inline save indicator */
+  .saved-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    color: var(--green); background: var(--green-soft);
+    border-radius: 100px; padding: 3px 10px;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .saved-pill.show { opacity: 1; }
+
+/* ── NAV COLLAPSE ── */
+:root { --nav-toggle-size: 22px; }
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--nav-toggle-size); height: var(--nav-toggle-size);
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* Collapsed nav */
+.nav.nav-collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* Shift content when nav is collapsed */
+body.nav-is-collapsed .main        { margin-left: 0 !important; }
+body.nav-is-collapsed .topbar      { left: 0 !important; }
+body.nav-is-collapsed .panels      { left: 0 !important; }
+body.nav-is-collapsed .footer-actions { left: 0 !important; }
+body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
+
+/* Floating "show nav" tab on left edge */
+#nav-show-tab {
+  display: none;
+  position: fixed; top: 50%; left: 0;
+  transform: translateY(-50%);
+  z-index: 9999;
+  writing-mode: vertical-lr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 6px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+#nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
+body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
+
+/* Smooth width transition on nav itself */
+.nav { transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease; }
+/* ── END NAV COLLAPSE ── */
+
+/* ── NAV HEADER NORMALIZED ── */
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+/* ── END NAV HEADER NORMALIZED ── */
+</style>
+</head>
+<body>
+<div id="nav-show-tab" title="Show sidebar">☰</div>
+
+<!-- NAV -->
+<nav class="nav" id="onetrack-nav">
+  <div class="nav-header">
+    <div class="nav-title">
+      <span class="logo-check" id="logoCheck">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;display:block;overflow:visible;">
+          <rect class="logo-box" x="2" y="2" width="16" height="16" rx="4"/>
+          <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
+        </svg>
+      </span>
+      Onetrack
+    </div>
+    <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
+  </div>
+  <a href="00. Index.html">00. Index</a>
+  <a href="01. TT&amp;B.html">01. TT&amp;B</a>
+  <a href="02. Routines.html">02. Routines</a>
+  <a href="03. Jobs.html">03. Jobs</a>
+  <a href="04. Checklists.html">04. Checklists</a>
+  <a href="05. Trip Planners.html">05. Trip Planners</a>
+  <a href="06. Weekly Planners.html">06. Weekly Planne…</a>
+  <a href="07. Library-Backup.html">07. Library-Backup</a>
+  <a href="99. Settings.html" class="active">99. Settings</a>
+</nav>
+
+<div class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <h1>Settings</h1>
+      <p class="page-subtitle">Controls apply across all Onetrack pages</p>
+    </div>
+    <span class="saved-pill" id="savedPill">✓ Saved</span>
+  </div>
+
+  <!-- SECTION: APPEARANCE -->
+  <div class="section">
+    <div class="section-title">Appearance</div>
+    <div class="card">
+
+      <!-- Dark Mode -->
+      <div class="setting-row">
+        <div class="setting-icon">🌙</div>
+        <div class="setting-info">
+          <div class="setting-label">Dark Mode</div>
+          <div class="setting-desc">Switches all pages to a dark colour scheme</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle" id="toggleDark" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+
+      <!-- Accent Colour -->
+      <div class="setting-row">
+        <div class="setting-icon">🎨</div>
+        <div class="setting-info">
+          <div class="setting-label">Accent Colour</div>
+          <div class="setting-desc">Primary highlight colour used on all pages</div>
+        </div>
+        <div class="setting-control">
+          <div class="swatch-row" id="accentSwatches">
+            <button class="swatch" data-accent="#c17b3f" data-accent-dark="#d4935a" title="Amber (default)" style="background:#c17b3f;"></button>
+            <button class="swatch" data-accent="#3a6ba0" data-accent-dark="#5b8fc4" title="Blue" style="background:#3a6ba0;"></button>
+            <button class="swatch" data-accent="#3a8c5c" data-accent-dark="#4aab72" title="Green" style="background:#3a8c5c;"></button>
+            <button class="swatch" data-accent="#8c3a6b" data-accent-dark="#b85a94" title="Plum" style="background:#8c3a6b;"></button>
+            <button class="swatch" data-accent="#6a3ac1" data-accent-dark="#8c65d4" title="Violet" style="background:#6a3ac1;"></button>
+            <button class="swatch" data-accent="#1a1714" data-accent-dark="#d0ccc6" title="Ink" style="background:#1a1714;"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Font Scale -->
+      <div class="setting-row">
+        <div class="setting-icon">Aa</div>
+        <div class="setting-info">
+          <div class="setting-label">Text Size</div>
+          <div class="setting-desc">Adjusts base font size across all pages</div>
+        </div>
+        <div class="setting-control">
+          <div class="segment" id="fontScaleSegment">
+            <button class="seg-btn" data-val="0.9">Small</button>
+            <button class="seg-btn active" data-val="1">Default</button>
+            <button class="seg-btn" data-val="1.1">Large</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: TIME & DATES -->
+  <div class="section">
+    <div class="section-title">Time &amp; Dates</div>
+    <div class="card">
+
+      <!-- Timezone -->
+      <div class="setting-row">
+        <div class="setting-icon">🕐</div>
+        <div class="setting-info">
+          <div class="setting-label">Time Zone</div>
+          <div class="setting-desc">Used for date headers and time-slot labels on Days-Tasks</div>
+        </div>
+        <div class="setting-control">
+          <select class="setting-select" id="tzSelect"></select>
+        </div>
+      </div>
+
+      <!-- Week starts on -->
+      <div class="setting-row">
+        <div class="setting-icon">📅</div>
+        <div class="setting-info">
+          <div class="setting-label">Week Starts On</div>
+          <div class="setting-desc">First column on Weekly Planners and calendar views</div>
+        </div>
+        <div class="setting-control">
+          <div class="segment" id="weekStartSegment">
+            <button class="seg-btn active" data-val="0">Sunday</button>
+            <button class="seg-btn" data-val="1">Monday</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Time format -->
+      <div class="setting-row">
+        <div class="setting-icon">⏱</div>
+        <div class="setting-info">
+          <div class="setting-label">Time Format</div>
+          <div class="setting-desc">How times are displayed in time estimates and planners</div>
+        </div>
+        <div class="setting-control">
+          <div class="segment" id="timeFormatSegment">
+            <button class="seg-btn active" data-val="12">12-hour</button>
+            <button class="seg-btn" data-val="24">24-hour</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: BEHAVIOUR -->
+  <div class="section">
+    <div class="section-title">Behaviour</div>
+    <div class="card">
+
+      <!-- Auto-carry tasks -->
+      <div class="setting-row">
+        <div class="setting-icon">↩</div>
+        <div class="setting-info">
+          <div class="setting-label">Auto-carry Incomplete Tasks</div>
+          <div class="setting-desc">Automatically move unfinished tasks to the next day on Days-Tasks</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle on-green" id="toggleAutoCarry" role="switch" aria-checked="true"></button>
+        </div>
+      </div>
+
+      <!-- Confirm before delete -->
+      <div class="setting-row">
+        <div class="setting-icon">🗑</div>
+        <div class="setting-info">
+          <div class="setting-label">Confirm Before Delete</div>
+          <div class="setting-desc">Show a prompt before permanently removing items</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle on-green" id="toggleConfirmDelete" role="switch" aria-checked="true"></button>
+        </div>
+      </div>
+
+      <!-- Show completed tasks -->
+      <div class="setting-row">
+        <div class="setting-icon">✓</div>
+        <div class="setting-info">
+          <div class="setting-label">Show Completed Tasks</div>
+          <div class="setting-desc">Keep checked-off tasks visible (greyed out) in lists</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle on-green" id="toggleShowCompleted" role="switch" aria-checked="true"></button>
+        </div>
+      </div>
+
+      <!-- Sound on complete -->
+      <div class="setting-row">
+        <div class="setting-icon">🔔</div>
+        <div class="setting-info">
+          <div class="setting-label">Sound on Task Complete</div>
+          <div class="setting-desc">Play a subtle tick when checking off a task</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle" id="toggleSound" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: NAVIGATION -->
+  <div class="section">
+    <div class="section-title">Navigation</div>
+    <div class="card">
+
+      <!-- Nav pinned -->
+      <div class="setting-row">
+        <div class="setting-icon">📌</div>
+        <div class="setting-info">
+          <div class="setting-label">Pin Sidebar</div>
+          <div class="setting-desc">Keep the left navigation visible at all times</div>
+        </div>
+        <div class="setting-control">
+          <button class="toggle" id="toggleNavPin" role="switch" aria-checked="false"></button>
+        </div>
+      </div>
+
+      <!-- Default landing page -->
+      <div class="setting-row">
+        <div class="setting-icon">🏠</div>
+        <div class="setting-info">
+          <div class="setting-label">Default Page</div>
+          <div class="setting-desc">Which page opens when you load Onetrack</div>
+        </div>
+        <div class="setting-control">
+          <select class="setting-select" id="defaultPageSelect">
+            <option value="00. Index.html">00. Index</option>
+            <option value="01. Today, Tomorrow & Beyond.html">01. TT&amp;B</option>
+            <option value="03. Jobs.html">03. Jobs</option>
+            <option value="04. Checklists.html">04. Checklists</option>
+            <option value="05. Trip Planners.html">05. Trip Planners</option>
+            <option value="06. Weekly Planners.html">06. Weekly Planners</option>
+            <option value="07. Library-Backup.html">07. Library-Backup</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: PRINT STYLE -->
+  <div class="section">
+    <div class="section-title">Print Style</div>
+    <div class="card">
+
+      <div class="setting-row">
+        <div class="setting-icon">🖨</div>
+        <div class="setting-info">
+          <div class="setting-label">Print Mode</div>
+          <div class="setting-desc">Controls how all pages print. <strong>Colour</strong> renders rich backgrounds and accent colours. <strong>B&amp;W</strong> strips colour for a clean, ink-saving output.</div>
+        </div>
+        <div class="setting-control">
+          <div class="segment" id="printStyleSegment">
+            <button class="seg-btn" data-val="color">🎨 Colour</button>
+            <button class="seg-btn active" data-val="bw">⬜ B&amp;W</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="setting-row" style="background:var(--surface2);">
+        <div class="setting-icon" style="background:transparent;font-size:13px;">ℹ</div>
+        <div class="setting-info">
+          <div class="setting-desc" style="font-size:11px;line-height:1.55;">
+            <strong style="color:var(--text2);">B&W mode</strong> — plain white background, black text, checkbox outlines only. Optimised for laser printers and PDF archiving.<br>
+            <strong style="color:var(--text2);">Colour mode</strong> — full accent colours, section backgrounds, and visual hierarchy. Best for colour inkjet or on-screen PDF.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: DATA -->
+  <div class="section">
+    <div class="section-title">Data</div>
+    <div class="card">
+
+      <!-- Export -->
+      <div class="danger-row">
+        <div class="danger-icon" style="background:var(--green-soft);">💾</div>
+        <div class="danger-info">
+          <div class="danger-label">Export All Data</div>
+          <div class="danger-desc">Download a JSON backup of every Onetrack key from your data file</div>
+        </div>
+        <button class="danger-btn" id="exportBtn" style="color:var(--green);background:var(--green-soft);border-color:rgba(58,140,92,0.20);">Export JSON</button>
+      </div>
+
+      <!-- Import -->
+      <div class="danger-row">
+        <div class="danger-icon" style="background:var(--accent-soft);">📂</div>
+        <div class="danger-info">
+          <div class="danger-label">Import Data</div>
+          <div class="danger-desc">Restore from a previously exported JSON backup</div>
+        </div>
+        <button class="danger-btn" id="importBtn" style="color:var(--accent);background:var(--accent-soft);border-color:rgba(193,123,63,0.20);">Import JSON</button>
+        <input type="file" id="importFile" accept=".json" style="display:none;">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION: DANGER ZONE -->
+  <div class="section">
+    <div class="section-title">Danger Zone</div>
+    <div class="card">
+
+      <!-- Clear completed tasks -->
+      <div class="danger-row">
+        <div class="danger-icon">🧹</div>
+        <div class="danger-info">
+          <div class="danger-label">Clear Completed Tasks</div>
+          <div class="danger-desc">Remove all checked-off tasks from Days-Tasks</div>
+        </div>
+        <button class="danger-btn" id="clearCompletedBtn">Clear</button>
+      </div>
+
+      <!-- Reset all settings -->
+      <div class="danger-row">
+        <div class="danger-icon">↺</div>
+        <div class="danger-info">
+          <div class="danger-label">Reset Settings to Default</div>
+          <div class="danger-desc">Restore all appearance and behaviour settings</div>
+        </div>
+        <button class="danger-btn" id="resetSettingsBtn">Reset</button>
+      </div>
+
+      <!-- Wipe everything -->
+      <div class="danger-row">
+        <div class="danger-icon">💥</div>
+        <div class="danger-info">
+          <div class="danger-label">Wipe All Onetrack Data</div>
+          <div class="danger-desc">Permanently deletes all tasks, planners, jobs, checklists and settings</div>
+        </div>
+        <button class="danger-btn" id="wipeBtn">Wipe Everything</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ABOUT -->
+  <div class="section">
+    <div class="about-card">
+      <div class="about-logo">✓</div>
+      <div class="about-meta">
+        <div class="about-name">Onetrack</div>
+        <div class="about-build">Progress, one checkbox at a time. · Built 31 Mar 26 · v2.1</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<footer class="page-footer">
+  <span class="build-stamp">Settings · All changes saved to onetrack-data.json · v2.1</span>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════
+   ONETRACK SETTINGS · 99. Settings.html
+   All keys that other pages already use:
+     TODAY_DARK           – dark mode (shared key)
+     ONETRACK_NAV_PINNED  – sidebar pin
+     ONETRACK_ACCENT      – accent colour light
+     ONETRACK_ACCENT_DARK – accent colour dark
+     ONETRACK_TZ          – timezone string
+     ONETRACK_WEEK_START  – 0=Sun, 1=Mon
+     ONETRACK_TIME_FMT    – 12 | 24
+     ONETRACK_FONT_SCALE  – 0.9 | 1 | 1.1
+     ONETRACK_AUTO_CARRY  – 1/0
+     ONETRACK_CONFIRM_DEL – 1/0
+     ONETRACK_SHOW_DONE   – 1/0
+     ONETRACK_SOUND       – 1/0
+     ONETRACK_DEFAULT_PAGE
+   ════════════════════════════════════════════════ */
+
+const K = {
+  DARK:          'TODAY_DARK',
+  NAV_PIN:       'ONETRACK_NAV_PINNED',
+  ACCENT:        'ONETRACK_ACCENT',
+  ACCENT_DARK:   'ONETRACK_ACCENT_DARK',
+  ACCENT_SOFT:   'ONETRACK_ACCENT_SOFT',
+  ACCENT_DARK_SOFT: 'ONETRACK_ACCENT_DARK_SOFT',
+  TZ:            'ONETRACK_TZ',
+  WEEK_START:    'ONETRACK_WEEK_START',
+  TIME_FMT:      'ONETRACK_TIME_FMT',
+  FONT_SCALE:    'ONETRACK_FONT_SCALE',
+  AUTO_CARRY:    'ONETRACK_AUTO_CARRY',
+  CONFIRM_DEL:   'ONETRACK_CONFIRM_DEL',
+  SHOW_DONE:     'ONETRACK_SHOW_DONE',
+  SOUND:         'ONETRACK_SOUND',
+  DEFAULT_PAGE:  'ONETRACK_DEFAULT_PAGE',
+  PRINT_STYLE:   'ONETRACK_PRINT_STYLE',
+};
+
+/* ── helpers ── */
+const html = document.documentElement;
+// Synchronous-style wrappers around OT (async under the hood)
+// get() returns cached value immediately after OT is ready
+let _otCache = {};
+const get = k => { const v = _otCache[k]; return (v === undefined) ? null : v; };
+const set = (k,v) => { _otCache[k] = v; OT.set(k, v); flashSaved(); };
+const del = k => { delete _otCache[k]; OT.remove(k); };
+
+function showToast(msg, dur=2200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), dur);
+}
+let _savedTimer;
+function flashSaved() {
+  const p = document.getElementById('savedPill');
+  p.classList.add('show');
+  clearTimeout(_savedTimer);
+  _savedTimer = setTimeout(()=>p.classList.remove('show'), 1600);
+}
+
+/* ── dark mode ── */
+const sysDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+function isDark() {
+  const v = get(K.DARK);
+  return v !== null ? v === '1' : sysDark();
+}
+function applyDark(dark) {
+  html.dataset.theme = dark ? 'dark' : '';
+  const btn = document.getElementById('toggleDark');
+  btn.classList.toggle('on', dark);
+  btn.setAttribute('aria-checked', dark);
+  applyAccent(); // accent values differ per mode
+}
+document.getElementById('toggleDark').onclick = () => {
+  const dark = !isDark();
+  set(K.DARK, dark ? '1' : '0');
+  applyDark(dark);
+};
+
+/* ── accent colour ── */
+function hexToSoft(hex, alpha=0.12) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+function applyAccent() {
+  const dark = isDark();
+  const lightHex = get(K.ACCENT) || '#c17b3f';
+  const darkHex  = get(K.ACCENT_DARK) || '#d4935a';
+  const hex = dark ? darkHex : lightHex;
+  const soft = hexToSoft(hex, dark ? 0.14 : 0.12);
+  html.style.setProperty('--accent', hex);
+  html.style.setProperty('--accent-soft', soft);
+  // mark active swatch
+  document.querySelectorAll('.swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.accent === lightHex);
+  });
+}
+document.getElementById('accentSwatches').addEventListener('click', e => {
+  const sw = e.target.closest('.swatch');
+  if (!sw) return;
+  set(K.ACCENT, sw.dataset.accent);
+  set(K.ACCENT_DARK, sw.dataset.accentDark);
+  applyAccent();
+});
+
+/* ── font scale ── */
+function applyFontScale(val) {
+  html.style.fontSize = (val * 16) + 'px';
+  document.querySelectorAll('#fontScaleSegment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(val));
+  });
+}
+document.getElementById('fontScaleSegment').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  const val = parseFloat(btn.dataset.val);
+  set(K.FONT_SCALE, val);
+  applyFontScale(val);
+});
+
+/* ── timezone ── */
+function buildTzSelect() {
+  const sel = document.getElementById('tzSelect');
+  const zones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [
+    'UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+    'America/Anchorage','Pacific/Honolulu','Europe/London','Europe/Paris','Europe/Berlin',
+    'Europe/Moscow','Asia/Kolkata','Asia/Colombo','Asia/Dubai','Asia/Singapore',
+    'Asia/Tokyo','Asia/Shanghai','Australia/Sydney','Pacific/Auckland'
+  ];
+  const saved = get(K.TZ) || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  zones.forEach(tz => {
+    const opt = document.createElement('option');
+    opt.value = tz; opt.textContent = tz.replace(/_/g,' ');
+    if (tz === saved) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  sel.onchange = () => set(K.TZ, sel.value);
+}
+
+/* ── print style ── */
+function applyPrintStyle(val) {
+  document.querySelectorAll('#printStyleSegment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === val);
+  });
+}
+document.getElementById('printStyleSegment').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  set(K.PRINT_STYLE, btn.dataset.val);
+  applyPrintStyle(btn.dataset.val);
+});
+
+/* ── week start ── */
+function applyWeekStart(val) {
+  document.querySelectorAll('#weekStartSegment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(val));
+  });
+}
+document.getElementById('weekStartSegment').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  set(K.WEEK_START, btn.dataset.val);
+  applyWeekStart(btn.dataset.val);
+});
+
+/* ── time format ── */
+function applyTimeFmt(val) {
+  document.querySelectorAll('#timeFormatSegment .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.val === String(val));
+  });
+}
+document.getElementById('timeFormatSegment').addEventListener('click', e => {
+  const btn = e.target.closest('.seg-btn');
+  if (!btn) return;
+  set(K.TIME_FMT, btn.dataset.val);
+  applyTimeFmt(btn.dataset.val);
+});
+
+/* ── generic toggle helper ── */
+function wireToggle(id, key, greenClass) {
+  const btn = document.getElementById(id);
+  function sync(v) {
+    btn.classList.toggle(greenClass ? 'on-green' : 'on', v);
+    btn.setAttribute('aria-checked', v);
+  }
+  const saved = get(key);
+  const initial = saved === null ? btn.getAttribute('aria-checked') === 'true' : saved === '1';
+  sync(initial);
+  btn.onclick = () => {
+    const next = btn.getAttribute('aria-checked') !== 'true';
+    set(key, next ? '1' : '0');
+    sync(next);
+  };
+}
+
+/* ── nav pin ── */
+function applyNavPin(pinned) {
+  document.getElementById('toggleNavPin').classList.toggle('on', pinned);
+  document.getElementById('toggleNavPin').setAttribute('aria-checked', pinned);
+  document.getElementById('onetrack-nav').classList.toggle('pinned', pinned);
+  document.body.classList.toggle('nav-pinned', pinned);
+}
+document.getElementById('toggleNavPin').onclick = () => {
+  const next = document.getElementById('toggleNavPin').getAttribute('aria-checked') !== 'true';
+  set(K.NAV_PIN, next ? '1' : '0');
+  applyNavPin(next);
+};
+
+/* ── default page ── */
+const dpSel = document.getElementById('defaultPageSelect');
+dpSel.value = get(K.DEFAULT_PAGE) || '00. Index.html';
+dpSel.onchange = () => set(K.DEFAULT_PAGE, dpSel.value);
+
+/* ── export ── */
+document.getElementById('exportBtn').onclick = async () => {
+  const data = await OT.getAll();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'onetrack-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  showToast('📦 Backup downloaded');
+};
+
+/* ── import ── */
+document.getElementById('importBtn').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (typeof data !== 'object') throw new Error();
+      await OT.setAll(data);
+      _otCache = { ...data };
+      showToast('✅ Data imported — reload pages to see changes', 3000);
+      initAll();
+    } catch {
+      showToast('❌ Invalid backup file');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+/* ── clear completed ── */
+document.getElementById('clearCompletedBtn').onclick = async () => {
+  if (!confirm('Remove all completed tasks from Days-Tasks? This cannot be undone.')) return;
+  const raw = await OT.get('TODAY_BLOCKS_V2');
+  if (!raw) { showToast('No task data found'); return; }
+  try {
+    const blocks = JSON.parse(raw);
+    Object.keys(blocks).forEach(slot => {
+      if (Array.isArray(blocks[slot])) {
+        blocks[slot] = blocks[slot].filter(t => !t.done);
+      }
+    });
+    await OT.set('TODAY_BLOCKS_V2', JSON.stringify(blocks));
+    _otCache['TODAY_BLOCKS_V2'] = JSON.stringify(blocks);
+    showToast('🧹 Completed tasks cleared');
+  } catch { showToast('❌ Could not parse task data'); }
+};
+
+/* ── reset settings ── */
+document.getElementById('resetSettingsBtn').onclick = () => {
+  if (!confirm('Reset all appearance and behaviour settings to defaults?')) return;
+  [K.DARK, K.ACCENT, K.ACCENT_DARK, K.TZ, K.WEEK_START, K.TIME_FMT,
+   K.FONT_SCALE, K.AUTO_CARRY, K.CONFIRM_DEL, K.SHOW_DONE, K.SOUND, K.DEFAULT_PAGE, K.PRINT_STYLE].forEach(del);
+  showToast('↺ Settings reset to defaults');
+  initAll();
+};
+
+/* ── wipe ── */
+document.getElementById('wipeBtn').onclick = async () => {
+  if (!confirm('⚠️ This will permanently delete ALL Onetrack data including tasks, planners, jobs and checklists.\n\nType DELETE to confirm.')) return;
+  const answer = prompt('Type DELETE to confirm wipe:');
+  if (answer !== 'DELETE') { showToast('Wipe cancelled'); return; }
+  await OT.clear();
+  _otCache = {};
+  showToast('💥 All data wiped. Refresh pages.', 3000);
+  initAll();
+};
+
+/* ── initAll: read all stored values and apply them ── */
+function initAll() {
+  // Dark mode
+  applyDark(isDark());
+
+  // Accent
+  applyAccent();
+
+  // Font scale
+  const fs = parseFloat(get(K.FONT_SCALE) || '1');
+  applyFontScale(fs);
+
+  // Timezone
+  buildTzSelect(); // rebuilds with correct selection
+
+  // Print style
+  applyPrintStyle(get(K.PRINT_STYLE) || 'bw');
+
+  // Week start
+  applyWeekStart(get(K.WEEK_START) || '0');
+
+  // Time format
+  applyTimeFmt(get(K.TIME_FMT) || '12');
+
+  // Toggles
+  wireToggle('toggleAutoCarry',    K.AUTO_CARRY,    true);
+  wireToggle('toggleConfirmDelete', K.CONFIRM_DEL,  true);
+  wireToggle('toggleShowCompleted', K.SHOW_DONE,    true);
+  wireToggle('toggleSound',         K.SOUND,        false);
+
+  // Nav pin
+  applyNavPin(get(K.NAV_PIN) === '1');
+
+  // Default page
+  dpSel.value = get(K.DEFAULT_PAGE) || '00. Index.html';
+}
+
+/* ── Boot: wait for OT file to be linked, then load everything ── */
+OT.onReady(async () => {
+  _otCache = await OT.getAll();
+  initAll();
+});
+</script>
+
+<script>
+/* ── Logo checkbox ── */
+(function(){
+  var el = document.getElementById('logoCheck');
+  if (!el) return;
+  var checked = false;
+  function runCheck() {
+    el.classList.remove('uncheck','is-checked'); void el.offsetWidth;
+    el.classList.add('animating');
+    el.addEventListener('animationend', function done(e) {
+      if (e.animationName === 'logoTickDraw') {
+        el.removeEventListener('animationend', done);
+        el.classList.remove('animating'); el.classList.add('is-checked'); checked = true;
+      }
+    });
+  }
+  function runUncheck() {
+    el.classList.remove('animating','is-checked'); void el.offsetWidth;
+    el.classList.add('uncheck');
+    el.addEventListener('animationend', function done(e) {
+      if (e.animationName === 'logoBoxUnfill') {
+        el.removeEventListener('animationend', done); el.classList.remove('uncheck'); checked = false;
+      }
+    });
+  }
+  setTimeout(runCheck, 500);
+  el.style.cursor = 'pointer';
+  el.addEventListener('click', function(){ if (checked) { runUncheck(); } else { runCheck(); } });
+})();
+</script>
+
+
+<script>
+/* ── Nav collapse/expand ── */
+(function(){
+  var KEY = 'ONETRACK_NAV_COLLAPSED';
+  var nav = document.getElementById('onetrack-nav');
+  var btn = document.getElementById('nav-toggle-btn');
+  var tab = document.getElementById('nav-show-tab');
+  if (!nav) return;
+
+  function isCollapsed() { return (_otCache['ONETRACK_NAV_COLLAPSED'] === '1'); }
+
+  function applyState(collapsed, animate) {
+    if (!animate) { nav.style.transition = 'none'; }
+    if (collapsed) {
+      nav.classList.add('nav-collapsed');
+      document.body.classList.add('nav-is-collapsed');
+      if (btn) btn.textContent = '›';
+      if (btn) btn.title = 'Show sidebar';
+    } else {
+      nav.classList.remove('nav-collapsed');
+      document.body.classList.remove('nav-is-collapsed');
+      if (btn) btn.textContent = '‹';
+      if (btn) btn.title = 'Hide sidebar';
+    }
+    if (!animate) {
+      // Force reflow then restore transition
+      void nav.offsetWidth;
+      nav.style.transition = '';
+    }
+  }
+
+  // Apply on load (no animation)
+  applyState(isCollapsed(), false);
+
+  // Toggle button in nav header
+  if (btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var next = !isCollapsed();
+      _otCache['ONETRACK_NAV_COLLAPSED'] = next ? '1' : '0';
+      OT.set('ONETRACK_NAV_COLLAPSED', next ? '1' : '0');
+      applyState(next, true);
+    });
+  }
+
+  // Floating show-tab click
+  if (tab) {
+    tab.addEventListener('click', function() {
+      _otCache['ONETRACK_NAV_COLLAPSED'] = '0';
+      OT.set('ONETRACK_NAV_COLLAPSED', '0');
+      applyState(false, true);
+    });
+  }
+})();
+</script>
+</body>
+</html>
