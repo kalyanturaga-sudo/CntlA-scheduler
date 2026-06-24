@@ -1,10 +1,9 @@
 /* ============================================================
-   storage.js  —  Onetrack Shared Storage Engine  v2.0
+   storage.js  —  Onetrack Shared Storage Engine  v3.0
    ------------------------------------------------------------
-   Upgrades v1.0 with persistent file handle via IndexedDB.
-   The file handle now survives browser restarts — Chrome only
-   asks for a one-click permission grant on each new session
-   instead of making you re-pick the file every time.
+   Phase 3: Google Drive API backend.
+   Works on ANY browser/device, including iPad Safari — replaces
+   the v2.0 File System Access API (Chrome-desktop-only) approach.
 
    PUBLIC API (unchanged — all HTML files work as-is):
      await OT.get(key)            → value (string) or null
@@ -17,133 +16,69 @@
      OT.onReady(fn)               → call fn when file is linked
      OT.isReady()                 → true/false
 
-   HOW IT WORKS (v2.0):
-   1. First time ever: banner appears → user picks onetrack-data.json
-      (ideally from a Google Drive desktop folder for cloud sync)
-   2. The FileSystemFileHandle is saved into IndexedDB under the
-      key OT_HANDLE. IndexedDB survives cache clears and restarts.
-   3. On every subsequent visit Chrome auto-restores the handle
-      and shows a small "Allow access?" chip at the top of the
-      page — one click, no file picker needed.
-   4. Every set() debounces and writes the full JSON to disk.
-   5. File lives in your Google Drive folder → free cloud sync
-      across devices that share the same Drive.
+   HOW IT WORKS (v3.0):
+   1. On load, shows a "Sign in with Google" banner.
+   2. User signs in once via Google Identity Services (popup).
+   3. Script searches Drive for a file named onetrack-data.json
+      (creates it if missing).
+   4. Reads its JSON content into memory.
+   5. Every set() debounces and PATCHes the full JSON back to
+      that Drive file via the Drive v3 REST API.
+   6. Access token lives in memory only — you'll re-click "Sign
+      in" once per browser session (token expires ~1 hour), but
+      no need to re-pick a file. This is normal for OAuth in a
+      pure client-side (no backend) app.
 
-   FUTURE (Phase 3 — Google Drive API):
-   Swap _readFile / _writeFile for Drive REST calls.
-   Nothing in the HTML files changes.
+   CONFIG — edit these two lines if you ever need to:
    ============================================================ */
+  const GOOGLE_CLIENT_ID = '356548061716-4fjrgh28vetubhuu2cf4ano859tnftuv.apps.googleusercontent.com';
+  const DRIVE_FILE_NAME  = 'onetrack-data.json';
+/* ============================================================ */
 
 (function (global) {
   'use strict';
 
-  /* ── Constants ── */
-  const IDB_NAME     = 'OT_STORAGE';       // IndexedDB database name
-  const IDB_STORE    = 'handles';           // object store name
-  const IDB_KEY      = 'OT_HANDLE';        // key under which handle is stored
-  const BANNER_ID    = 'ot-storage-banner';
-  const INDICATOR_ID = 'ot-sync-indicator';
+  const SCOPE        = 'https://www.googleapis.com/auth/drive';
+  const BANNER_ID     = 'ot-storage-banner';
+  const INDICATOR_ID  = 'ot-sync-indicator';
 
   /* ── Internal state ── */
-  let _fileHandle  = null;   // FileSystemFileHandle
+  let _accessToken = null;   // in-memory only, not persisted
+  let _fileId      = null;   // Drive file ID, once located/created
   let _cache       = null;   // in-memory mirror of the JSON file
   let _ready       = false;
-  let _readyQueue  = [];     // callbacks waiting for ready
-  let _writeTimer  = null;   // debounce timer for writes
+  let _readyQueue  = [];
+  let _writeTimer  = null;
+  let _tokenClient = null;
 
   /* ══════════════════════════════════════════════════════════
-     INDEXEDDB — persist and restore file handle across sessions
-  ══════════════════════════════════════════════════════════ */
-
-  function _openIDB() {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(IDB_NAME, 1);
-      req.onupgradeneeded = e => {
-        e.target.result.createObjectStore(IDB_STORE);
-      };
-      req.onsuccess = e => resolve(e.target.result);
-      req.onerror   = e => reject(e.target.error);
-    });
-  }
-
-  async function _saveHandleToIDB(handle) {
-    try {
-      const db = await _openIDB();
-      return new Promise((resolve, reject) => {
-        const tx  = db.transaction(IDB_STORE, 'readwrite');
-        const req = tx.objectStore(IDB_STORE).put(handle, IDB_KEY);
-        req.onsuccess = () => resolve();
-        req.onerror   = e  => reject(e.target.error);
-      });
-    } catch (err) {
-      console.warn('[Onetrack storage] Could not save handle to IDB:', err);
-    }
-  }
-
-  async function _loadHandleFromIDB() {
-    try {
-      const db = await _openIDB();
-      return new Promise((resolve, reject) => {
-        const tx  = db.transaction(IDB_STORE, 'readonly');
-        const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
-        req.onsuccess = e => resolve(e.target.result || null);
-        req.onerror   = e => reject(e.target.error);
-      });
-    } catch (err) {
-      console.warn('[Onetrack storage] Could not load handle from IDB:', err);
-      return null;
-    }
-  }
-
-  async function _clearHandleFromIDB() {
-    try {
-      const db = await _openIDB();
-      return new Promise((resolve) => {
-        const tx = db.transaction(IDB_STORE, 'readwrite');
-        tx.objectStore(IDB_STORE).delete(IDB_KEY);
-        tx.oncomplete = () => resolve();
-      });
-    } catch (err) { /* silent */ }
-  }
-
-  /* ══════════════════════════════════════════════════════════
-     INDICATOR — small dot in top-right showing sync status
-     green = saved  |  orange = saving  |  red = error  |  grey = unlinked
+     INDICATOR
   ══════════════════════════════════════════════════════════ */
 
   function _createIndicator() {
     if (document.getElementById(INDICATOR_ID)) return;
     const el = document.createElement('div');
     el.id = INDICATOR_ID;
-    el.title = 'Onetrack storage: saved';
+    el.title = 'Onetrack storage: unlinked';
     el.style.cssText = `
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #9e9891;
-      z-index: 99999;
-      transition: background 0.3s;
-      box-shadow: 0 0 0 2px rgba(158,152,145,0.25);
-      cursor: pointer;
+      position: fixed; top: 14px; right: 14px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #9e9891; z-index: 99999; transition: background 0.3s;
+      box-shadow: 0 0 0 2px rgba(158,152,145,0.25); cursor: pointer;
     `;
     document.body.appendChild(el);
-
-    /* Click indicator to re-pick file at any time */
-    el.addEventListener('click', () => _pickFile());
+    el.addEventListener('click', () => _signIn());
   }
 
   function _setIndicator(state) {
     const el = document.getElementById(INDICATOR_ID);
     if (!el) return;
     const states = {
-      saving:   { bg: '#c17b3f', sh: 'rgba(193,123,63,0.25)',  title: 'Onetrack: saving…'       },
-      saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: 'Onetrack: saved ✓'        },
+      saving:   { bg: '#c17b3f', sh: 'rgba(193,123,63,0.25)',  title: 'Onetrack: saving…' },
+      saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: 'Onetrack: saved ✓' },
       error:    { bg: '#c0392b', sh: 'rgba(192,57,43,0.25)',   title: 'Onetrack: error — click to re-link' },
-      unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: 'Onetrack: click to link file' },
-      waiting:  { bg: '#6b9fd4', sh: 'rgba(107,159,212,0.25)', title: 'Onetrack: click Allow in browser bar' },
+      unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: 'Onetrack: click to sign in' },
+      loading:  { bg: '#6b9fd4', sh: 'rgba(107,159,212,0.25)', title: 'Onetrack: connecting…' },
     };
     const s = states[state] || states.unlinked;
     el.style.background = s.bg;
@@ -152,59 +87,34 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     BANNER — shown when no file is linked
+     BANNER
   ══════════════════════════════════════════════════════════ */
 
-  function _showBanner(msg) {
+  function _showBanner(msg, btnLabel, onClick) {
     let banner = document.getElementById(BANNER_ID);
     if (!banner) {
       banner = document.createElement('div');
       banner.id = BANNER_ID;
       banner.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #1e1c18;
-        color: #f0ece6;
-        padding: 14px 20px;
-        border-radius: 12px;
-        font-family: 'DM Sans', sans-serif;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        z-index: 99999;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-        border: 1px solid rgba(255,255,255,0.1);
-        max-width: 500px;
-        width: calc(100vw - 40px);
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #1e1c18; color: #f0ece6; padding: 14px 20px;
+        border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+        display: flex; align-items: center; gap: 14px; z-index: 99999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+        max-width: 500px; width: calc(100vw - 40px);
       `;
       document.body.appendChild(banner);
     }
-
-    /* Default message — first time setup */
-    const text = msg || `
-      <strong style="color:#d4935a;">Link your data file</strong><br>
-      <span style="color:#a09890;font-size:12px;">
-        Pick <code style="background:rgba(255,255,255,0.1);padding:1px 5px;border-radius:4px;">onetrack-data.json</code>
-        — ideally from your Google Drive folder for cloud sync
-      </span>
-    `;
-
     banner.innerHTML = `
-      <span style="font-size:20px;">📂</span>
-      <span style="flex:1;line-height:1.5;">${text}</span>
+      <span style="font-size:20px;">☁️</span>
+      <span style="flex:1;line-height:1.5;">${msg}</span>
       <button id="ot-pick-btn" style="
         background:#3a8c5c;color:#fff;border:none;padding:9px 16px;
         border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;
         font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;
-      ">Pick File</button>
+      ">${btnLabel}</button>
     `;
-
-    document.getElementById('ot-pick-btn').addEventListener('click', async () => {
-      await _pickFile();
-    });
+    document.getElementById('ot-pick-btn').addEventListener('click', onClick);
   }
 
   function _hideBanner() {
@@ -213,115 +123,122 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     FILE HANDLE — pick new or restore from IDB
+     GOOGLE IDENTITY SERVICES — load script + token client
   ══════════════════════════════════════════════════════════ */
 
-  async function _pickFile() {
-    try {
-      const [handle] = await window.showOpenFilePicker({
-        types: [{ description: 'Onetrack Data', accept: { 'application/json': ['.json'] } }],
-        excludeAcceptAllOption: false,
-        multiple: false,
-      });
-      _fileHandle = handle;
-      await _saveHandleToIDB(handle);   // ← persist for next session
-      await _loadFromFile();
-      _hideBanner();
-      _setIndicator('saved');
-      _markReady();
-    } catch (err) {
-      if (err.name !== 'AbortError') {
-        console.error('[Onetrack storage] File pick error:', err);
-        _setIndicator('error');
+  function _loadGisScript() {
+    return new Promise((resolve, reject) => {
+      if (global.google && global.google.accounts && global.google.accounts.oauth2) {
+        resolve(); return;
       }
-    }
+      const s = document.createElement('script');
+      s.src = 'https://accounts.google.com/gsi/client';
+      s.async = true;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
   }
 
-  /* Try to restore the persisted handle from IndexedDB.
-     Returns true if successfully reconnected, false otherwise. */
-  async function _tryRestoreHandle() {
-    const handle = await _loadHandleFromIDB();
-    if (!handle) return false;
-
-    /* queryPermission tells us if we already have access,
-       or if Chrome needs a user gesture to re-grant it.      */
-    let perm = await handle.queryPermission({ mode: 'readwrite' });
-
-    if (perm === 'granted') {
-      /* Already allowed — no user interaction needed */
-      _fileHandle = handle;
-      await _loadFromFile();
-      _hideBanner();
-      _setIndicator('saved');
-      _markReady();
-      return true;
-    }
-
-    if (perm === 'prompt') {
-      /* Chrome needs one click to re-grant permission.
-         Show a minimal banner explaining this.          */
-      _setIndicator('waiting');
-      _showBanner(`
-        <strong style="color:#6b9fd4;">Almost ready</strong><br>
-        <span style="color:#a09890;font-size:12px;">
-          Click <strong style="color:#f0ece6;">Allow</strong> below to reconnect your data file —
-          no need to pick it again
-        </span>
-      `);
-
-      /* Replace button label */
-      const btn = document.getElementById('ot-pick-btn');
-      if (btn) {
-        btn.textContent = 'Allow Access';
-        btn.style.background = '#6b9fd4';
-        btn.onclick = async () => {
-          try {
-            perm = await handle.requestPermission({ mode: 'readwrite' });
-            if (perm === 'granted') {
-              _fileHandle = handle;
-              await _loadFromFile();
-              _hideBanner();
-              _setIndicator('saved');
-              _markReady();
-            } else {
-              /* User denied — fall back to full pick */
-              await _pickFile();
+  async function _signIn() {
+    try {
+      _setIndicator('loading');
+      await _loadGisScript();
+      if (!_tokenClient) {
+        _tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: SCOPE,
+          callback: async (resp) => {
+            if (resp.error) {
+              console.error('[Onetrack storage] OAuth error:', resp);
+              _setIndicator('error');
+              return;
             }
-          } catch (err) {
-            await _pickFile();
-          }
-        };
+            _accessToken = resp.access_token;
+            await _connectToFile();
+          },
+        });
       }
-      return true;   // handled (waiting for user click)
+      _tokenClient.requestAccessToken({ prompt: _accessToken ? '' : 'consent' });
+    } catch (err) {
+      console.error('[Onetrack storage] Sign-in error:', err);
+      _setIndicator('error');
     }
-
-    /* Permission denied — clear the stale handle, start fresh */
-    await _clearHandleFromIDB();
-    return false;
   }
 
   /* ══════════════════════════════════════════════════════════
-     READ / WRITE
+     DRIVE REST CALLS
   ══════════════════════════════════════════════════════════ */
 
+  async function _driveFetch(url, opts = {}) {
+    opts.headers = Object.assign({}, opts.headers, {
+      Authorization: 'Bearer ' + _accessToken,
+    });
+    const res = await fetch(url, opts);
+    if (res.status === 401) {
+      // token expired mid-session
+      _accessToken = null;
+      _hideBanner();
+      _setIndicator('unlinked');
+      _showBanner(
+        '<strong style="color:#d4935a;">Session expired</strong><br><span style="color:#a09890;font-size:12px;">Sign in again to keep syncing.</span>',
+        'Sign in',
+        _signIn
+      );
+      throw new Error('401 Unauthorized — token expired');
+    }
+    return res;
+  }
+
+  async function _findOrCreateFile() {
+    const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
+    const searchRes = await _driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`
+    );
+    const searchData = await searchRes.json();
+
+    if (searchData.files && searchData.files.length > 0) {
+      return searchData.files[0].id;
+    }
+
+    // Not found — create a fresh empty one
+    const createRes = await _driveFetch(
+      'https://www.googleapis.com/drive/v3/files',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' }),
+      }
+    );
+    const created = await createRes.json();
+    return created.id;
+  }
+
   async function _loadFromFile() {
+    const res = await _driveFetch(
+      `https://www.googleapis.com/drive/v3/files/${_fileId}?alt=media`
+    );
+    const text = await res.text();
     try {
-      const file = await _fileHandle.getFile();
-      const text = await file.text();
       _cache = text.trim() ? JSON.parse(text) : {};
     } catch (err) {
-      console.warn('[Onetrack storage] Could not read file, starting fresh:', err);
+      console.warn('[Onetrack storage] Could not parse Drive file, starting fresh:', err);
       _cache = {};
     }
   }
 
   async function _writeToFile() {
-    if (!_fileHandle) return;
+    if (!_fileId || !_accessToken) return;
     try {
       _setIndicator('saving');
-      const writable = await _fileHandle.createWritable();
-      await writable.write(JSON.stringify(_cache, null, 2));
-      await writable.close();
+      await _driveFetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(_cache, null, 2),
+        }
+      );
       _setIndicator('saved');
     } catch (err) {
       console.error('[Onetrack storage] Write error:', err);
@@ -329,13 +246,25 @@
     }
   }
 
-  /* Batches rapid saves into one disk write (300 ms debounce) */
   function _scheduleSave() {
     if (_writeTimer) clearTimeout(_writeTimer);
     _writeTimer = setTimeout(() => {
       _writeToFile();
       _writeTimer = null;
     }, 300);
+  }
+
+  async function _connectToFile() {
+    try {
+      _fileId = await _findOrCreateFile();
+      await _loadFromFile();
+      _hideBanner();
+      _setIndicator('saved');
+      _markReady();
+    } catch (err) {
+      console.error('[Onetrack storage] Connect error:', err);
+      _setIndicator('error');
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -349,49 +278,25 @@
   }
 
   /* ══════════════════════════════════════════════════════════
-     FALLBACK — browsers without File System Access API
-     (Firefox, Safari) — silently uses localStorage
-  ══════════════════════════════════════════════════════════ */
-
-  function _fallbackToLocalStorage() {
-    console.warn('[Onetrack storage] File System Access API unavailable. Using localStorage fallback.');
-    _cache = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      _cache[k] = localStorage.getItem(k);
-    }
-    _markReady();
-  }
-
-  /* ══════════════════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════════════════ */
 
-  async function _init() {
+  function _init() {
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', _init);
       return;
     }
-
     _createIndicator();
     _setIndicator('unlinked');
-
-    if (!('showOpenFilePicker' in window)) {
-      _fallbackToLocalStorage();
-      return;
-    }
-
-    /* Try to restore from IndexedDB first */
-    const restored = await _tryRestoreHandle();
-
-    /* Nothing in IDB — show the first-time setup banner */
-    if (!restored) {
-      _showBanner();
-    }
+    _showBanner(
+      '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
+      'Sign in',
+      _signIn
+    );
   }
 
   /* ══════════════════════════════════════════════════════════
-     PUBLIC API  (identical to v1.0 — no HTML changes needed)
+     PUBLIC API (identical to v1.0/v2.0 — no HTML changes needed)
   ══════════════════════════════════════════════════════════ */
 
   const OT = {
@@ -439,22 +344,27 @@
       await _writeToFile();
     },
 
-    /* Re-pick file at any time (also wired to indicator dot click) */
-    pickFile: _pickFile,
+    /* Manually trigger sign-in (also wired to indicator dot click) */
+    pickFile: _signIn,
+    signIn: _signIn,
 
-    /* Force re-read from disk (useful if file was edited externally) */
+    /* Force re-read from Drive (useful if file was edited elsewhere) */
     async reload() {
-      if (_fileHandle) await _loadFromFile();
+      if (_fileId) await _loadFromFile();
     },
 
-    /* Forget the saved handle — use if you want to link a different file */
+    /* Forget current session — forces a fresh sign-in */
     async forget() {
-      await _clearHandleFromIDB();
-      _fileHandle = null;
-      _cache      = null;
-      _ready      = false;
+      _accessToken = null;
+      _fileId      = null;
+      _cache       = null;
+      _ready       = false;
       _setIndicator('unlinked');
-      _showBanner();
+      _showBanner(
+        '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
+        'Sign in',
+        _signIn
+      );
     },
   };
 

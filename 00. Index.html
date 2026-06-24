@@ -80,6 +80,7 @@
     margin-left: var(--nav-width);
     padding: 52px 48px;
     min-height: 100vh;
+    min-height: 100dvh; /* fixes Safari address-bar jump */
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
 
@@ -173,7 +174,7 @@
   @media (max-width: 700px) {
     :root { --nav-width: 0px; }
     .nav { display: none; }
-    .main { padding: 32px 16px; }
+    .main { padding: 32px 16px; justify-content: flex-start; padding-top: 56px; }
     .page-footer { left: 0; }
   }
 
