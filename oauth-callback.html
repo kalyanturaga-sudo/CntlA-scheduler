@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Signing in…</title>
+<style>
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #1e1c18; color: #f0ece6;
+    display: flex; align-items: center; justify-content: center;
+    height: 100vh; margin: 0; text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div>☁️ Signing in…</div>
+  <script>
+    (function () {
+      const hash = window.location.hash.substring(1);
+      const params = new URLSearchParams(hash);
+      const token = params.get('access_token');
+      const expiresIn = params.get('expires_in');
+      const error = params.get('error');
+
+      if (error) {
+        sessionStorage.setItem('OT_OAUTH_ERROR', error);
+      } else if (token) {
+        sessionStorage.setItem('OT_ACCESS_TOKEN', token);
+        sessionStorage.setItem('OT_TOKEN_EXPIRES', String(Date.now() + (parseInt(expiresIn || '3600', 10) * 1000)));
+      }
+
+      const returnPath = sessionStorage.getItem('OT_RETURN_PATH') || './';
+      window.location.replace(returnPath);
+    })();
+  </script>
+</body>
+</html>

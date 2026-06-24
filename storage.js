@@ -1,38 +1,39 @@
 /* ============================================================
-   storage.js  —  Onetrack Shared Storage Engine  v3.0
+   storage.js  —  Onetrack Shared Storage Engine  v4.0
    ------------------------------------------------------------
-   Phase 3: Google Drive API backend.
-   Works on ANY browser/device, including iPad Safari — replaces
-   the v2.0 File System Access API (Chrome-desktop-only) approach.
+   v4.0: Switched from popup-based Google sign-in (GIS token
+   client) to a full-page REDIRECT-based OAuth flow.
 
-   PUBLIC API (unchanged — all HTML files work as-is):
-     await OT.get(key)            → value (string) or null
-     await OT.set(key, value)     → void
-     await OT.remove(key)         → void
-     await OT.keys()              → string[]
-     await OT.clear()             → void
-     await OT.getAll()            → { key: value, ... }
-     await OT.setAll(obj)         → void  (used by import)
-     OT.onReady(fn)               → call fn when file is linked
-     OT.isReady()                 → true/false
+   WHY: Safari (especially iPadOS) blocks the popup from
+   properly communicating its token back to the opening page
+   due to Intelligent Tracking Prevention — this caused an
+   endless "sign in → popup closes → still not signed in" loop.
+   A top-level redirect has no such restriction.
 
-   HOW IT WORKS (v3.0):
-   1. On load, shows a "Sign in with Google" banner.
-   2. User signs in once via Google Identity Services (popup).
-   3. Script searches Drive for a file named onetrack-data.json
-      (creates it if missing).
-   4. Reads its JSON content into memory.
-   5. Every set() debounces and PATCHes the full JSON back to
-      that Drive file via the Drive v3 REST API.
-   6. Access token lives in memory only — you'll re-click "Sign
-      in" once per browser session (token expires ~1 hour), but
-      no need to re-pick a file. This is normal for OAuth in a
-      pure client-side (no backend) app.
+   PUBLIC API — unchanged, all HTML files work as-is:
+     await OT.get(key) / OT.set(key,value) / OT.remove(key)
+     await OT.keys() / OT.getAll() / OT.setAll(obj) / OT.clear()
+     OT.onReady(fn)  /  OT.isReady()
 
-   CONFIG — edit these two lines if you ever need to:
+   HOW IT WORKS (v4.0):
+   1. Banner shows "Sign in to sync".
+   2. Tapping Sign in saves the current page URL, then does a
+      normal full-page redirect to Google's consent screen.
+   3. Google redirects back to oauth-callback.html (a single
+      fixed page, registered as the OAuth redirect URI).
+   4. That page grabs the token from the URL, stores it in
+      sessionStorage, and redirects back to the original page.
+   5. This storage.js picks up the token from sessionStorage on
+      load — no popup, no GIS script, no ITP issues.
+   6. Token lives in sessionStorage (this browser tab/session
+      only) — expires after ~1 hour, same re-sign-in cadence as
+      before, just via redirect instead of popup.
+
+   CONFIG:
    ============================================================ */
   const GOOGLE_CLIENT_ID = '356548061716-4fjrgh28vetubhuu2cf4ano859tnftuv.apps.googleusercontent.com';
   const DRIVE_FILE_NAME  = 'onetrack-data.json';
+  const REDIRECT_URI     = 'https://kalyanturaga-sudo.github.io/onetrack-scheduler/oauth-callback.html';
 /* ============================================================ */
 
 (function (global) {
@@ -43,13 +44,12 @@
   const INDICATOR_ID  = 'ot-sync-indicator';
 
   /* ── Internal state ── */
-  let _accessToken = null;   // in-memory only, not persisted
-  let _fileId      = null;   // Drive file ID, once located/created
-  let _cache       = null;   // in-memory mirror of the JSON file
+  let _accessToken = null;
+  let _fileId      = null;
+  let _cache       = null;
   let _ready       = false;
   let _readyQueue  = [];
   let _writeTimer  = null;
-  let _tokenClient = null;
 
   /* ══════════════════════════════════════════════════════════
      INDICATOR
@@ -122,48 +122,52 @@
     if (el) el.remove();
   }
 
-  /* ══════════════════════════════════════════════════════════
-     GOOGLE IDENTITY SERVICES — load script + token client
-  ══════════════════════════════════════════════════════════ */
-
-  function _loadGisScript() {
-    return new Promise((resolve, reject) => {
-      if (global.google && global.google.accounts && global.google.accounts.oauth2) {
-        resolve(); return;
-      }
-      const s = document.createElement('script');
-      s.src = 'https://accounts.google.com/gsi/client';
-      s.async = true;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
+  function _signInBannerMsg() {
+    return [
+      '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
+      'Sign in',
+      _signIn,
+    ];
   }
 
-  async function _signIn() {
-    try {
-      _setIndicator('loading');
-      await _loadGisScript();
-      if (!_tokenClient) {
-        _tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: GOOGLE_CLIENT_ID,
-          scope: SCOPE,
-          callback: async (resp) => {
-            if (resp.error) {
-              console.error('[Onetrack storage] OAuth error:', resp);
-              _setIndicator('error');
-              return;
-            }
-            _accessToken = resp.access_token;
-            await _connectToFile();
-          },
-        });
-      }
-      _tokenClient.requestAccessToken({ prompt: _accessToken ? '' : 'consent' });
-    } catch (err) {
-      console.error('[Onetrack storage] Sign-in error:', err);
+  /* ══════════════════════════════════════════════════════════
+     REDIRECT-BASED SIGN-IN
+  ══════════════════════════════════════════════════════════ */
+
+  function _signIn() {
+    sessionStorage.setItem('OT_RETURN_PATH', window.location.href);
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'token',
+      scope: SCOPE,
+      include_granted_scopes: 'true',
+      prompt: 'consent',
+    });
+    window.location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+  }
+
+  function _checkForExistingToken() {
+    const token   = sessionStorage.getItem('OT_ACCESS_TOKEN');
+    const expires = sessionStorage.getItem('OT_TOKEN_EXPIRES');
+    const oauthErr = sessionStorage.getItem('OT_OAUTH_ERROR');
+
+    if (oauthErr) {
+      sessionStorage.removeItem('OT_OAUTH_ERROR');
+      console.error('[Onetrack storage] OAuth error:', oauthErr);
       _setIndicator('error');
+      _showBanner(
+        `<strong style="color:#c0392b;">Sign-in failed</strong><br><span style="color:#a09890;font-size:12px;">${oauthErr}. Try again.</span>`,
+        'Sign in', _signIn
+      );
+      return false;
     }
+
+    if (token && expires && Date.now() < parseInt(expires, 10)) {
+      _accessToken = token;
+      return true;
+    }
+    return false;
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -176,14 +180,14 @@
     });
     const res = await fetch(url, opts);
     if (res.status === 401) {
-      // token expired mid-session
       _accessToken = null;
+      sessionStorage.removeItem('OT_ACCESS_TOKEN');
+      sessionStorage.removeItem('OT_TOKEN_EXPIRES');
       _hideBanner();
       _setIndicator('unlinked');
       _showBanner(
         '<strong style="color:#d4935a;">Session expired</strong><br><span style="color:#a09890;font-size:12px;">Sign in again to keep syncing.</span>',
-        'Sign in',
-        _signIn
+        'Sign in', _signIn
       );
       throw new Error('401 Unauthorized — token expired');
     }
@@ -201,7 +205,6 @@
       return searchData.files[0].id;
     }
 
-    // Not found — create a fresh empty one
     const createRes = await _driveFetch(
       'https://www.googleapis.com/drive/v3/files',
       {
@@ -256,6 +259,7 @@
 
   async function _connectToFile() {
     try {
+      _setIndicator('loading');
       _fileId = await _findOrCreateFile();
       await _loadFromFile();
       _hideBanner();
@@ -287,16 +291,17 @@
       return;
     }
     _createIndicator();
-    _setIndicator('unlinked');
-    _showBanner(
-      '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
-      'Sign in',
-      _signIn
-    );
+
+    if (_checkForExistingToken()) {
+      _connectToFile();
+    } else {
+      _setIndicator('unlinked');
+      _showBanner(..._signInBannerMsg());
+    }
   }
 
   /* ══════════════════════════════════════════════════════════
-     PUBLIC API (identical to v1.0/v2.0 — no HTML changes needed)
+     PUBLIC API
   ══════════════════════════════════════════════════════════ */
 
   const OT = {
@@ -344,27 +349,22 @@
       await _writeToFile();
     },
 
-    /* Manually trigger sign-in (also wired to indicator dot click) */
     pickFile: _signIn,
     signIn: _signIn,
 
-    /* Force re-read from Drive (useful if file was edited elsewhere) */
     async reload() {
       if (_fileId) await _loadFromFile();
     },
 
-    /* Forget current session — forces a fresh sign-in */
     async forget() {
       _accessToken = null;
       _fileId      = null;
       _cache       = null;
       _ready       = false;
+      sessionStorage.removeItem('OT_ACCESS_TOKEN');
+      sessionStorage.removeItem('OT_TOKEN_EXPIRES');
       _setIndicator('unlinked');
-      _showBanner(
-        '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
-        'Sign in',
-        _signIn
-      );
+      _showBanner(..._signInBannerMsg());
     },
   };
 
