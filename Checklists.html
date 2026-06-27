@@ -915,6 +915,31 @@ function handleItemDrop(e, toTabId, toSecId, toItems){
     insertIdx = insertBefore===null ? toItems.length : insertBefore;
   }
   insertIdx = Math.max(0, Math.min(insertIdx, toItems.length));
+
+  /* ── Group-integrity guard ──
+     A "group" = a level-0 parent row plus its trailing level>0 children.
+     - Dragging a PARENT group: never allowed to land mid-way through another
+       group's children — snap to whichever group boundary is nearer.
+     - Dragging a single CHILD item: allowed to land mid-group (it becomes a
+       child of that group, level forced to 1) or at a boundary between
+       groups (it becomes its own parent, level forced to 0). */
+  const isParentDrag = group[0].level===0;
+  const midGroup = insertIdx < toItems.length && toItems[insertIdx].level>0;
+  if(midGroup){
+    if(isParentDrag){
+      let i=insertIdx;
+      while(i>0 && toItems[i-1].level>0) i--;
+      const groupParentIdx = Math.max(0, i-1);
+      let groupEnd = groupParentIdx+1;
+      while(groupEnd<toItems.length && toItems[groupEnd].level>0) groupEnd++;
+      insertIdx = (insertIdx-groupParentIdx <= groupEnd-insertIdx) ? groupParentIdx : groupEnd;
+    } else {
+      group.forEach(it=>{it.level=1;});
+    }
+  } else if(!isParentDrag){
+    group.forEach(it=>{it.level=0;});
+  }
+  insertIdx = Math.max(0, Math.min(insertIdx, toItems.length));
   toItems.splice(insertIdx, 0, ...group);
 
   /* save both sides */
@@ -1262,6 +1287,26 @@ function switchTab(tab){
   restoreOrder(); wire();
 })();
 
+// ── One-time migration: old flat "Lunch Box" list → two independent lists ──
+function migrateLunchboxSplit(sections, data, oldId, leftId, rightId, leftLabel, rightLabel, leftIcon, rightIcon, leftGroupCount){
+  const idx = sections.findIndex(s=>s.id===oldId);
+  if(idx===-1 || sections[idx].split) return false;
+  const oldArr = data[oldId];
+  if(oldArr){
+    const groups=[];
+    for(const it of oldArr){
+      if(it.level===0) groups.push([it]);
+      else if(groups.length) groups[groups.length-1].push(it);
+      else groups.push([it]);
+    }
+    data[leftId]  = groups.slice(0, leftGroupCount).flat();
+    data[rightId] = groups.slice(leftGroupCount).flat();
+    delete data[oldId];
+  }
+  sections[idx] = Object.assign({}, sections[idx], {split:{left:{id:leftId,label:leftLabel,icon:leftIcon},right:{id:rightId,label:rightLabel,icon:rightIcon}}});
+  return true;
+}
+
 /* ============================================================
    FT JOB — storage: FT_ROLE_CHECKLIST_V1 / FT_ROLE_SECTIONS_V1
    ============================================================ */
@@ -1273,7 +1318,7 @@ const FT_DEFAULT_SECTIONS=[
   {id:"ft_generalprep", label:"General Prep",  icon:"📋", cls:"sec-eve",    split:{left:{id:"ft_eve",    label:"Actions", icon:"🌙"},right:{id:"ft_mental",  label:"Mindset",  icon:"🧠"}}},
   {id:"ft_toupee",      label:"Toupee",         icon:"🧩", cls:"sec-mental"},
   {id:"ft_bag",         label:"Bag",            icon:"🎒", cls:"sec-tech",   split:{left:{id:"ft_tech",   label:"Tech",    icon:"🔌"},right:{id:"ft_ess",      label:"Misc",     icon:"🎒"}}},
-  {id:"ft_lunchbox",    label:"Lunch Box",      icon:"🍱", cls:"sec-c1"},
+  {id:"ft_lunchbox",    label:"Lunch Box",      icon:"🍱", cls:"sec-c1",     split:{left:{id:"ft_lunchbox_extras", label:"Hot/Extras", icon:"🍳"},right:{id:"ft_lunchbox_snacks", label:"Snacks & Veg", icon:"🥕"}}},
 ];
 const FT_DEFAULT_ITEMS={
   ft_eve:[
@@ -1320,12 +1365,14 @@ const FT_DEFAULT_ITEMS={
     {text:"ID card",done:false,level:0},
     {text:"Mask",done:false,level:0}
   ],
-  ft_lunchbox:[
+  ft_lunchbox_extras:[
     {text:"If working on night shift",done:false,level:0},
     {text:"Take coffee powder",done:false,level:1},
     {text:"Take round bread for Omlette",done:false,level:1},
     {text:"Take premade omlette",done:false,level:1},
-    {text:"Standard Lunch/Dinner",done:false,level:0},
+    {text:"Standard Lunch/Dinner",done:false,level:0}
+  ],
+  ft_lunchbox_snacks:[
     {text:"Carrots",done:false,level:0},
     {text:"Cucumber",done:false,level:0},
     {text:"Chips",done:false,level:0},
@@ -1339,6 +1386,7 @@ function ftSaveSections(){_cset(FT_META_KEY,JSON.stringify(ftSECTIONS));}
 function ftLoadData(){const r=_cget(FT_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(FT_DEFAULT_ITEMS));ftSaveData(d);return d;}
 function ftSaveData(d){_cset(FT_KEY,JSON.stringify(d));UndoManager.push('ft');}
 let ftSECTIONS=ftLoadSections(), ftData=ftLoadData();
+if(migrateLunchboxSplit(ftSECTIONS, ftData, "ft_lunchbox","ft_lunchbox_extras","ft_lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ftSaveSections(); ftSaveData(ftData); }
 UndoManager.register('ft',
   ()=>({data:JSON.parse(JSON.stringify(ftData)),sections:JSON.parse(JSON.stringify(ftSECTIONS))}),
   (snap)=>{ftData=snap.data;ftSECTIONS=snap.sections;renderChecklist(ftCfg());}
@@ -1447,7 +1495,7 @@ const PT_DEFAULT_SECTIONS=[
   {id:"toupee",      label:"Toupee",         icon:"🧩", cls:"sec-mental"},
   {id:"bag",         label:"Bag",            icon:"🎒", cls:"sec-tech",   split:{left:{id:"tech",   label:"Tech",    icon:"🔌"},right:{id:"ess",      label:"Misc",     icon:"🎒"}}},
   {id:"showerkit",   label:"Shower Kit",     icon:"🗂️", cls:"sec-c6"},
-  {id:"lunchbox",    label:"Lunch Box",      icon:"🍱", cls:"sec-c1"},
+  {id:"lunchbox",    label:"Lunch Box",      icon:"🍱", cls:"sec-c1",       split:{left:{id:"lunchbox_extras", label:"Hot/Extras", icon:"🍳"},right:{id:"lunchbox_snacks", label:"Snacks & Veg", icon:"🥕"}}},
 ];
 const PT_DEFAULT_ITEMS={
   eve:[
@@ -1512,12 +1560,14 @@ const PT_DEFAULT_ITEMS={
     {text:"Shaving cream",done:false,level:0},
     {text:"Bathroom slippers",done:false,level:0}
   ],
-  lunchbox:[
+  lunchbox_extras:[
     {text:"If working on night shift",done:false,level:0},
     {text:"Take coffee powder",done:false,level:1},
     {text:"Take round bread for Omlette",done:false,level:1},
     {text:"Take premade omlette",done:false,level:1},
-    {text:"Standard Lunch/Dinner",done:false,level:0},
+    {text:"Standard Lunch/Dinner",done:false,level:0}
+  ],
+  lunchbox_snacks:[
     {text:"Carrots",done:false,level:0},
     {text:"Cucumber",done:false,level:0},
     {text:"Chips",done:false,level:0},
@@ -1531,6 +1581,7 @@ function ptSaveSections(){_cset(PT_META_KEY,JSON.stringify(ptSECTIONS));}
 function ptLoadData(){const r=_cget(PT_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(PT_DEFAULT_ITEMS));ptSaveData(d);return d;}
 function ptSaveData(d){_cset(PT_KEY,JSON.stringify(d));UndoManager.push('pt');}
 let ptSECTIONS=ptLoadSections(), ptData=ptLoadData();
+if(migrateLunchboxSplit(ptSECTIONS, ptData, "lunchbox","lunchbox_extras","lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ptSaveSections(); ptSaveData(ptData); }
 UndoManager.register('pt',
   ()=>({data:JSON.parse(JSON.stringify(ptData)),sections:JSON.parse(JSON.stringify(ptSECTIONS))}),
   (snap)=>{ptData=snap.data;ptSECTIONS=snap.sections;renderChecklist(ptCfg());}
