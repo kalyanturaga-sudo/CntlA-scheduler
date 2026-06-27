@@ -147,34 +147,6 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .tab.drag-over { box-shadow: -3px 0 0 var(--accent); }
 .tab-icon { font-size: 14px; }
 
-.topbar-right {
-  display: flex;
-  align-items: center;
-  padding: 0 14px;
-  border-left: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.master-dark-toggle {
-  width: 40px; height: 22px;
-  background: var(--border);
-  border-radius: 11px;
-  position: relative;
-  cursor: pointer;
-  border: none;
-  transition: background 0.2s;
-  flex-shrink: 0;
-}
-.master-dark-toggle::after {
-  content: '';
-  position: absolute;
-  width: 16px; height: 16px;
-  background: var(--text2);
-  border-radius: 50%;
-  top: 3px; left: 3px;
-  transition: transform 0.2s, background 0.2s;
-}
-[data-theme="dark"] .master-dark-toggle { background: var(--accent); }
-[data-theme="dark"] .master-dark-toggle::after { transform: translateX(18px); background: #fff; }
 
 /* ── PANELS ── */
 .panels {
@@ -503,7 +475,6 @@ tr:hover td { background: var(--surface2); }
 .restore-zone:hover, .restore-zone.drag-over { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 .restore-zone input { display: none; }
 
-.bk-log { background: var(--surface2); border-radius: 10px; border: 1px solid var(--border); padding: 12px 16px; font-size: 12px; color: var(--text2); font-family: monospace; max-height: 160px; overflow-y: auto; line-height: 1.8; }
 .log-ok { color: var(--green); }
 .log-err { color: var(--red); }
 .log-info { color: #3a6ba0; }
@@ -677,15 +648,9 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 <!-- ── TOP TAB BAR ── -->
 <div class="topbar">
   <div class="tab-strip" id="tabStrip">
-    <div class="tab active" data-panel="panel-library" draggable="true" id="tab-library">
+    <div class="tab active" id="tab-library">
       <span class="tab-icon">📚</span> Library Search
     </div>
-    <div class="tab" data-panel="panel-backup" draggable="true" id="tab-backup">
-      <span class="tab-icon">💾</span> Backup
-    </div>
-  </div>
-  <div class="topbar-right">
-    <button class="master-dark-toggle" id="masterDarkToggle" title="Toggle dark mode"></button>
   </div>
 </div>
 
@@ -762,92 +727,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 </div>
 </div><!-- /panel-library -->
 
-<!-- ════════════════════════════════════════════
-     PANEL 2 · BACKUP
-     ════════════════════════════════════════════ -->
-<div class="panel" id="panel-backup">
-<div class="main">
-
-  <!-- STATS -->
-  <div class="stats" id="bk-statsBar"></div>
-
-  <!-- HERO -->
-  <div class="hero">
-    <div class="hero-icon">💾</div>
-    <div class="hero-title">One-click backup</div>
-    <div class="hero-sub">Captures every key stored by every page in your planner.<br>Save the file somewhere safe — you can restore it any time.</div>
-    <div class="hero-actions">
-      <button class="btn btn-backup" onclick="doBackup()">⬇ Download backup now</button>
-    </div>
-    <div style="margin-top:14px;font-size:11px;color:var(--text3);" id="bk-lastBackupMsg"></div>
-  </div>
-
-  <!-- KEYS TABLE -->
-  <div class="card">
-    <div class="card-hdr">
-      <div>
-        <div class="card-hdr-title">Current localStorage contents</div>
-        <div class="card-hdr-sub" id="bk-keysSub">Scanning…</div>
-      </div>
-      <button class="btn" onclick="refreshKeys()" style="font-size:12px;padding:5px 12px;">↺ Refresh</button>
-    </div>
-    <div id="bk-keysTable"></div>
-  </div>
-
-  <!-- RESTORE -->
-  <div class="card">
-    <div class="card-hdr">
-      <div>
-        <div class="card-hdr-title">Restore from backup</div>
-        <div class="card-hdr-sub">Load a previously saved JSON file back into localStorage</div>
-      </div>
-    </div>
-    <div style="padding:16px;">
-      <div class="restore-zone" id="bk-dropZone" onclick="document.getElementById('bk-fileInput').click()"
-           ondragover="dzOver(event)" ondragleave="dzLeave(event)" ondrop="dzDrop(event)">
-        <input type="file" id="bk-fileInput" accept=".json" onchange="loadFile(this.files[0])">
-        <div style="font-size:22px;margin-bottom:6px;">📂</div>
-        <div>Click to choose a backup file, or drag and drop here</div>
-        <div style="font-size:11px;margin-top:4px;">Accepts <code>data_DD-MMM-YY-HH-SS.json</code> files</div>
-      </div>
-      <div id="bk-restoreLog" class="bk-log" style="margin-top:12px;display:none;"></div>
-    </div>
-  </div>
-
-  <!-- HOUSEKEEPING -->
-  <div class="card">
-    <div class="card-hdr">
-      <div>
-        <div class="card-hdr-title">🧹 Housekeeping — remove stale keys</div>
-        <div class="card-hdr-sub" id="bk-cleanSub">Checking for old/superseded keys…</div>
-      </div>
-      <button class="btn btn-clear" id="bk-cleanBtn" onclick="doCleanup()" style="display:none;">Delete stale keys</button>
-    </div>
-    <div id="bk-cleanTable"></div>
-    <div id="bk-cleanLog" class="bk-log" style="margin:0 16px 16px;display:none;"></div>
-  </div>
-
-  <!-- BACKUP HISTORY -->
-  <div class="card">
-    <div class="card-hdr">
-      <div>
-        <div class="card-hdr-title">Backup history</div>
-        <div class="card-hdr-sub">Re-download any backup taken this session</div>
-      </div>
-      <button class="btn btn-clear" onclick="clearHistory()" style="font-size:11px;padding:4px 10px;">Clear</button>
-    </div>
-    <div id="bk-histList"></div>
-  </div>
-
-</div>
-
-<div class="footer-actions">
-  <div class="spacer"></div>
-  <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Library-Backup · Built 31 Mar 26 · v2.1</span>
-  <div class="spacer"></div>
-</div>
-</div><!-- /panel-backup -->
-
 </div><!-- /panels -->
 
 <!-- ══════════════════════════════════════════
@@ -870,87 +749,11 @@ function resolveTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 html.setAttribute('data-theme', resolveTheme() ? 'dark' : '');
-document.getElementById('masterDarkToggle').addEventListener('click', () => {
-  const next = html.getAttribute('data-theme') === 'dark' ? '' : 'dark';
-  html.setAttribute('data-theme', next);
-  _cset(DARK_KEY, next ? '1' : '0');
-});
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
   if (_cget(DARK_KEY) === null) {
     html.setAttribute('data-theme', window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : '');
   }
 });
-
-/* ── TAB SWITCHING ── */
-const TAB_ORDER_KEY = 'LIB_BACKUP_TAB_ORDER';
-
-const TAB_TITLES = {
-  'panel-library': 'Onetrack · Library Search',
-  'panel-backup':  'Onetrack · Backup',
-};
-
-function switchTab(panelId) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.panel === panelId));
-  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === panelId));
-  document.title = TAB_TITLES[panelId] || 'Onetrack · Library & Backup';
-  if (panelId === 'panel-backup') refreshKeys();
-}
-
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => switchTab(tab.dataset.panel));
-});
-
-/* ── TAB DRAG-AND-DROP REORDER ── */
-let dragSrcTab = null;
-const tabStrip = document.getElementById('tabStrip');
-
-function saveTabs() {
-  const order = [...tabStrip.querySelectorAll('.tab')].map(t => t.id);
-  _cset(TAB_ORDER_KEY, JSON.stringify(order));
-}
-
-function restoreTabs() {
-  try {
-    const order = JSON.parse(_cget(TAB_ORDER_KEY));
-    if (!order) return;
-    order.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) tabStrip.appendChild(el);
-    });
-  } catch(e) {}
-}
-
-tabStrip.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('dragstart', e => {
-    dragSrcTab = tab;
-    setTimeout(() => tab.classList.add('dragging'), 0);
-    e.dataTransfer.effectAllowed = 'move';
-  });
-  tab.addEventListener('dragend', () => {
-    tab.classList.remove('dragging');
-    tabStrip.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
-    saveTabs();
-  });
-  tab.addEventListener('dragover', e => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    tabStrip.querySelectorAll('.tab').forEach(t => t.classList.remove('drag-over'));
-    if (tab !== dragSrcTab) tab.classList.add('drag-over');
-  });
-  tab.addEventListener('drop', e => {
-    e.preventDefault();
-    if (dragSrcTab && dragSrcTab !== tab) {
-      const tabs = [...tabStrip.querySelectorAll('.tab')];
-      const srcIdx = tabs.indexOf(dragSrcTab);
-      const tgtIdx = tabs.indexOf(tab);
-      if (srcIdx < tgtIdx) tab.after(dragSrcTab);
-      else tab.before(dragSrcTab);
-    }
-    tab.classList.remove('drag-over');
-  });
-});
-
-restoreTabs();
 
 /* ══════════════════════════════════════════
    LIBRARY SEARCH LOGIC
@@ -1142,284 +945,11 @@ document.addEventListener('keydown', e => {
   }
 });
 
-/* ══════════════════════════════════════════
-   BACKUP LOGIC
-   ══════════════════════════════════════════ */
-const BACKUP_HIST_KEY = 'planner_backup_history';
-
-const KNOWN = {
-  'TODAY_BLOCKS_V2':    '02. Today',
-  'TODAY_INTENTION':    '02. Today — intention',
-  'TODAY_DARK':         '02. Today — theme',
-  'TOMORROW_BLOCKS_V2': '03. Tomorrow',
-  'jht5':               '26. Jobs Priority & Tracking',
-  'jht4':               '26. Jobs Priority & Tracking (old)',
-  'jht_th':             '26. Jobs Priority — theme',
-  'planner_backup_history': 'Backup page — history',
-};
-
-function friendlyName(key) { return KNOWN[key] || key; }
-
-function ts() {
-  const n = new Date();
-  const mm = String(n.getMonth()+1).padStart(2,'0');
-  const dd = String(n.getDate()).padStart(2,'0');
-  const yy = String(n.getFullYear()).slice(-2);
-  const hh = String(n.getHours()).padStart(2,'0');
-  const ss = String(n.getSeconds()).padStart(2,'0');
-  return `${mm}${dd}${yy}${hh}${ss}`;
-}
-
-function getAllKeys() {
-  return Object.keys(_otCache).sort();
-}
-
-function byteSize(str) {
-  const b = new Blob([str]).size;
-  return b < 1024 ? b + ' B' : (b/1024).toFixed(1) + ' KB';
-}
-
-function refreshKeys() {
-  const keys = getAllKeys();
-  const sub = document.getElementById('bk-keysSub');
-  const tbl = document.getElementById('bk-keysTable');
-  const statsBar = document.getElementById('bk-statsBar');
-
-  const totalSize = keys.reduce((s,k) => s + new Blob([_cget(k)||'']).size, 0);
-  sub.textContent = `${keys.length} key${keys.length !== 1 ? 's' : ''} found · ${(totalSize/1024).toFixed(1)} KB total`;
-
-  const dataKeys = keys.filter(k => k !== DARK_KEY && k !== 'planner_backup_history' && !k.endsWith('_th') && !k.endsWith('DARK') && !k.endsWith('INTENTION'));
-  statsBar.innerHTML = `
-    <div class="chip">Total keys <strong>${keys.length}</strong></div>
-    <div class="chip">Data keys <strong>${dataKeys.length}</strong></div>
-    <div class="chip">Total size <strong>${(totalSize/1024).toFixed(1)} KB</strong></div>
-    <div class="chip">Last backup <strong id="bk-lastBkpChip">—</strong></div>
-  `;
-  updateLastBackupChip();
-
-  if (keys.length === 0) {
-    tbl.innerHTML = `<div style="padding:20px 18px;font-size:13px;color:var(--text3);font-style:italic;">No data found. Open your planner pages first to generate data.</div>`;
-    return;
-  }
-
-  let h = `<table><thead><tr><th>Key</th><th>Page</th><th>Size</th><th>Preview</th></tr></thead><tbody>`;
-  keys.forEach(k => {
-    const val = _cget(k) || '';
-    const sz = byteSize(val);
-    let preview = val.length > 60 ? val.slice(0,60) + '…' : val;
-    try { const p = JSON.parse(val); preview = Array.isArray(p) ? `[array · ${p.length} items]` : typeof p === 'object' ? `{object · ${Object.keys(p).length} keys}` : preview; } catch(e){}
-    const known = KNOWN[k];
-    h += `<tr>
-      <td><span class="key-name">${k}</span></td>
-      <td><span class="${known ? 'dot-green' : 'dot-gray'}"></span>${friendlyName(k)}</td>
-      <td><span class="size-pill">${sz}</span></td>
-      <td style="font-size:11px;color:var(--text3);font-family:monospace;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${preview}</td>
-    </tr>`;
-  });
-  h += '</tbody></table>';
-  tbl.innerHTML = h;
-}
-
-function doBackup() {
-  const keys = getAllKeys();
-  const snapshot = {};
-  keys.forEach(k => {
-    try { snapshot[k] = JSON.parse(_cget(k)); }
-    catch(e) { snapshot[k] = _cget(k); }
-  });
-
-  const stamp = ts();
-  const fname = `data_${stamp}.json`;
-  const payload = {
-    exported: new Date().toISOString(),
-    source: 'Library-Backup.html — Planner',
-    keyCount: keys.length,
-    keys: keys,
-    data: snapshot
-  };
-
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = fname;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-
-  const hist = getHistory();
-  hist.unshift({ fname, stamp, keyCount: keys.length, size: byteSize(JSON.stringify(payload)), payload: JSON.stringify(payload) });
-  _cset(BACKUP_HIST_KEY, JSON.stringify(hist.slice(0, 20)));
-
-  document.getElementById('bk-lastBackupMsg').textContent = `Last backup: ${fname}`;
-  updateLastBackupChip();
-  renderHistory();
-  refreshKeys();
-}
-
-function dzOver(e) { e.preventDefault(); document.getElementById('bk-dropZone').classList.add('drag-over'); }
-function dzLeave(e) { document.getElementById('bk-dropZone').classList.remove('drag-over'); }
-function dzDrop(e) { e.preventDefault(); document.getElementById('bk-dropZone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); }
-
-function loadFile(file) {
-  if (!file) return;
-  const log = document.getElementById('bk-restoreLog');
-  log.style.display = 'block';
-  log.innerHTML = `<span class="log-info">Reading ${file.name}…</span><br>`;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const payload = JSON.parse(e.target.result);
-      if (!payload.data) throw new Error('Invalid backup file — missing "data" field.');
-      const keys = Object.keys(payload.data);
-      if (!confirm(`Restore ${keys.length} keys from "${file.name}"?\n\nThis will OVERWRITE existing data for those keys. Cannot be undone.`)) {
-        log.innerHTML += `<span class="log-info">Restore cancelled.</span>`;
-        return;
-      }
-      let ok = 0, err = 0;
-      keys.forEach(k => {
-        if (k === BACKUP_HIST_KEY) return;
-        try {
-          const val = typeof payload.data[k] === 'string' ? payload.data[k] : JSON.stringify(payload.data[k]);
-          _cset(k, val);
-          log.innerHTML += `<span class="log-ok">✓ ${k}</span><br>`;
-          ok++;
-        } catch(ex) {
-          log.innerHTML += `<span class="log-err">✕ ${k}: ${ex.message}</span><br>`;
-          err++;
-        }
-      });
-      log.innerHTML += `<br><strong class="${err ? 'log-err' : 'log-ok'}">${ok} restored${err ? `, ${err} failed` : ' — all good!'}`;
-      refreshKeys();
-    } catch(ex) {
-      log.innerHTML += `<span class="log-err">✕ Error: ${ex.message}</span>`;
-    }
-  };
-  reader.readAsText(file);
-}
-
-function getHistory() {
-  try { return JSON.parse(_cget(BACKUP_HIST_KEY)) || []; } catch(e) { return []; }
-}
-
-function renderHistory() {
-  const hist = getHistory();
-  const el = document.getElementById('bk-histList');
-  if (!hist.length) {
-    el.innerHTML = `<div class="hist-row" style="font-size:13px;color:var(--text3);font-style:italic;">No backups taken this session yet.</div>`;
-    return;
-  }
-  el.innerHTML = hist.map((h,i) => `
-    <div class="hist-row">
-      <div>
-        <div class="hist-name">${h.fname}</div>
-        <div class="hist-meta">${h.keyCount} keys · ${h.size}</div>
-      </div>
-      <button class="hist-dl" onclick="reDownload(${i})">⬇ Download</button>
-    </div>
-  `).join('');
-}
-
-function reDownload(i) {
-  const hist = getHistory();
-  const h = hist[i];
-  if (!h) return;
-  const blob = new Blob([h.payload], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = h.fname;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function clearHistory() {
-  if (!confirm('Clear backup history? (Does not delete your actual planner data.)')) return;
-  _cdel(BACKUP_HIST_KEY);
-  renderHistory();
-}
-
-function updateLastBackupChip() {
-  const hist = getHistory();
-  const el = document.getElementById('bk-lastBkpChip');
-  if (el) el.textContent = hist.length ? hist[0].stamp : '—';
-}
-
-const STALE_KEYS = [
-  { key: 'PT_ROLE_CHECKLIST',       reason: 'Superseded by PT_ROLE_CHECKLIST_V3',      page: '21. CL-PT Job' },
-  { key: 'PT_ROLE_CHECKLIST_V2',    reason: 'Superseded by PT_ROLE_CHECKLIST_V3',      page: '21. CL-PT Job' },
-  { key: 'WEEKLY_MEAL_PLANNER_V1',  reason: 'Superseded by WEEKLY_MEAL_PLANNER_V3',    page: '31. Weekly Meal' },
-  { key: 'WEEKLY_MEAL_PLANNER_V2',  reason: 'Superseded by WEEKLY_MEAL_PLANNER_V3',    page: '31. Weekly Meal' },
-  { key: 'WEEKLY_MASTER_V1',        reason: 'Superseded by WEEKLY_FULL_V5',            page: '32. Weekly Exercise' },
-  { key: 'WEEKLY_MASTER_SUGGEST_V1',reason: 'Superseded by WEEKLY_FULL_SUGGEST_V5',    page: '32. Weekly Exercise' },
-  { key: 'jht4',                    reason: 'Superseded by jht5 (latest jobs tracker)', page: '26. Jobs Tracker' },
-  { key: 'TODAY_BLOCKS_MAIN',       reason: 'Superseded by TODAY_BLOCKS_V2',           page: '02. Today' },
-  { key: 'jobhunt_theme',           reason: 'Old theme key from earlier jobs tracker',  page: '26. Jobs Tracker (old)' },
-];
-
-function renderCleanup() {
-  const present = STALE_KEYS.filter(s => _cget(s.key) !== null);
-  const sub = document.getElementById('bk-cleanSub');
-  const tbl = document.getElementById('bk-cleanTable');
-  const btn = document.getElementById('bk-cleanBtn');
-
-  if (present.length === 0) {
-    sub.textContent = 'All clean — no stale keys found.';
-    btn.style.display = 'none';
-    tbl.innerHTML = `<div class="clean-empty">Nothing to clean up. Your data file is tidy.</div>`;
-    return;
-  }
-
-  sub.textContent = `${present.length} stale key${present.length > 1 ? 's' : ''} found — safe to delete`;
-  btn.style.display = '';
-  btn.textContent = `🗑 Delete ${present.length} stale key${present.length > 1 ? 's' : ''}`;
-
-  let h = `<table><thead><tr><th>Key</th><th>Page</th><th>Why stale</th><th>Size</th></tr></thead><tbody>`;
-  present.forEach(s => {
-    const val = _cget(s.key) || '';
-    h += `<tr>
-      <td><span class="key-name">${s.key}</span></td>
-      <td style="font-size:12px;">${s.page}</td>
-      <td style="font-size:11px;color:var(--text3);">${s.reason}</td>
-      <td><span class="size-pill">${byteSize(val)}</span></td>
-    </tr>`;
-  });
-  h += '</tbody></table>';
-  tbl.innerHTML = h;
-}
-
-function doCleanup() {
-  const present = STALE_KEYS.filter(s => _cget(s.key) !== null);
-  if (present.length === 0) return;
-  if (!confirm(`Delete ${present.length} stale keys?\n\n${present.map(s=>s.key).join('\n')}\n\nTip: take a backup first if unsure.`)) return;
-
-  const log = document.getElementById('bk-cleanLog');
-  log.style.display = 'block';
-  log.innerHTML = '';
-  let deleted = 0;
-  present.forEach(s => {
-    try {
-      _cdel(s.key);
-      log.innerHTML += `<span class="log-ok">✓ Deleted ${s.key}</span><br>`;
-      deleted++;
-    } catch(e) {
-      log.innerHTML += `<span class="log-err">✕ ${s.key}: ${e.message}</span><br>`;
-    }
-  });
-  log.innerHTML += `<br><strong class="log-ok">Done — ${deleted} key${deleted>1?'s':''} removed.</strong>`;
-  renderCleanup();
-  refreshKeys();
-}
-
 /* ── INIT ── */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
   // Apply dark mode from file
   html.setAttribute('data-theme', resolveTheme() ? 'dark' : '');
-  refreshKeys();
-  renderCleanup();
-  renderHistory();
-  const hist = getHistory();
-  if (hist.length) document.getElementById('bk-lastBackupMsg').textContent = `Last backup: ${hist[0].fname}`;
 });
 </script>
 
@@ -1531,5 +1061,14 @@ OT.onReady(async () => {
       - Removed planner-storage.js dependency (was unused)
       - All DOM IDs namespaced (bk- / lib-) to avoid collisions
       - Nav updated to reference new filename without numbering
+  v2  · 27 Jun 2026
+      - Removed Backup tab/panel entirely — data now lives in
+        GitHub (onetrack-data.json) which has its own version
+        history, so the localStorage-based backup/restore/
+        housekeeping tooling is obsolete
+      - Removed tab strip and drag-to-reorder tabs (only one
+        panel remains: Library Search)
+      - Removed topbar dark-mode toggle — dark mode is now
+        controlled only from Settings (shared TODAY_DARK key)
 ═══════════════════════════════════════════════════════════════════
 -->
