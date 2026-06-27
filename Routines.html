@@ -2579,7 +2579,7 @@ OT.onReady(async () => {
   // Brand name/tagline now driven from storage.js APP_BRAND — edit there only.
   const brandEl = document.getElementById('otBrandName');
   if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
-  OT.renderBrandFooter('otVersionFooter', 'v1.0', new Date(2026, 5, 28, 14, 32));
+  OT.renderBrandFooter('otVersionFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
   initData();
   // Restore active mode tab
   const savedMode = _cget(MODE_KEY);

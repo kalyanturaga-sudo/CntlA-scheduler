@@ -1,5 +1,5 @@
 /* ============================================================
-   storage.js  —  Taskmaster Shared Storage Engine  v5.2
+   storage.js  —  Taskmaster Shared Storage Engine  v5.3
    ------------------------------------------------------------
    v5.1: Rebranded Onetrack -> Taskmaster. This is a DISPLAY-ONLY
    change (title text, nav brand, banner/tooltip copy, console
@@ -30,10 +30,14 @@
      OT.brand  —  { name, tagline }  (new, v5.1 — read instead of
        hardcoding "Onetrack"/"Taskmaster" text on each page)
      OT.renderBrandFooter(containerId, version, lastUpdated)
-       (new, v5.2 — fills a <div id="..."></div> with one muted
+       (new, v5.2/5.3 — fills a <div id="..."></div> with one muted
        line: "{tagline} · {version} · Last updated DD-MMM-YY HH:MM".
-       lastUpdated is a Date YOU set per page — the moment that
-       page's code was last edited, not when it's viewed.)
+       Always DISPLAYED in Australia/Sydney (AEST/AEDT) time, no
+       matter what time zone the viewing device is set to. Pass
+       lastUpdated as an ISO string with an explicit offset, e.g.
+       "2026-06-28T09:20:00+10:00", so the underlying instant is
+       unambiguous — lastUpdated is the moment YOU edited that
+       page's code, not when it's viewed.)
 
    HOW STORAGE WORKS (v4.0, unchanged):
    1. Banner shows "Sign in to sync".
@@ -593,18 +597,24 @@
   }
 
   const _MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const BRAND_TIME_ZONE = 'Australia/Sydney';
 
-  function _pad2(n) { return String(n).padStart(2, '0'); }
-
-  /* Formats a Date as DD-MMM-YY HH:MM (24-hour). */
+  /* Formats a Date as DD-MMM-YY HH:MM (24-hour), ALWAYS in Sydney/AEST
+     time — regardless of the viewing device's own time zone. Uses
+     Intl so it correctly accounts for AEST/AEDT daylight saving. */
   function _formatBrandDate(d) {
     if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-    const dd  = _pad2(d.getDate());
-    const mmm = _MONTH_ABBR[d.getMonth()];
-    const yy  = _pad2(d.getFullYear() % 100);
-    const hh  = _pad2(d.getHours());
-    const min = _pad2(d.getMinutes());
-    return `${dd}-${mmm}-${yy} ${hh}:${min}`;
+    const parts = new Intl.DateTimeFormat('en-AU', {
+      timeZone: BRAND_TIME_ZONE,
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(d);
+    const get = type => (parts.find(p => p.type === type) || {}).value || '';
+    let hh = get('hour');
+    if (hh === '24') hh = '00'; // Intl quirk: hour12:false can yield "24" for midnight
+    const monthNum = parseInt(get('month'), 10);
+    const mmm = _MONTH_ABBR[monthNum - 1] || get('month');
+    return `${get('day')}-${mmm}-${get('year')} ${hh}:${get('minute')}`;
   }
 
   /**
