@@ -1385,8 +1385,7 @@ function ftLoadSections(){const r=_cget(FT_META_KEY);return r?JSON.parse(r):JSON
 function ftSaveSections(){_cset(FT_META_KEY,JSON.stringify(ftSECTIONS));}
 function ftLoadData(){const r=_cget(FT_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(FT_DEFAULT_ITEMS));ftSaveData(d);return d;}
 function ftSaveData(d){_cset(FT_KEY,JSON.stringify(d));UndoManager.push('ft');}
-let ftSECTIONS=ftLoadSections(), ftData=ftLoadData();
-if(migrateLunchboxSplit(ftSECTIONS, ftData, "ft_lunchbox","ft_lunchbox_extras","ft_lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ftSaveSections(); ftSaveData(ftData); }
+let ftSECTIONS, ftData;
 UndoManager.register('ft',
   ()=>({data:JSON.parse(JSON.stringify(ftData)),sections:JSON.parse(JSON.stringify(ftSECTIONS))}),
   (snap)=>{ftData=snap.data;ftSECTIONS=snap.sections;renderChecklist(ftCfg());}
@@ -1462,7 +1461,7 @@ function homLoadSections(){const r=_cget(HOM_META_KEY);return r?JSON.parse(r):JS
 function homSaveSections(){_cset(HOM_META_KEY,JSON.stringify(homSECTIONS));}
 function homLoadData(){const r=_cget(HOM_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(HOM_DEFAULT_ITEMS));homSaveData(d);return d;}
 function homSaveData(d){_cset(HOM_KEY,JSON.stringify(d));UndoManager.push('hom');}
-let homSECTIONS=homLoadSections(), homData=homLoadData();
+let homSECTIONS, homData;
 UndoManager.register('hom',
   ()=>({data:JSON.parse(JSON.stringify(homData)),sections:JSON.parse(JSON.stringify(homSECTIONS))}),
   (snap)=>{homData=snap.data;homSECTIONS=snap.sections;renderChecklist(homCfg());}
@@ -1580,8 +1579,7 @@ function ptLoadSections(){const r=_cget(PT_META_KEY);return r?JSON.parse(r):JSON
 function ptSaveSections(){_cset(PT_META_KEY,JSON.stringify(ptSECTIONS));}
 function ptLoadData(){const r=_cget(PT_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(PT_DEFAULT_ITEMS));ptSaveData(d);return d;}
 function ptSaveData(d){_cset(PT_KEY,JSON.stringify(d));UndoManager.push('pt');}
-let ptSECTIONS=ptLoadSections(), ptData=ptLoadData();
-if(migrateLunchboxSplit(ptSECTIONS, ptData, "lunchbox","lunchbox_extras","lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ptSaveSections(); ptSaveData(ptData); }
+let ptSECTIONS, ptData;
 UndoManager.register('pt',
   ()=>({data:JSON.parse(JSON.stringify(ptData)),sections:JSON.parse(JSON.stringify(ptSECTIONS))}),
   (snap)=>{ptData=snap.data;ptSECTIONS=snap.sections;renderChecklist(ptCfg());}
@@ -1635,7 +1633,7 @@ function rohLoadSections(){const r=_cget(ROH_META_KEY);return r?JSON.parse(r):JS
 function rohSaveSections(){_cset(ROH_META_KEY,JSON.stringify(rohSECTIONS));}
 function rohLoadData(){const r=_cget(ROH_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(ROH_DEFAULT_ITEMS));rohSaveData(d);return d;}
 function rohSaveData(d){_cset(ROH_KEY,JSON.stringify(d));UndoManager.push('roh');}
-let rohSECTIONS=rohLoadSections(), rohData=rohLoadData();
+let rohSECTIONS, rohData;
 UndoManager.register('roh',
   ()=>({data:JSON.parse(JSON.stringify(rohData)),sections:JSON.parse(JSON.stringify(rohSECTIONS))}),
   (snap)=>{rohData=snap.data;rohSECTIONS=snap.sections;renderChecklist(rohCfg());}
@@ -1679,7 +1677,7 @@ function eshLoadSections(){const r=_cget(ESH_META_KEY);return r?JSON.parse(r):JS
 function eshSaveSections(){_cset(ESH_META_KEY,JSON.stringify(eshSECTIONS));}
 function eshLoadData(){const r=_cget(ESH_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(ESH_DEFAULT_ITEMS));eshSaveData(d);return d;}
 function eshSaveData(d){_cset(ESH_KEY,JSON.stringify(d));UndoManager.push('esh');}
-let eshSECTIONS=eshLoadSections(), eshData=eshLoadData();
+let eshSECTIONS, eshData;
 UndoManager.register('esh',
   ()=>({data:JSON.parse(JSON.stringify(eshData)),sections:JSON.parse(JSON.stringify(eshSECTIONS))}),
   (snap)=>{eshData=snap.data;eshSECTIONS=snap.sections;renderChecklist(eshCfg());}
@@ -1727,7 +1725,7 @@ function kalLoadSections(){const r=_cget(KAL_META_KEY);return r?JSON.parse(r):JS
 function kalSaveSections(){_cset(KAL_META_KEY,JSON.stringify(kalSECTIONS));}
 function kalLoadData(){const r=_cget(KAL_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(KAL_DEFAULT_ITEMS));kalSaveData(d);return d;}
 function kalSaveData(d){_cset(KAL_KEY,JSON.stringify(d));UndoManager.push('kal');}
-let kalSECTIONS=kalLoadSections(), kalData=kalLoadData();
+let kalSECTIONS, kalData;
 UndoManager.register('kal',
   ()=>({data:JSON.parse(JSON.stringify(kalData)),sections:JSON.parse(JSON.stringify(kalSECTIONS))}),
   (snap)=>{kalData=snap.data;kalSECTIONS=snap.sections;renderChecklist(kalCfg());}
@@ -1767,7 +1765,7 @@ function trvLoadSections(){const r=_cget(TRV_META_KEY);return r?JSON.parse(r):JS
 function trvSaveSections(){_cset(TRV_META_KEY,JSON.stringify(trvSECTIONS));}
 function trvLoadData(){const r=_cget(TRV_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(TRV_DEFAULT_ITEMS));trvSaveData(d);return d;}
 function trvSaveData(d){_cset(TRV_KEY,JSON.stringify(d));UndoManager.push('trv');}
-let trvSECTIONS=trvLoadSections(), trvData=trvLoadData();
+let trvSECTIONS, trvData;
 UndoManager.register('trv',
   ()=>({data:JSON.parse(JSON.stringify(trvData)),sections:JSON.parse(JSON.stringify(trvSECTIONS))}),
   (snap)=>{trvData=snap.data;trvSECTIONS=snap.sections;renderChecklist(trvCfg());}
@@ -1881,7 +1879,10 @@ let _printCurrentTab = null;
    ============================================================ */
 const TAB_ADD  = {ft:ftAddList,  hom:homAddList,  pt:ptAddList,  roh:rohAddList,  esh:eshAddList,  kal:kalAddList,  trv:trvAddList};
 const TAB_SEND = {ft:ftSendToday,hom:homSendToday,pt:ptSendToday,roh:rohSendToday,esh:eshSendToday,kal:kalSendToday, trv:trvSendToday};
-const TAB_CFGS = {ft:ftCfg(),    hom:homCfg(),    pt:ptCfg(),    roh:rohCfg(),    esh:eshCfg(),    kal:kalCfg(),    trv:trvCfg()};
+const TAB_CFGS = {
+  get ft(){return ftCfg();}, get hom(){return homCfg();}, get pt(){return ptCfg();},
+  get roh(){return rohCfg();}, get esh(){return eshCfg();}, get kal(){return kalCfg();}, get trv(){return trvCfg();}
+};
 
 /* ============================================================
    MASTER UNCHECK ALL — clears every item across every tab
@@ -1932,6 +1933,19 @@ window.masterUncheckAll = masterUncheckAll;
    ============================================================ */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
+  // Now that _otCache reflects the real synced Drive data, load every
+  // tab's sections/items from it. This MUST happen here, not at script
+  // parse time, because Drive loading is async — loading earlier would
+  // read an empty cache and silently fall back to (and re-save) defaults.
+  ftSECTIONS=ftLoadSections(); ftData=ftLoadData();
+  if(migrateLunchboxSplit(ftSECTIONS, ftData, "ft_lunchbox","ft_lunchbox_extras","ft_lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ftSaveSections(); ftSaveData(ftData); }
+  homSECTIONS=homLoadSections(); homData=homLoadData();
+  ptSECTIONS=ptLoadSections(); ptData=ptLoadData();
+  if(migrateLunchboxSplit(ptSECTIONS, ptData, "lunchbox","lunchbox_extras","lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ptSaveSections(); ptSaveData(ptData); }
+  rohSECTIONS=rohLoadSections(); rohData=rohLoadData();
+  eshSECTIONS=eshLoadSections(); eshData=eshLoadData();
+  kalSECTIONS=kalLoadSections(); kalData=kalLoadData();
+  trvSECTIONS=trvLoadSections(); trvData=trvLoadData();
   // Apply dark mode, accent, font scale from file
   const savedDark = _cget(DARK_KEY);
   darkMode = savedDark !== null ? savedDark === "1" : sysDark();
