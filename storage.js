@@ -584,10 +584,10 @@
     style.id = 'ot-brand-footer-styles';
     style.textContent = `
       .ot-brand-footer {
-        margin-top:32px; padding-top:14px; border-top:1px solid var(--line,#2a2722);
-        font-family:'DM Sans',sans-serif; font-size:12px; font-style:italic;
-        color:var(--text3,#8a8478); text-align:left;
+        font-family:'DM Sans',sans-serif; font-size:11px; font-style:italic;
+        color:var(--text3,#8a8478); white-space:nowrap;
       }
+      @media (max-width:900px) { .ot-brand-footer { display:none; } }
     `;
     document.head.appendChild(style);
   }
@@ -618,10 +618,11 @@
     const el = document.getElementById(containerId);
     if (!el) return;
     _injectBrandFooterStyles();
+    el.classList.add('ot-brand-footer');
     const stamp = _formatBrandDate(lastUpdated);
     const parts = [APP_BRAND.tagline, version, stamp ? ('Last updated ' + stamp) : null]
       .filter(Boolean);
-    el.innerHTML = `<div class="ot-brand-footer">${parts.join(' &middot; ')}</div>`;
+    el.textContent = parts.join(' · ');
   }
 
   /* ══════════════════════════════════════════════════════════
