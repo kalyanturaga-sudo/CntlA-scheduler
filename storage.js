@@ -1,5 +1,14 @@
 /* ============================================================
-   storage.js  —  Onetrack Shared Storage Engine  v5.0
+   storage.js  —  Taskmaster Shared Storage Engine  v5.2
+   ------------------------------------------------------------
+   v5.1: Rebranded Onetrack -> Taskmaster. This is a DISPLAY-ONLY
+   change (title text, nav brand, banner/tooltip copy, console
+   labels). Every internal storage key, the Drive file name, and
+   the localStorage keys below all KEEP their ONETRACK_* names on
+   purpose — they're a stable internal schema, not the product
+   name. Renaming them would orphan existing saved data. See
+   APP_BRAND below for the one place that controls user-facing
+   name/tagline text going forward.
    ------------------------------------------------------------
    v5.0: storage.js now does THREE jobs instead of one, so every
    HTML page only ever needs ONE shared script tag:
@@ -18,6 +27,13 @@
      await OT.get(key) / OT.set(key,value) / OT.remove(key)
      await OT.keys() / OT.getAll() / OT.setAll(obj) / OT.clear()
      OT.onReady(fn)  /  OT.isReady()  /  OT.onChange(fn)  (new)
+     OT.brand  —  { name, tagline }  (new, v5.1 — read instead of
+       hardcoding "Onetrack"/"Taskmaster" text on each page)
+     OT.renderBrandFooter(containerId, version, lastUpdated)
+       (new, v5.2 — fills a <div id="..."></div> with one muted
+       line: "{tagline} · {version} · Last updated DD-MMM-YY HH:MM".
+       lastUpdated is a Date YOU set per page — the moment that
+       page's code was last edited, not when it's viewed.)
 
    HOW STORAGE WORKS (v4.0, unchanged):
    1. Banner shows "Sign in to sync".
@@ -68,6 +84,14 @@
   const DRIVE_FILE_NAME  = 'onetrack-data.json';
   const REDIRECT_URI     = 'https://kalyanturaga-sudo.github.io/onetrack-scheduler/oauth-callback.html';
 
+  /* ── BRAND CONFIG — change product name/tagline ONLY here.
+     Internal storage keys / file names above are untouched on
+     purpose (see header note). ── */
+  const APP_BRAND = {
+    name:    'Taskmaster',
+    tagline: 'One list to master. One task at a time.',
+  };
+
   /* ── NAV CONFIG — edit this list to add/rename/remove a page ── */
   const NAV_PAGES = [
     { id: 'ttb',        file: 'TT&B.html',           label: 'TT&B' },
@@ -107,7 +131,7 @@
     if (document.getElementById(INDICATOR_ID)) return;
     const el = document.createElement('div');
     el.id = INDICATOR_ID;
-    el.title = 'Onetrack storage: unlinked';
+    el.title = APP_BRAND.name + ' storage: unlinked';
     el.style.cssText = `
       position: fixed; top: 14px; right: 14px;
       width: 10px; height: 10px; border-radius: 50%;
@@ -122,11 +146,11 @@
     const el = document.getElementById(INDICATOR_ID);
     if (!el) return;
     const states = {
-      saving:   { bg: '#c17b3f', sh: 'rgba(193,123,63,0.25)',  title: 'Onetrack: saving…' },
-      saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: 'Onetrack: saved ✓' },
-      error:    { bg: '#c0392b', sh: 'rgba(192,57,43,0.25)',   title: 'Onetrack: error — click to re-link' },
-      unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: 'Onetrack: click to sign in' },
-      loading:  { bg: '#6b9fd4', sh: 'rgba(107,159,212,0.25)', title: 'Onetrack: connecting…' },
+      saving:   { bg: '#c17b3f', sh: 'rgba(193,123,63,0.25)',  title: APP_BRAND.name + ': saving…' },
+      saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: APP_BRAND.name + ': saved ✓' },
+      error:    { bg: '#c0392b', sh: 'rgba(192,57,43,0.25)',   title: APP_BRAND.name + ': error — click to re-link' },
+      unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: APP_BRAND.name + ': click to sign in' },
+      loading:  { bg: '#6b9fd4', sh: 'rgba(107,159,212,0.25)', title: APP_BRAND.name + ': connecting…' },
     };
     const s = states[state] || states.unlinked;
     el.style.background = s.bg;
@@ -202,7 +226,7 @@
 
     if (oauthErr) {
       sessionStorage.removeItem('OT_OAUTH_ERROR');
-      console.error('[Onetrack storage] OAuth error:', oauthErr);
+      console.error('[' + APP_BRAND.name + ' storage] OAuth error:', oauthErr);
       _setIndicator('error');
       _showBanner(
         `<strong style="color:#c0392b;">Sign-in failed</strong><br><span style="color:#a09890;font-size:12px;">${oauthErr}. Try again.</span>`,
@@ -273,7 +297,7 @@
     try {
       _cache = text.trim() ? JSON.parse(text) : {};
     } catch (err) {
-      console.warn('[Onetrack storage] Could not parse Drive file, starting fresh:', err);
+      console.warn('[' + APP_BRAND.name + ' storage] Could not parse Drive file, starting fresh:', err);
       _cache = {};
     }
   }
@@ -292,7 +316,7 @@
       );
       _setIndicator('saved');
     } catch (err) {
-      console.error('[Onetrack storage] Write error:', err);
+      console.error('[' + APP_BRAND.name + ' storage] Write error:', err);
       _setIndicator('error');
     }
   }
@@ -315,7 +339,7 @@
       _applyTheme(_cache || {});
       _markReady();
     } catch (err) {
-      console.error('[Onetrack storage] Connect error:', err);
+      console.error('[' + APP_BRAND.name + ' storage] Connect error:', err);
       _setIndicator('error');
     }
   }
@@ -332,7 +356,7 @@
 
   function _fireChange(key, value) {
     _changeListeners.forEach(fn => {
-      try { fn(key, value); } catch (e) { console.error('[Onetrack storage] onChange listener error:', e); }
+      try { fn(key, value); } catch (e) { console.error('[' + APP_BRAND.name + ' storage] onChange listener error:', e); }
     });
   }
 
@@ -548,6 +572,59 @@
   _applyThemeFromSnapshot();
 
   /* ══════════════════════════════════════════════════════════
+     BRAND FOOTER — single muted line per page:
+       "{tagline} · v{version} · Last updated DD-MMM-YY HH:MM"
+     Date/time is the page's own "code last touched" stamp,
+     passed in by that page — NOT live page-load time.
+  ══════════════════════════════════════════════════════════ */
+
+  function _injectBrandFooterStyles() {
+    if (document.getElementById('ot-brand-footer-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ot-brand-footer-styles';
+    style.textContent = `
+      .ot-brand-footer {
+        margin-top:32px; padding-top:14px; border-top:1px solid var(--line,#2a2722);
+        font-family:'DM Sans',sans-serif; font-size:12px; font-style:italic;
+        color:var(--text3,#8a8478); text-align:left;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  const _MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function _pad2(n) { return String(n).padStart(2, '0'); }
+
+  /* Formats a Date as DD-MMM-YY HH:MM (24-hour). */
+  function _formatBrandDate(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    const dd  = _pad2(d.getDate());
+    const mmm = _MONTH_ABBR[d.getMonth()];
+    const yy  = _pad2(d.getFullYear() % 100);
+    const hh  = _pad2(d.getHours());
+    const min = _pad2(d.getMinutes());
+    return `${dd}-${mmm}-${yy} ${hh}:${min}`;
+  }
+
+  /**
+   * OT.renderBrandFooter(containerId, version, lastUpdated)
+   * version:     string, e.g. 'v1.0' — set by you when you finish
+   *              editing that page's code.
+   * lastUpdated: a Date — the moment you last changed that page's
+   *              code, NOT when the page happens to be viewed.
+   */
+  function _renderBrandFooter(containerId, version, lastUpdated) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    _injectBrandFooterStyles();
+    const stamp = _formatBrandDate(lastUpdated);
+    const parts = [APP_BRAND.tagline, version, stamp ? ('Last updated ' + stamp) : null]
+      .filter(Boolean);
+    el.innerHTML = `<div class="ot-brand-footer">${parts.join(' &middot; ')}</div>`;
+  }
+
+  /* ══════════════════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════════════════ */
 
@@ -573,6 +650,10 @@
   ══════════════════════════════════════════════════════════ */
 
   const OT = {
+
+    brand: APP_BRAND,
+
+    renderBrandFooter: _renderBrandFooter,
 
     isReady()   { return _ready; },
 
