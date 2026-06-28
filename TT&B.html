@@ -7,16 +7,16 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f5f2ee;--surface:#ffffff;--surface2:#faf8f5;--border:rgba(0,0,0,0.08);--text:#1a1714;--text2:#6b6560;--text3:#9e9891;--accent:#c17b3f;--accent-soft:rgba(193,123,63,0.12);--shadow:0 2px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);--shadow-hover:0 8px 28px rgba(0,0,0,0.10),0 2px 8px rgba(0,0,0,0.06);--radius:16px;--nav-width:200px;}
-[data-theme="dark"]{--bg:#131210;--surface:#1e1c18;--surface2:#252320;--border:rgba(255,255,255,0.08);--text:#f0ece6;--text2:#a09890;--text3:#6e6660;--accent:#d4935a;--accent-soft:rgba(212,147,90,0.14);--shadow:0 2px 12px rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.2);--shadow-hover:0 8px 28px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3);}
+:root{--accent:#c17b3f;--accent-soft:rgba(193,123,63,0.12);--shadow:0 2px 12px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);--shadow-hover:0 8px 28px rgba(0,0,0,0.10),0 2px 8px rgba(0,0,0,0.06);--radius:16px;--nav-width:200px;}
+[data-theme="dark"]{--accent:#d4935a;--accent-soft:rgba(212,147,90,0.14);--shadow:0 2px 12px rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.2);--shadow-hover:0 8px 28px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3);}
 [data-theme="dark"] .task{background:rgba(255,255,255,0.07)!important;border-color:rgba(255,255,255,0.12)!important;}
 [data-theme="dark"] .task:hover{background:rgba(255,255,255,0.13)!important;}
 [data-theme="dark"] .new-task input{background:rgba(255,255,255,0.05)!important;border-color:rgba(255,255,255,0.15)!important;color:var(--text2);}
 [data-theme="dark"] .new-task input:focus{background:rgba(255,255,255,0.09)!important;}
-[data-theme="dark"] .task-text{color:#f0ece6!important;-webkit-text-fill-color:#f0ece6!important;background:transparent!important;}
-[data-theme="dark"] .task.completed .task-text{color:#f0ece6!important;-webkit-text-fill-color:#f0ece6!important;opacity:0.45;}
-[data-theme="dark"] .time-est{color:#a09890!important;-webkit-text-fill-color:#a09890!important;background:transparent!important;color-scheme:dark;}
-[data-theme="dark"] input[type="text"]{color:#f0ece6!important;-webkit-text-fill-color:#f0ece6!important;}
+[data-theme="dark"] .task-text{color:#ededf0!important;-webkit-text-fill-color:#ededf0!important;background:transparent!important;}
+[data-theme="dark"] .task.completed .task-text{color:#ededf0!important;-webkit-text-fill-color:#ededf0!important;opacity:0.45;}
+[data-theme="dark"] .time-est{color:#a3a1a8!important;-webkit-text-fill-color:#a3a1a8!important;background:transparent!important;color-scheme:dark;}
+[data-theme="dark"] input[type="text"]{color:#ededf0!important;-webkit-text-fill-color:#ededf0!important;}
 [data-theme="dark"] input[type="checkbox"]{color-scheme:dark;}
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;transition:background 0.3s,color 0.3s;}
@@ -42,13 +42,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 
 /* ===== TODAY CSS ===== */
   :root {
-    --bg: #f5f2ee;
-    --surface: #ffffff;
-    --surface2: #faf8f5;
-    --border: rgba(0,0,0,0.08);
-    --text: #1a1714;
-    --text2: #6b6560;
-    --text3: #9e9891;
     --accent:#c17b3f;
     --accent-soft:rgba(193,123,63,0.12);
     --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
@@ -66,13 +59,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
   }
 
   [data-theme="dark"] {
-    --bg: #131210;
-    --surface: #1e1c18;
-    --surface2: #252320;
-    --border: rgba(255,255,255,0.08);
-    --text: #f0ece6;
-    --text2: #a09890;
-    --text3: #6e6660;
     --accent:#d4935a;
     --accent-soft:rgba(212,147,90,0.14);
     --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
@@ -787,13 +773,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 
 /* ===== TOMORROW CSS ===== */
   :root {
-    --bg: #f5f2ee;
-    --surface: #ffffff;
-    --surface2: #faf8f5;
-    --border: rgba(0,0,0,0.08);
-    --text: #1a1714;
-    --text2: #6b6560;
-    --text3: #9e9891;
     --accent:#c17b3f;
     --accent-soft:rgba(193,123,63,0.12);
     --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
@@ -809,9 +788,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
     --post9-from: #d8d4e8; --post9-to: #e8e4f5;
   }
   [data-theme="dark"] {
-    --bg: #131210; --surface: #1e1c18; --surface2: #252320;
-    --border: rgba(255,255,255,0.08); --text: #f0ece6;
-    --text2: #a09890; --text3: #6e6660; --accent:#d4935a;
+    --accent:#d4935a;
     --accent-soft:rgba(212,147,90,0.14);
     --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
     --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
@@ -944,8 +921,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 
 /* ===== OPS CSS ===== */
   :root {
-    --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
-    --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
     --accent:#c17b3f; --accent-soft:rgba(193,123,63,0.12);
     --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
     --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
@@ -959,8 +934,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
     --misc-from:#eef2f5;     --misc-to:#f5f8fb;
   }
   [data-theme="dark"] {
-    --bg:#131210; --surface:#1e1c18; --surface2:#252320;
-    --border:rgba(255,255,255,0.08); --text:#f0ece6; --text2:#a09890; --text3:#6e6660;
     --accent:#d4935a; --accent-soft:rgba(212,147,90,0.14);
     --shadow:0 2px 12px rgba(0,0,0,0.3),0 1px 3px rgba(0,0,0,0.2);
     --shadow-hover:0 8px 28px rgba(0,0,0,0.4),0 2px 8px rgba(0,0,0,0.3);
