@@ -109,6 +109,25 @@
   /* Settings is intentionally NOT in NAV_PAGES — it's pinned at the
      bottom of the sidebar always, and is never draggable. */
   const NAV_SETTINGS = { id: 'settings', file: 'Settings.html', label: 'Settings' };
+
+  /* ── BASE PALETTE — change colours here ONLY. This is injected as a
+     <style> tag into every page automatically; no page has its own
+     copy of these anymore. Per-page CSS still defines layout-specific
+     vars (--radius, --nav-width, --shadow, per-section gradients,
+     button colours, etc.) — only the shared bg/surface/text scale
+     lives here. ── */
+  const BASE_THEME = {
+    light: {
+      '--bg': '#f3f2f0', '--surface': '#ffffff', '--surface2': '#f8f7f5',
+      '--border': 'rgba(0,0,0,0.08)',
+      '--text': '#16151a', '--text2': '#5c5a60', '--text3': '#93919a',
+    },
+    dark: {
+      '--bg': '#0e0e12', '--surface': '#18181d', '--surface2': '#1f1f26',
+      '--border': 'rgba(255,255,255,0.08)',
+      '--text': '#ededf0', '--text2': '#a3a1a8', '--text3': '#6f6d76',
+    },
+  };
 /* ============================================================ */
 
 (function (global) {
@@ -155,7 +174,7 @@
     const el = document.getElementById(INDICATOR_ID);
     if (!el) return;
     const states = {
-      saving:   { bg: '#c17b3f', sh: 'rgba(193,123,63,0.25)',  title: APP_BRAND.name + ': saving…' },
+      saving:   { bg: '#1d4fd6', sh: 'rgba(29,79,214,0.25)',  title: APP_BRAND.name + ': saving…' },
       saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: APP_BRAND.name + ': saved ✓' },
       error:    { bg: '#c0392b', sh: 'rgba(192,57,43,0.25)',   title: APP_BRAND.name + ': error — click to re-link' },
       unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: APP_BRAND.name + ': click to sign in' },
@@ -178,7 +197,7 @@
       banner.id = BANNER_ID;
       banner.style.cssText = `
         position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        background: #1e1c18; color: #f0ece6; padding: 14px 20px;
+        background: #18181d; color: #ededf0; padding: 14px 20px;
         border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px;
         display: flex; align-items: center; gap: 14px; z-index: 99999;
         box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
@@ -205,7 +224,7 @@
 
   function _signInBannerMsg() {
     return [
-      '<strong style="color:#d4935a;">Sign in to sync</strong><br><span style="color:#a09890;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
+      '<strong style="color:#5b7fff;">Sign in to sync</strong><br><span style="color:#a3a1a8;font-size:12px;">Connect your Google account to load and save your checklists.</span>',
       'Sign in',
       _signIn,
     ];
@@ -238,7 +257,7 @@
       console.error('[' + APP_BRAND.name + ' storage] OAuth error:', oauthErr);
       _setIndicator('error');
       _showBanner(
-        `<strong style="color:#c0392b;">Sign-in failed</strong><br><span style="color:#a09890;font-size:12px;">${oauthErr}. Try again.</span>`,
+        `<strong style="color:#c0392b;">Sign-in failed</strong><br><span style="color:#a3a1a8;font-size:12px;">${oauthErr}. Try again.</span>`,
         'Sign in', _signIn
       );
       return false;
@@ -267,7 +286,7 @@
       _hideBanner();
       _setIndicator('unlinked');
       _showBanner(
-        '<strong style="color:#d4935a;">Session expired</strong><br><span style="color:#a09890;font-size:12px;">Sign in again to keep syncing.</span>',
+        '<strong style="color:#5b7fff;">Session expired</strong><br><span style="color:#a3a1a8;font-size:12px;">Sign in again to keep syncing.</span>',
         'Sign in', _signIn
       );
       throw new Error('401 Unauthorized — token expired');
@@ -533,6 +552,27 @@
   const EXTRA_ACCENT_VARS = ['--ft-accent', '--pt-accent', '--roh-accent', '--esh-accent', '--kal-accent', '--trv-accent', '--rtn-accent'];
   const EXTRA_SOFT_VARS   = ['--ft-soft', '--pt-soft', '--roh-soft', '--esh-soft', '--trv-soft', '--rtn-soft'];
 
+  function _cssVars(obj) {
+    return Object.entries(obj).map(([k, v]) => `${k}:${v};`).join('');
+  }
+  function _injectBaseTheme() {
+    if (document.getElementById('ot-base-theme')) return;
+    const style = document.createElement('style');
+    style.id = 'ot-base-theme';
+    style.textContent =
+      `:root{${_cssVars(BASE_THEME.light)}}` +
+      `[data-theme="dark"]{${_cssVars(BASE_THEME.dark)}}`;
+    // Inserted FIRST in <head>, before the page's own <style> block,
+    // so any leftover page-level copy of these same vars wins on
+    // source order if one still exists — this is the floor, not an
+    // override of anything more specific a page wants to layer on top.
+    document.head.insertBefore(style, document.head.firstChild);
+  }
+  // Runs instantly — document.head already exists by the time this
+  // script tag executes, well before DOMContentLoaded — so the base
+  // palette is in place before the page's own CSS even paints.
+  _injectBaseTheme();
+
   function _hexToSoft(hex, alpha) {
     const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
     return `rgba(${r},${g},${b},${alpha})`;
@@ -548,8 +588,8 @@
       : window.matchMedia('(prefers-color-scheme: dark)').matches;
     html.dataset.theme = dark ? 'dark' : '';
 
-    const lightHex = cache['ONETRACK_ACCENT'] || '#c17b3f';
-    const darkHex  = cache['ONETRACK_ACCENT_DARK'] || '#d4935a';
+    const lightHex = cache['ONETRACK_ACCENT'] || '#1d4fd6';
+    const darkHex  = cache['ONETRACK_ACCENT_DARK'] || '#5b7fff';
     const hex  = dark ? darkHex : lightHex;
     const soft = _hexToSoft(hex, dark ? 0.14 : 0.12);
     html.style.setProperty('--accent', hex);
