@@ -11,16 +11,12 @@
 /* ===== GLOBAL LAYOUT CSS ===== */
 :root {
   --nav-width: 200px;
-  --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
-  --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
   --shadow: 0 2px 12px rgba(0,0,0,0.06);
   --radius: 16px;
   --radius-sm: 4px;
   --radius-md: 8px;
 }
 [data-theme="dark"] {
-  --bg: #131210; --surface: #1e1c18; --surface2: #252320;
-  --border: rgba(255,255,255,0.08); --text: #f0ece6; --text2: #a09890; --text3: #6e6660;
   --shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,7 +45,7 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
 .topbar-logo {
   font-family: 'DM Serif Display', serif;
   font-size: 15px;
-  color: var(--accent, #c17b3f);
+  color: var(--accent, #1d4fd6);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -73,13 +69,13 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
   white-space: nowrap;
   transition: all 0.15s;
   background: none;
-  color: var(--text2, #6b6560);
+  color: var(--text2, #5c5a60);
   flex-shrink: 0;
 }
-.tab-btn:hover { background: var(--surface2, #faf8f5); color: var(--text, #1a1714); }
+.tab-btn:hover { background: var(--surface2, #f8f7f5); color: var(--text, #16151a); }
 .tab-btn.active {
-  background: var(--accent-soft, rgba(193,123,63,0.12));
-  color: var(--accent, #c17b3f);
+  background: var(--accent-soft, rgba(29,79,214,0.12));
+  color: var(--accent, #1d4fd6);
   font-weight: 600;
   border-color: rgba(193,123,63,0.25);
 }
@@ -90,15 +86,11 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
 /* ===== meal CSS ===== */
 /* ===== meal CSS ===== */
 #panel-meal {
-  --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
-  --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
   --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
   --radius: 16px;
 }
 [data-theme="dark"] #panel-meal {
-  --bg: #131210; --surface: #1e1c18; --surface2: #252320;
-  --border: rgba(255,255,255,0.08); --text: #f0ece6; --text2: #a09890; --text3: #6e6660;
   --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
 }
@@ -175,15 +167,11 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
 
 /* ===== exer CSS ===== */
 #panel-exer {
-  --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
-  --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
   --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
   --radius: 16px;
 }
 [data-theme="dark"] #panel-exer {
-  --bg: #131210; --surface: #1e1c18; --surface2: #252320;
-  --border: rgba(255,255,255,0.08); --text: #f0ece6; --text2: #a09890; --text3: #6e6660;
   --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
 }
@@ -233,41 +221,41 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
   box-shadow: 2px 0 16px rgba(0,0,0,0.04);
   transition: background 0.3s;
 }
-[data-theme="dark"] .nav { background: #1e1c18; border-right-color: rgba(255,255,255,0.08); }
+[data-theme="dark"] .nav { background: #18181d; border-right-color: rgba(255,255,255,0.08); }
 .nav-title {
   font-family: 'DM Serif Display', serif;
-  font-size: 18px; color: #c17b3f;
+  font-size: 18px; color: #1d4fd6;
   padding: 0 20px 20px;
   border-bottom: 1px solid rgba(0,0,0,0.08);
   margin-bottom: 12px;
 }
-[data-theme="dark"] .nav-title { color: #d4935a; border-bottom-color: rgba(255,255,255,0.08); }
+[data-theme="dark"] .nav-title { color: #5b7fff; border-bottom-color: rgba(255,255,255,0.08); }
 .nav a {
   display: block; padding: 8px 20px;
-  font-size: 13px; color: #6b6560;
+  font-size: 13px; color: #5c5a60;
   text-decoration: none; transition: all 0.15s;
   border-left: 3px solid transparent;
 }
-[data-theme="dark"] .nav a { color: #a09890; }
-.nav a:hover { color: #1a1714; background: #faf8f5; transform: translateX(4px); }
-[data-theme="dark"] .nav a:hover { color: #f0ece6; background: #252320; transform: translateX(4px); }
-.nav a.active { color: #c17b3f; font-weight: 600; border-left-color: #c17b3f; background: rgba(193,123,63,0.12); }
-[data-theme="dark"] .nav a.active { color: #d4935a; border-left-color: #d4935a; background: rgba(212,147,90,0.14); }
+[data-theme="dark"] .nav a { color: #a3a1a8; }
+.nav a:hover { color: #16151a; background: #f8f7f5; transform: translateX(4px); }
+[data-theme="dark"] .nav a:hover { color: #ededf0; background: #1f1f26; transform: translateX(4px); }
+.nav a.active { color: #1d4fd6; font-weight: 600; border-left-color: #1d4fd6; background: rgba(29,79,214,0.12); }
+[data-theme="dark"] .nav a.active { color: #5b7fff; border-left-color: #5b7fff; background: rgba(91,127,255,0.14); }
 
 /* topbar themed */
 .topbar {
   background: #ffffff;
   border-bottom: 1px solid rgba(0,0,0,0.08);
 }
-[data-theme="dark"] .topbar { background: #1e1c18; border-bottom-color: rgba(255,255,255,0.08); }
-.topbar-logo { color: #c17b3f; }
-[data-theme="dark"] .topbar-logo { color: #d4935a; }
-.tab-btn { color: #6b6560; }
-[data-theme="dark"] .tab-btn { color: #a09890; }
-.tab-btn:hover { background: #faf8f5; color: #1a1714; }
-[data-theme="dark"] .tab-btn:hover { background: #252320; color: #f0ece6; }
-.tab-btn.active { background: rgba(193,123,63,0.12); color: #c17b3f; border-color: rgba(193,123,63,0.25); }
-[data-theme="dark"] .tab-btn.active { background: rgba(212,147,90,0.14); color: #d4935a; }
+[data-theme="dark"] .topbar { background: #18181d; border-bottom-color: rgba(255,255,255,0.08); }
+.topbar-logo { color: #1d4fd6; }
+[data-theme="dark"] .topbar-logo { color: #5b7fff; }
+.tab-btn { color: #5c5a60; }
+[data-theme="dark"] .tab-btn { color: #a3a1a8; }
+.tab-btn:hover { background: #f8f7f5; color: #16151a; }
+[data-theme="dark"] .tab-btn:hover { background: #1f1f26; color: #ededf0; }
+.tab-btn.active { background: rgba(29,79,214,0.12); color: #1d4fd6; border-color: rgba(29,79,214,0.25); }
+[data-theme="dark"] .tab-btn.active { background: rgba(91,127,255,0.14); color: #5b7fff; }
 
 
 /* ── PIN NAV ── */

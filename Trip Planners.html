@@ -36,7 +36,7 @@
 .topbar-logo {
   font-family: 'DM Serif Display', serif;
   font-size: 15px;
-  color: var(--accent, #c17b3f);
+  color: var(--accent, #1d4fd6);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -60,13 +60,13 @@
   white-space: nowrap;
   transition: all 0.15s;
   background: none;
-  color: var(--text2, #6b6560);
+  color: var(--text2, #5c5a60);
   user-select: none;
 }
-.tab-btn:hover { background: var(--surface2, #faf8f5); color: var(--text, #1a1714); }
+.tab-btn:hover { background: var(--surface2, #f8f7f5); color: var(--text, #16151a); }
 .tab-btn.active {
-  background: var(--accent-soft, rgba(193,123,63,0.12));
-  color: var(--accent, #c17b3f);
+  background: var(--accent-soft, rgba(29,79,214,0.12));
+  color: var(--accent, #1d4fd6);
   border-color: rgba(193,123,63,0.25);
   font-weight: 600;
 }
@@ -80,25 +80,21 @@
 .master-dark-toggle::after {
   content: ''; position: absolute;
   width: 16px; height: 16px;
-  background: var(--text2, #6b6560); border-radius: 50%;
+  background: var(--text2, #5c5a60); border-radius: 50%;
   top: 3px; left: 3px;
   transition: transform 0.2s, background 0.2s;
 }
-[data-theme="dark"] .master-dark-toggle { background: var(--accent, #d4935a); }
+[data-theme="dark"] .master-dark-toggle { background: var(--accent, #5b7fff); }
 [data-theme="dark"] .master-dark-toggle::after { transform: translateX(18px); background: #fff; }
 
 /* ===== india CSS ===== */
 :root {
-  --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5;
-  --border: rgba(0,0,0,0.08); --text: #1a1714; --text2: #6b6560; --text3: #9e9891;
   --accent:#c17b3f; --accent-soft:rgba(193,123,63,0.12);
   --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
   --radius: 16px;
 }
 [data-theme="dark"] {
-  --bg: #131210; --surface: #1e1c18; --surface2: #252320;
-  --border: rgba(255,255,255,0.08); --text: #f0ece6; --text2: #a09890; --text3: #6e6660;
   --accent:#d4935a; --accent-soft:rgba(212,147,90,0.14);
   --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
   --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
