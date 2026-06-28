@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Onetrack · Jobs</title>
+<title>Taskmaster · Jobs</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
@@ -487,7 +487,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      Onetrack
+      <span id="otBrandName">Taskmaster</span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -610,9 +610,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 <div class="page-footer" id="pageFooter">
   <span class="footer-stats" id="footerStats"></span>
   <div class="spacer"></div>
-  <span class="build-stamp">Progress, one checkbox at a time. · Jobs · v3.0</span>
-  <div class="spacer"></div>
   <span id="footerRight"></span>
+  <span id="otBrandFooter"></span>
 </div>
 
 <script>
@@ -1170,7 +1169,7 @@ function trkDlv(e){e.currentTarget.classList.remove('dg-over');}
 function trkDdr(e,tId,tTier){e.preventDefault();e.currentTarget.classList.remove('dg-over');if(!trkDragSrc||trkDragSrc.id===tId){trkDragSrc=null;return;}const sT=trkDragSrc.tier,sId=trkDragSrc.id;trkDragSrc=null;const si=D[sT].findIndex(c=>c.id===sId);const[item]=D[sT].splice(si,1);const ti=D[tTier].findIndex(c=>c.id===tId);D[tTier].splice(ti,0,item);trkSave();trkRenderAll();}
 function trkChkConfetti(tier){const td=D.top.every(c=>c.done),rd=D.regular.every(c=>c.done),ld=D.least.every(c=>c.done);if(td&&rd&&ld&&!trkCF.all){trkCF.all=true;trkFireC(280);}else if(tier==='top'&&td&&!trkCF.top){trkCF.top=true;trkFireC(140);}else if(tier==='regular'&&rd&&!trkCF.regular){trkCF.regular=true;trkFireC(140);}}
 function trkReset(){if(!confirm('Reset all progress?'))return;D=JSON.parse(JSON.stringify(DEFS));trkCF={top:false,regular:false,all:false};trkCurId=null;trkSave();trkRenderAll();}
-function trkPrint(){const w=window.open('','_blank');const ts=[{tier:'top',lbl:'Top picks',col:'#c17b3f'},{tier:'regular',lbl:'Regular priority',col:'#3a6ba0'},{tier:'least',lbl:'Least priority',col:'#5f5e5a'}];let sH='';ts.forEach(({tier,lbl,col})=>{const dn=D[tier].filter(c=>c.done).length,tot=D[tier].length;const rows=D[tier].map(c=>`<tr style="background:${c.done?'#f8f8f4':'#fff'}"><td style="width:18px;padding:5px 7px;border-bottom:1px solid #eee;font-size:13px">${c.done?'☑':'☐'}</td><td style="padding:5px 7px;border-bottom:1px solid #eee;text-decoration:${c.done?'line-through':'none'};color:${c.done?'#aaa':'#1a1714'};font-size:11px;font-weight:500">${c.name}${c.ip&&!c.done?' <b style="color:#c17b3f">[IN PROGRESS]</b>':''}</td><td style="padding:5px 7px;border-bottom:1px solid #eee;font-size:9px;color:#9e9891;word-break:break-all">${c.url}</td></tr>`).join('');sH+=`<div style="margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid #e0dbd4"><div style="background:${col};padding:8px 13px;display:flex;justify-content:space-between;align-items:center"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:#fff">${lbl}</span><span style="font-size:10px;color:rgba(255,255,255,.8)">${dn}/${tot} done</span></div><table style="width:100%;border-collapse:collapse;font-family:'DM Sans',Georgia,sans-serif">${rows}</table></div>`;});const now=new Date().toLocaleDateString('en-AU',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const all=[...D.top,...D.regular,...D.least],td=all.filter(c=>c.done).length;w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Onetrack · Jobs</title></head><body style="font-family:'DM Sans',Georgia,sans-serif;color:#1a1714;background:#fff;padding:18px 22px"><div style="background:linear-gradient(135deg,#f5f0ea,#ede5d8);border-radius:9px;padding:14px 18px 11px;margin-bottom:14px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#3a2e20">Job Hunt Tracker</div><div style="font-size:11px;color:#7a6a56;margin-top:2px;font-style:italic">${now}</div></div><div style="text-align:right"><div style="font-size:17px;font-family:'DM Serif Display',Georgia,serif;color:#c17b3f">${Math.round(td/all.length*100)}%</div><div style="font-size:10px;color:#9a8878">${td}/${all.length} done</div></div></div>${sH}<div style="margin-top:12px;padding-top:7px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between"><span style="font-size:9px;color:#b0a898;font-style:italic">✦ Job Hunt Tracker</span><span style="font-size:9px;color:#b0a898">${now}</span></div></body></html>`);w.document.close();w.onload=()=>{w.focus();w.print();};}
+function trkPrint(){const w=window.open('','_blank');const ts=[{tier:'top',lbl:'Top picks',col:'#c17b3f'},{tier:'regular',lbl:'Regular priority',col:'#3a6ba0'},{tier:'least',lbl:'Least priority',col:'#5f5e5a'}];let sH='';ts.forEach(({tier,lbl,col})=>{const dn=D[tier].filter(c=>c.done).length,tot=D[tier].length;const rows=D[tier].map(c=>`<tr style="background:${c.done?'#f8f8f4':'#fff'}"><td style="width:18px;padding:5px 7px;border-bottom:1px solid #eee;font-size:13px">${c.done?'☑':'☐'}</td><td style="padding:5px 7px;border-bottom:1px solid #eee;text-decoration:${c.done?'line-through':'none'};color:${c.done?'#aaa':'#1a1714'};font-size:11px;font-weight:500">${c.name}${c.ip&&!c.done?' <b style="color:#c17b3f">[IN PROGRESS]</b>':''}</td><td style="padding:5px 7px;border-bottom:1px solid #eee;font-size:9px;color:#9e9891;word-break:break-all">${c.url}</td></tr>`).join('');sH+=`<div style="margin-bottom:18px;border-radius:8px;overflow:hidden;border:1px solid #e0dbd4"><div style="background:${col};padding:8px 13px;display:flex;justify-content:space-between;align-items:center"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:#fff">${lbl}</span><span style="font-size:10px;color:rgba(255,255,255,.8)">${dn}/${tot} done</span></div><table style="width:100%;border-collapse:collapse;font-family:'DM Sans',Georgia,sans-serif">${rows}</table></div>`;});const now=new Date().toLocaleDateString('en-AU',{weekday:'long',year:'numeric',month:'long',day:'numeric'});const all=[...D.top,...D.regular,...D.least],td=all.filter(c=>c.done).length;w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Taskmaster · Jobs</title></head><body style="font-family:'DM Sans',Georgia,sans-serif;color:#1a1714;background:#fff;padding:18px 22px"><div style="background:linear-gradient(135deg,#f5f0ea,#ede5d8);border-radius:9px;padding:14px 18px 11px;margin-bottom:14px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;color:#3a2e20">Job Hunt Tracker</div><div style="font-size:11px;color:#7a6a56;margin-top:2px;font-style:italic">${now}</div></div><div style="text-align:right"><div style="font-size:17px;font-family:'DM Serif Display',Georgia,serif;color:#c17b3f">${Math.round(td/all.length*100)}%</div><div style="font-size:10px;color:#9a8878">${td}/${all.length} done</div></div></div>${sH}<div style="margin-top:12px;padding-top:7px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between"><span style="font-size:9px;color:#b0a898;font-style:italic">✦ Job Hunt Tracker</span><span style="font-size:9px;color:#b0a898">${now}</span></div></body></html>`);w.document.close();w.onload=()=>{w.focus();w.print();};}
 function trkRenderAll(){if(!trkCurId)setCur();rApplying();rProgress();rSections();}
 
 /* ============================================================
@@ -1333,6 +1332,10 @@ function _init(){
 OT.onReady(async () => {
   _otCache = await OT.getAll();
   // Theme/accent/font now applied centrally by storage.js — not handled here.
+  // Brand name/tagline driven from storage.js APP_BRAND — edit there only.
+  const brandEl = document.getElementById('otBrandName');
+  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
+  OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
   // Run migration then reinit dynamic values
   _runMigration();
   vtabOrder = loadVTabOrder();
