@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Onetrack · Libraries</title>
+<title>Taskmaster · Libraries</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
 <style>
@@ -630,7 +630,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      Onetrack
+      <span id="otBrandName">Taskmaster</span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -714,8 +714,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 
 <div class="footer-actions">
   <div class="spacer"></div>
-  <span class="build-stamp" style="position:absolute;left:50%;transform:translateX(-50%);">Progress, one checkbox at a time. For your future self. · Libraries · Built 31 Mar 26 · v2.1</span>
-  <div class="spacer"></div>
+  <span id="otBrandFooter"></span>
 </div>
 </div><!-- /panel-library -->
 
@@ -927,6 +926,10 @@ document.addEventListener('keydown', e => {
 /* ── INIT: theme now applied centrally by storage.js — only cache population needed here. ── */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
+  // Brand name/tagline driven from storage.js APP_BRAND — edit there only.
+  const brandEl = document.getElementById('otBrandName');
+  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
+  OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
 });
 </script>
 
@@ -1047,5 +1050,14 @@ OT.onReady(async () => {
         panel remains: Library Search)
       - Removed topbar dark-mode toggle — dark mode is now
         controlled only from Settings (shared TODAY_DARK key)
+  v2.1  · 28 Jun 2026
+      - Rebranded Onetrack → Taskmaster (display text only —
+        title, nav brand, footer line). Internal ONETRACK_*
+        storage keys (incl. LIB_STORAGE_KEY) deliberately
+        left unchanged to avoid orphaning existing Drive data
+      - Removed centered/absolute-positioned build-stamp; footer
+        brand line now right-aligned and driven by
+        OT.renderBrandFooter() in storage.js, consistent with
+        Routines / TT&B / Jobs / Checklists
 ═══════════════════════════════════════════════════════════════════
 -->
