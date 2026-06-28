@@ -949,6 +949,14 @@ OT.onReady(async () => {
   const lastUpdated = new Date('2026-06-28T09:20:00+10:00');
   OT.renderBrandFooter('otBrandFooter_india', 'v1.0', lastUpdated);
   OT.renderBrandFooter('otBrandFooter_weeks', 'v1.0', lastUpdated);
+  // Re-sync the tab strip now that the REAL saved data has loaded.
+  // (The tab-strip script below runs synchronously at parse time, before
+  // this Drive load finishes, so it initially paints from defaults —
+  // this re-reads the now-populated cache so deleted/reordered/renamed
+  // tabs reflect what's actually saved instead of snapping back.)
+  if (typeof window.__refreshTripTabsFromStorage === 'function') {
+    window.__refreshTripTabsFromStorage();
+  }
 });
 </script>
 <script>
@@ -987,6 +995,25 @@ OT.onReady(async () => {
 
   let tabOrder = loadOrder();
   let activeTab = _cget(ACTIVE_TAB_KEY) || tabOrder[0];
+
+  // Re-derive everything from _otCache and re-render. Called once on
+  // first parse (with whatever is in the cache at that instant — usually
+  // still empty, hence defaults), and again from OT.onReady once the
+  // real Drive-backed data has actually loaded, so deletions/renames/
+  // reordering done in a previous session stick instead of reverting
+  // to TABS_DEFAULT on every refresh.
+  function syncFromStorage(){
+    customLabels = (() => {
+      try { return JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){ return {}; }
+    })();
+    tabOrder = loadOrder();
+    activeTab = _cget(ACTIVE_TAB_KEY) || tabOrder[0];
+    document.querySelectorAll(".panel").forEach(p=>{ p.classList.remove("active"); });
+    const panel = document.getElementById("panel-" + activeTab);
+    if (panel) panel.classList.add("active");
+    renderTabs();
+  }
+  window.__refreshTripTabsFromStorage = syncFromStorage;
 
   function activatePanel(id){
     const label = getTabLabel(id).replace(/[^\w\s]/g,"").trim();
