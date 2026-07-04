@@ -692,7 +692,14 @@
     if (!el) return;
     _injectBrandFooterStyles();
     el.classList.add('ot-brand-footer');
-    const stamp = _formatBrandDate(lastUpdated);
+    // Centralized last-updated stamp: use THIS page's own file modification
+    // time (document.lastModified). On GitHub Pages that's when you last
+    // deployed this HTML file, so each page stamps its own real update time
+    // with no per-page code. Falls back to the date the page passed in only
+    // if document.lastModified is unavailable (some servers return epoch 0).
+    let _when = new Date(document.lastModified);
+    if (isNaN(_when.getTime()) || _when.getTime() === 0) _when = lastUpdated || null;
+    const stamp = _formatBrandDate(_when);
     const parts = [APP_BRAND.tagline, version, stamp ? ('Last updated ' + stamp) : null]
       .filter(Boolean);
     el.textContent = parts.join(' · ');
