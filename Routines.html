@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Taskmaster · Routines</title>
+<title data-page="Routines">Routines</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
 <style>
@@ -527,7 +527,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      <span id="otBrandName">Taskmaster</span>
+      <span id="otBrandName"></span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -2572,9 +2572,7 @@ let _nssIcon="📋";
 OT.onReady(async () => {
   _otCache = await OT.getAll();
   // Theme/accent/font now applied centrally by storage.js — not handled here.
-  // Brand name/tagline now driven from storage.js APP_BRAND — edit there only.
-  const brandEl = document.getElementById('otBrandName');
-  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
+  // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
   OT.renderBrandFooter('otVersionFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
   initData();
   // Restore active mode tab

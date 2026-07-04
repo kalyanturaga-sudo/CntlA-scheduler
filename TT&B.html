@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Taskmaster · TT&amp;B</title>
+<title data-page="TT&amp;B">TT&amp;B</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -1324,7 +1324,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      <span id="otBrandName">Taskmaster</span>
+      <span id="otBrandName"></span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -1333,7 +1333,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 </nav>
 
 <div class="topbar">
-  <div class="topbar-logo">✦ Taskmaster</div>
+  <div class="topbar-logo"></div>
   <div class="tab-strip" id="tabStrip"></div>
   <div class="topbar-right"></div>
 </div>
@@ -1520,7 +1520,7 @@ function renderTabs(){
         inp.replaceWith(lblSpan);lblSpan.textContent=v;
         const h1=document.getElementById(id+'__heading');
         if(h1)h1.textContent=v;
-        if(id===activePanel)document.title='Taskmaster · TT&B · '+v;
+        if(id===activePanel)OT.setTitle(v);
       };
       inp.onblur=commit;
       inp.onkeydown=e2=>{if(e2.key==='Enter')inp.blur();if(e2.key==='Escape'){inp.value=m.label;inp.blur();}};
@@ -1533,7 +1533,7 @@ function renderTabs(){
     strip.appendChild(tab);
   });
 }
-function activatePanel(id){activePanel=id;document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));renderTabs();var m=PAGE_META[id];if(m)document.title='Taskmaster · TT&B · '+m.label;}
+function activatePanel(id){activePanel=id;document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));renderTabs();var m=PAGE_META[id];if(m)OT.setTitle(m.label);}
 renderTabs();activatePanel(activePanel);
 
 /* ── h1 heading rename: apply saved labels + wire dblclick ── */
@@ -1550,7 +1550,7 @@ renderTabs();activatePanel(activePanel);
         const v=inp.value.trim()||m.label; m.label=v; savePageLabel(id,v);
         h1.textContent=v;inp.replaceWith(h1);
         renderTabs();
-        if(id===activePanel)document.title='Taskmaster · TT&B · '+v;
+        if(id===activePanel)OT.setTitle(v);
       };
       inp.onblur=commit;
       inp.onkeydown=e=>{if(e.key==='Enter')inp.blur();if(e.key==='Escape'){inp.value=m.label;inp.blur();}};
@@ -1747,7 +1747,7 @@ function sortDoneToBottom(arr){
   localStorage.setItem('TODAY_BLOCKS_V2', JSON.stringify(todayRaw));
   localStorage.setItem('TOMORROW_BLOCKS_V2', JSON.stringify(tomorrowRaw));
   localStorage.setItem(RESTORED_KEY,'1');
-  console.log('[Taskmaster] Restored tasks from Tomorrow back to Today');
+  console.log('['+OT.brand.name+'] Restored tasks from Tomorrow back to Today');
 })();
 
 const STORAGE_KEY    = "TODAY_BLOCKS_V2";
@@ -4128,7 +4128,7 @@ render();
       // If moveToToday() wrote tasks there and Today's save() hasn't
       // clobbered them yet, they'll now appear.
       window._todaySyncAndRender();
-      console.log('[Taskmaster] Limbo recovery: Today panel re-synced from localStorage.');
+      console.log('['+OT.brand.name+'] Limbo recovery: Today panel re-synced from localStorage.');
     } else if(tries > 0){
       setTimeout(function(){ attempt(tries-1); }, 200);
     }
@@ -4195,8 +4195,6 @@ render();
 /* ── Brand footer (Taskmaster) — independent of data load above ── */
 if (typeof OT !== "undefined") {
   OT.onReady(function () {
-    var brandEl = document.getElementById('otBrandName');
-    if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
     var lastUpdated = new Date('2026-06-28T09:20:00+10:00');
     ['today', 'tomorrow', 'ops'].forEach(function (panel) {
       OT.renderBrandFooter('otBrandFooter_' + panel, 'v1.0', lastUpdated);

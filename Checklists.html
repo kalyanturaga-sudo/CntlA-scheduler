@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Taskmaster · Checklists</title>
+<title data-page="Checklists">Checklists</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
 <style>
@@ -487,7 +487,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      <span id="otBrandName">Taskmaster</span>
+      <span id="otBrandName"></span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -1241,7 +1241,7 @@ let activeTab = (()=>{ const t=_cget("CL_ACTIVE_TAB"); return (t&&t!=="rtn")?t:"
 function switchTab(tab){
   window._activeChecklistTab = tab;
   var _tl={ft:'FT Job',hom:'Come Home',pt:'PT Job',roh:'Rohan',esh:'Esha',kal:'Kalyan',trv:'Travel'};
-  document.title='Taskmaster · Checklists ·'+(_tl[tab]||tab);
+  OT.setTitle(_tl[tab]||tab);
   activeTab=tab;
   _cset("CL_ACTIVE_TAB",tab);
   ["ft","hom","pt","roh","esh","kal","trv"].forEach(id=>{
@@ -1928,9 +1928,7 @@ window.masterUncheckAll = masterUncheckAll;
    ============================================================ */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
-  // Brand name/tagline driven from storage.js APP_BRAND — edit there only.
-  const brandEl = document.getElementById('otBrandName');
-  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
+  // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
   OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
   // Now that _otCache reflects the real synced Drive data, load every
   // tab's sections/items from it. This MUST happen here, not at script

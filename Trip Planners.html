@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
-<title>Taskmaster · Trip Planners</title>
+<title data-page="Trip Planners">Trip Planners</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
 <style>
@@ -652,7 +652,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      <span id="otBrandName">Taskmaster</span>
+      <span id="otBrandName"></span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -943,9 +943,7 @@ function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
    Theme/accent/font now applied centrally by storage.js — not handled here. */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
-  // Brand name/tagline driven from storage.js APP_BRAND — edit there only.
-  const brandEl = document.getElementById('otBrandName');
-  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
+  // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
   const lastUpdated = new Date('2026-06-28T09:20:00+10:00');
   OT.renderBrandFooter('otBrandFooter_india', 'v1.0', lastUpdated);
   OT.renderBrandFooter('otBrandFooter_weeks', 'v1.0', lastUpdated);
@@ -1017,7 +1015,7 @@ OT.onReady(async () => {
 
   function activatePanel(id){
     const label = getTabLabel(id).replace(/[^\w\s]/g,"").trim();
-    document.title = "Taskmaster · Trip Planners · " + label;
+    OT.setTitle(label);
     activeTab = id;
     _cset(ACTIVE_TAB_KEY, id);
     document.querySelectorAll(".panel").forEach(p=>{
@@ -1856,7 +1854,7 @@ function indiaOpenPrintBW(){
   });
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Taskmaster · Trip Planners</title>
+  <title>${OT.brand.name} · Trip Planners</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -1940,7 +1938,7 @@ function indiaOpenPrintColor(){
   });
 
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Taskmaster · Trip Planners</title>
+  <title>${OT.brand.name} · Trip Planners</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
-<title>Taskmaster · Settings</title>
+<title data-page="Settings">Settings</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
 <style>
@@ -426,7 +426,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
         </svg>
       </span>
-      <span id="otBrandName">Taskmaster</span>
+      <span id="otBrandName"></span>
     </div>
     <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
   </div>
@@ -439,7 +439,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <div class="page-header">
     <div>
       <h1>Settings</h1>
-      <p class="page-subtitle">Controls apply across all Taskmaster pages</p>
+      <p class="page-subtitle">Controls apply across all <span class="ot-brand"></span> pages</p>
     </div>
     <span class="saved-pill" id="savedPill">✓ Saved</span>
   </div>
@@ -626,7 +626,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         <div class="setting-icon">🏠</div>
         <div class="setting-info">
           <div class="setting-label">Default Page</div>
-          <div class="setting-desc">Which page opens when you load Taskmaster</div>
+          <div class="setting-desc">Which page opens when you load <span class="ot-brand"></span></div>
         </div>
         <div class="setting-control">
           <select class="setting-select" id="defaultPageSelect">
@@ -680,7 +680,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         <div class="danger-icon" style="background:var(--green-soft);">💾</div>
         <div class="danger-info">
           <div class="danger-label">Export All Data</div>
-          <div class="danger-desc">Download a JSON backup of every Taskmaster key from your data file</div>
+          <div class="danger-desc">Download a JSON backup of every <span class="ot-brand"></span> key from your data file</div>
         </div>
         <button class="danger-btn" id="exportBtn" style="color:var(--green);background:var(--green-soft);border-color:rgba(58,140,92,0.20);">Export JSON</button>
       </div>
@@ -728,7 +728,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <div class="danger-row">
         <div class="danger-icon">💥</div>
         <div class="danger-info">
-          <div class="danger-label">Wipe All Taskmaster Data</div>
+          <div class="danger-label">Wipe All <span class="ot-brand"></span> Data</div>
           <div class="danger-desc">Permanently deletes all tasks, planners, jobs, checklists and settings</div>
         </div>
         <button class="danger-btn" id="wipeBtn">Wipe Everything</button>
@@ -742,7 +742,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <div class="about-card">
       <div class="about-logo">✓</div>
       <div class="about-meta">
-        <div class="about-name"><span id="otBrandNameAbout">Taskmaster</span></div>
+        <div class="about-name"><span id="otBrandNameAbout"></span></div>
         <div class="about-build" id="otAboutTagline">One list to master. One task at a time.</div>
       </div>
     </div>
@@ -982,7 +982,7 @@ document.getElementById('exportBtn').onclick = async () => {
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'taskmaster-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = OT.brand.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') + '-backup-' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   showToast('📦 Backup downloaded');
 };
@@ -1037,7 +1037,7 @@ document.getElementById('resetSettingsBtn').onclick = () => {
 
 /* ── wipe ── */
 document.getElementById('wipeBtn').onclick = async () => {
-  if (!confirm('⚠️ This will permanently delete ALL Taskmaster data including tasks, planners, jobs and checklists.\n\nType DELETE to confirm.')) return;
+  if (!confirm('⚠️ This will permanently delete ALL ' + OT.brand.name + ' data including tasks, planners, jobs and checklists.\n\nType DELETE to confirm.')) return;
   const answer = prompt('Type DELETE to confirm wipe:');
   if (answer !== 'DELETE') { showToast('Wipe cancelled'); return; }
   await OT.clear();
@@ -1086,11 +1086,7 @@ function initAll() {
 /* ── Boot: wait for OT file to be linked, then load everything ── */
 OT.onReady(async () => {
   _otCache = await OT.getAll();
-  // Brand name/tagline driven from storage.js APP_BRAND — edit there only.
-  const brandEl = document.getElementById('otBrandName');
-  if (brandEl && OT.brand) brandEl.textContent = OT.brand.name;
-  const aboutNameEl = document.getElementById('otBrandNameAbout');
-  if (aboutNameEl && OT.brand) aboutNameEl.textContent = OT.brand.name;
+  // Brand name + logos now stamped centrally by storage.js (_applyBrand).
   const aboutTaglineEl = document.getElementById('otAboutTagline');
   if (aboutTaglineEl && OT.brand) aboutTaglineEl.textContent = OT.brand.tagline;
   OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));

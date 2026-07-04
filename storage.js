@@ -1,5 +1,11 @@
 /* ============================================================
-   storage.js  —  Taskmaster Shared Storage Engine  v5.3
+   storage.js  —  Ctrl+A Shared Storage Engine  v5.4
+   ------------------------------------------------------------
+   v5.4: Rebranded Taskmaster -> Ctrl+A. Same DISPLAY-ONLY rule as
+   v5.1 below — the ONLY change is APP_BRAND (name + tagline). The
+   internal storage keys, the Drive file name (onetrack-data.json),
+   and the localStorage keys all still KEEP their ONETRACK_* names
+   on purpose. Do NOT rename them — it would orphan saved data.
    ------------------------------------------------------------
    v5.1: Rebranded Onetrack -> Taskmaster. This is a DISPLAY-ONLY
    change (title text, nav brand, banner/tooltip copy, console
@@ -92,8 +98,8 @@
      Internal storage keys / file names above are untouched on
      purpose (see header note). ── */
   const APP_BRAND = {
-    name:    'Taskmaster',
-    tagline: 'One list to master. One task at a time.',
+    name:    'Ctrl+A',
+    tagline: 'Capture all. Control all.',
   };
 
   /* ── NAV CONFIG — edit this list to add/rename/remove a page ── */
