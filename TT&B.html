@@ -2418,7 +2418,7 @@ function buildSidebar(){
         if(!data[slotId]) data[slotId]=[];
         data[slotId].unshift(...group);
         save(); dragState=null;
-        setActiveSlot(slotId); openSlotDrawer(slotId); buildSidebar();
+        setActiveSlot(fromSlot); openSlotDrawer(fromSlot); buildSidebar();
         const labels=loadSlotLabels(), meta2=SLOT_META[slotId];
         showToast("⇄ Moved to "+(labels[slotId]||meta2.label));
         return;
