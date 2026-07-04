@@ -6,68 +6,7 @@
 <title data-page="Checklists">Checklists</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-<script>
-window.OT = window.OT || (function(){
-  // Standalone localStorage engine (used when the full storage.js isn't
-  // loaded). Must implement everything the page calls: get/set/remove,
-  // getAll/setAll/keys/clear, onReady/isReady/onChange, brand,
-  // renderBrandFooter, setTitle.
-  var store = {};
-  function refresh(){
-    store = {};
-    try{
-      for(var i=0;i<localStorage.length;i++){
-        var k = localStorage.key(i);
-        try{ store[k] = JSON.parse(localStorage.getItem(k)); }
-        catch(e){ store[k] = localStorage.getItem(k); }
-      }
-    }catch(e){}
-    return store;
-  }
-  var MONTH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  function fmtStamp(d){
-    try{
-      var p = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',
-        day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false})
-        .formatToParts(d).reduce(function(o,x){o[x.type]=x.value;return o;},{});
-      return p.day+'-'+p.month+'-'+p.year+' '+p.hour+':'+p.minute;
-    }catch(e){
-      return ('0'+d.getDate()).slice(-2)+'-'+MONTH[d.getMonth()]+'-'+String(d.getFullYear()).slice(-2)+
-             ' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
-    }
-  }
-  return {
-    brand: { name:'Ctrl+A', tagline:'Capture all. Control all.' },
-    _store: store,
-    get(key){
-      try{ var v = localStorage.getItem(key); return v===null ? null : JSON.parse(v); }
-      catch(e){ return null; }
-    },
-    set(key,val){
-      try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
-      try{ store[key] = val; }catch(e){}
-    },
-    remove(key){ try{ localStorage.removeItem(key); }catch(e){} try{ delete store[key]; }catch(e){} },
-    keys(){ return Object.keys(refresh()); },
-    getAll(){ return refresh(); },
-    setAll(obj){
-      try{ Object.keys(obj||{}).forEach(function(k){ localStorage.setItem(k, JSON.stringify(obj[k])); }); }catch(e){}
-      return refresh();
-    },
-    clear(){ try{ localStorage.clear(); }catch(e){} store = {}; },
-    onReady(cb){ refresh(); this._store = store; if(typeof cb === 'function') cb(); },
-    isReady(){ return true; },
-    onChange(){},
-    setTitle(t){ document.title = t; },
-    renderBrandFooter(containerId, version, lastUpdated){
-      var el = document.getElementById(containerId);
-      if(!el) return;
-      var d = (lastUpdated instanceof Date) ? lastUpdated : new Date(lastUpdated || Date.now());
-      el.textContent = this.brand.tagline + ' · ' + version + ' · Last updated ' + fmtStamp(d);
-    }
-  };
-})();
-</script>
+<script src="storage.js"></script>
 
 <style>
 /* ====== SHARED TOKENS ====== */
