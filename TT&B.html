@@ -1928,94 +1928,13 @@ function showToast(msg){
 }
 
 /* ── confetti ── */
-I'll take a look at the project files to find the animation.Hunted animation code across project files systematicallyHunted animation code across project files systematicallyLet me search across all files for animation-related code.Narrowed focus to keyframe animations for precisionNarrowed focus to keyframe animations for precision"transition:" appears almost everywhere, so let me narrow it down to actual keyframe animations, which are the real animated effects.Investigated multiple animation files and pinpointed primary candidateInvestigated multiple animation files and pinpointed primary candidateThere isn't a single animation — animations live in most of the HTML files. Here's the full map of what's where.
-The one animation that appears in every file is the logo checkbox tick — the box fills green and the checkmark draws itself in (logoBoxFill, logoTickDraw, with uncheck reversing it). If that's "the animation" you mean, it's defined identically in all eight HTML files: Checklists, Jobs, Libraries, Routines, Settings, TT_B, Trip_Planners, and Weekly_Planners.
-Beyond that, each file has its own set:
-Checklists.html — fadeUp (blocks sliding up on load), listDoneWash (green wash when a list completes), confetti-fall (confetti pieces dropping), plus the logo tick.
-Jobs.html — fadeUp, ip-pulse (in-progress rows/tiles pulsing every 2.4s), confetti-fall, plus the logo tick.
-Routines.html — fadeUp, listDoneWash, confetti-fall, and wkSlotPulse (today's day tab pulses with a glowing ring), plus the logo tick.
-TT_B.html — the richest one: inProgressBlink, confetti-fall, slotPulse (current time slot), sctBlink (orange/red countdown digits blinking), taskDone (task completion), fadeUp, plus the logo tick.
-Libraries.html — fadeIn (search row / general reveal), shake (error/invalid shake), plus the logo tick.
-Trip_Planners.html and Weekly_Planners.html — fadeUp (Trip only) and the logo tick.
-Settings.html — fadeUp and the logo tick.
-storage.js has no keyframe animations (it just matched on transition).
-If you tell me which specific animation you're after — the checkmark, the confetti, the pulsing, the countdown blink, etc. — I can point you to the exact file and line numbers and show you the code.ah can you tell me if i complete all tasks in a page or tab it give some confetti animation wher eis itLocated confetti animations across multiple files, now hunting trigger logicLocated confetti animations across multiple files, now hunting trigger logicLet me find where the confetti is actually triggered in the code (not just the CSS), so I can show you the "all tasks complete" logic.Hunted down confetti trigger locations and activation conditionsHunted down confetti trigger locations and activation conditionsThe confetti "all tasks complete" celebration lives in four files, each firing it slightly differently. Here's where the trigger is in each:
-Checklists.html — the confetti function fireConfetti(colors) is at line 818. The trigger that fires it when a whole tab hits 100% is at line 1217:
-jsif(pctAll===100&&totalAll>0){fireConfetti(confettiColors);showToast(doneMsg);}
-So completing every task in a tab fires confetti plus a per-tab "done" message (each tab has its own colors and message, e.g. the packing tab says "🛫 All packed and ready — bon voyage!").
-Routines.html — fireConfetti() is at line 710, and it's triggered in three places for the three views:
-
-Line 873 — daily routines: "🎉 All routines complete — incredible day!"
-Line 1848 — another view: "🎉 All done!"
-Line 2407 — weekly: "🎉 All weekly tasks done!"
-
-Each uses the same if(pct===100&&total>0) check.
-TT_B.html — fireConfetti() is defined at line 1918, triggered around lines 1938 and 1944, the latter with a 600ms delay: "🏆 All tasks done! Amazing work!"
-Jobs.html — this one's different. Instead of a simple page-level check, it has trkChkConfetti(tier) at line 1166. It fires confetti per tier (top / regular / least) and a bigger burst (280 pieces) only when all three tiers are done:
-jsif(td&&rd&&ld&&!trkCF.all){trkCF.all=true;trkFireC(280);}
-The trkCF flags make sure each burst only fires once so it doesn't re-trigger every toggle.
-So the short answer: the "complete everything → confetti" logic is in Checklists (line 1217), Routines (lines 873/1848/2407), TT_B (lines 1938/1944), and Jobs (line 1166). Want me to pull up the full function and trigger block from any one of these so you can tweak it?its coming in the bottom of the page not whole of the page and its not celebratory enough can you show me pilots of the animation on the screen so that i can change to what i likeArchitected interactive demo showcasing multiple celebratory animation variationsArchitected interactive demo showcasing multiple celebratory animation variationsGood catch — the current one spawns pieces at the top and they just fall straight down, which reads as a thin sprinkle rather than a full celebration. Let me build you a preview page with several "pilot" animations you can trigger full-screen and compare, then you tell me which vibe you want and I'll drop it into your actual files.
-Let me quickly check the design skill first so it looks polished.Reading frontend-design skill before building the preview UIReading frontend-design skill before building the preview UINow let me look at the current confetti code so my "improved" pilot is a fair, portable comparison.Architected multi-mode canvas engine showcasing diverse celebratory animationsArchitected multi-mode canvas engine showcasing diverse celebratory animationsHere's the plan: I'll give you a full-screen preview page with six celebration "pilots." Each one plays across the whole screen so you can judge the coverage and energy, then just tell me the number you like and I'll wire it into Checklists / Routines / Jobs / TT_B (matching each tab's colours).
-The six styles, from "closest to your current setup" to "biggest party":
-
-Full-screen rain — your current idea but fixed: ~180 pieces spread across the whole height at once (not trickling from the top), with sway and mixed shapes.
-Center burst — everything explodes outward from the middle of the screen with gravity. Classic "pop."
-Side cannons — two party-poppers fire up-and-inward from the bottom corners.
-Fireworks — several bursts pop at random spots across the screen in sequence.
-Pop + rain combo — a big 🎉 flash in the center plus a burst and a rain layer.
-Streamers — long fluttering ribbons for a lush, full-coverage look.
-
-Let me build it.Created a file, read a fileCreated a file, read a fileOpen it and tap each card — every pilot plays across the whole screen so you can compare coverage and energy.
-Quick guide to what you're seeing:
-
-1 – Full-screen rain and 6 – Streamers are the closest to your current DOM setup, so they're the fastest to drop in with almost no change to how fireConfetti works.
-2 – Center burst, 3 – Side cannons, 4 – Fireworks, and 5 – Pop + rain use a tiny canvas engine for real physics. Still fully portable into your files — it's just a slightly different shape of code (one canvas + a short animation loop instead of individual DOM pieces).
-
-The root problem with your current one, by the way: it only spawns 55 pieces all starting at translateY(-20px) (the very top) and they fall straight down, so at any moment most of the screen is empty and the density pools near the bottom. Every pilot here fixes that by either distributing pieces across the full height at once (rain/streamers) or launching them outward to fill the space (bursts/cannons/fireworks).
-Tell me the number you want and I'll wire it into Checklists, Routines, Jobs, and TT_B — keeping each tab's existing colour set and its "all done" toast message. If you like one but want it tweaked (more pieces, longer, different shapes, slower fall), say so and I'll adjust before integrating.Confetti pilotsCode · HTML <!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title data-page="TT&amp;B">TT&amp;B</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/20pastedThis is TT&B.html  just tell me where i need to change the naminatin to remove exisiting one and make it pop+ rain animation just the linesPinpointed specific animation lines requiring modification for effect transformationPinpointed specific animation lines requiring modification for effect transformationLet me pull the exact line numbers from your actual file so the edits line up.Pinpointed exact line ranges for animation replacement codePinpointed exact line ranges for animation replacement codeTwo edits, nothing else — checkBlockComplete() already calls fireConfetti(), so you don't touch it.
-Edit 1 — CSS, lines 507–518 (the @keyframes confetti-fall + .confetti-piece block). Replace those lines with:
-css  /* ── CONFETTI + POP ── */
-  @keyframes confetti-fall {
-    0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
-    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-  }
-  .confetti-piece {
-    position: fixed;
-    top: 0;
-    width: 8px; height: 10px;
-    border-radius: 2px;
-    pointer-events: none;
-    z-index: 9999;
-    animation: confetti-fall linear forwards;
-  }
-  @keyframes popFlash {
-    0%   { font-size: 20px;  opacity: 0; transform: rotate(-12deg); }
-    30%  { font-size: 150px; opacity: 1; transform: rotate(4deg); }
-    70%  { font-size: 140px; opacity: 1; }
-    100% { font-size: 165px; opacity: 0; transform: scale(1.2) rotate(0deg); }
-  }
-  .pop-wrap {
-    position: fixed; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    z-index: 10000; pointer-events: none;
-  }
-  .pop-wrap span { animation: popFlash 1s cubic-bezier(.2,1.4,.3,1) forwards; }
-Edit 2 — JS, lines 1918–1933 (the whole fireConfetti() function). Replace those lines with:
-javascriptfunction fireConfetti(){
+function fireConfetti(){
   const colors=["#FFD24C","#FF5C8A","#4ADE80","#38BDF8","#A78BFA","#FB923C","#F472B6","#FDE047"];
-  // 🎉 pop flash in the center
   const wrap=document.createElement("div");
   wrap.className="pop-wrap";
   wrap.innerHTML="<span>🎉</span>";
   document.body.appendChild(wrap);
   setTimeout(()=>wrap.remove(),1000);
-  // rain across the whole screen
   for(let i=0;i<160;i++){
     const p=document.createElement("div");
     p.className="confetti-piece";
