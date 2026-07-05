@@ -813,10 +813,6 @@ function applySettingsFontScale(){
 
 function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
 
-/* ── Completion celebration: FIREWORKS ──
-   Drop-in replacement for the old rain confetti. Same signature: takes the
-   per-tab colour list. Six glowing shells burst at random points near the top,
-   each a coloured ring that drifts down with gravity and fades out. */
 function fireConfetti(colors){
   colors=colors||["#f44336","#ff9800","#4caf50","#2196f3","#9c27b0","#ffeb3b","#c17b3f"];
   var c=document.createElement("canvas");
@@ -853,6 +849,29 @@ function fireConfetti(colors){
     }
     if(alive||bursts<totalBursts) requestAnimationFrame(loop); else c.remove();
   })();
+}
+
+/* ── Per-list completion tracking (fires fireworks once when a list is finished) ── */
+var _listDoneState = {};      /* key: "tabId:secId" → was-done last render */
+var _celebrationsArmed = false; /* stays false during initial load so we don't fire on already-done lists */
+function _listAllItems(cfg, sec){
+  var ids = sec.split ? [sec.split.left.id, sec.split.right.id] : [sec.id];
+  var out = [];
+  ids.forEach(function(id){ (cfg.data[id]||[]).forEach(function(t){ out.push(t); }); });
+  return out;
+}
+function checkListCompletions(cfg){
+  cfg.SECTIONS.forEach(function(sec){
+    var items = _listAllItems(cfg, sec);
+    var isDone = items.length>0 && items.every(function(t){ return t.done; });
+    var key = cfg.tabId + ':' + sec.id;
+    var was = _listDoneState[key];
+    _listDoneState[key] = isDone;
+    if(isDone && !was && _celebrationsArmed){
+      fireConfetti(cfg.confettiColors);
+      showToast('\u2713 ' + sec.label + ' complete!');
+    }
+  });
 }
 
 function cap(s){ return s?s.charAt(0).toUpperCase()+s.slice(1):s; }
@@ -1252,7 +1271,7 @@ function updateProgress(cfg){
   document.getElementById(fillId).style.width=pctAll+'%';
   document.getElementById(pctId).textContent=pctAll+'%';
   if(activeTab===cfg.tabId)document.getElementById(statsId).textContent=totalAll?`${doneAll} / ${totalAll} items`:'';
-  if(pctAll===100&&totalAll>0){fireConfetti(confettiColors);showToast(doneMsg);}
+  checkListCompletions(cfg);
 }
 
 /* generic print helpers */
@@ -2000,6 +2019,7 @@ OT.onReady(async () => {
   renderChecklist(kalCfg());
   renderChecklist(trvCfg());
   switchTab(activeTab);
+  setTimeout(function(){ _celebrationsArmed = true; }, 0); /* arm after initial paint */
 });
 </script>
 
