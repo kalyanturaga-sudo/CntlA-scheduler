@@ -975,7 +975,7 @@
     var dot  = document.createElementNS(NS, 'circle'); dot.setAttribute('class', 'ot-trace-dot'); dot.setAttribute('r', '2.6');
     svg.appendChild(rect); svg.appendChild(dot); host.appendChild(svg);
 
-    var DUR = 5000, GAP = 280, PADX = 9, PADY = 6, RX = 8, INSET = 2;
+    var DUR = 5100, GAP = 280, PADX = 9, PADY = 6, RX = 8, INSET = 2;
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     function play() {
