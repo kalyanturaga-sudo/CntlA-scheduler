@@ -815,7 +815,10 @@ function getAllRoutines(){
 
 function initData(){
   let d=loadData();
-  if(!d) d={};
+  // GUARD: if the routines key isn't in the cache yet (e.g. this page loaded
+  // before the Drive sync arrived), do NOT write anything back. Saving an empty
+  // object here is what previously overwrote real data in Drive. Bail out instead.
+  if(!d) return;
   // Only migrate existing items for defaults that already have saved data
   // Do NOT auto-create empty entries for defaults — user sees only what they've saved
   ROUTINES_DEFAULTS.forEach(r=>{
