@@ -272,9 +272,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 #toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--surface);padding:10px 20px;border-radius:40px;font-size:13px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
-/* ====== CONFETTI ====== */
-@keyframes confetti-fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1;}100%{transform:translateY(100vh) rotate(720deg);opacity:0;}}
-.confetti-piece{position:fixed;width:8px;height:10px;border-radius:2px;pointer-events:none;z-index:9999;animation:confetti-fall linear forwards;}
+/* ====== CELEBRATION (center burst) ====== */
+@keyframes cel-ring{0%{transform:translate(-50%,-50%) scale(0);opacity:.5;}100%{transform:translate(-50%,-50%) scale(7);opacity:0;}}
+@keyframes cel-pop{0%{transform:translate(-50%,-50%) scale(.4);opacity:0;}35%{transform:translate(-50%,-50%) scale(1.18);opacity:1;}65%{transform:translate(-50%,-50%) scale(1);}100%{transform:translate(-50%,-50%) scale(1);opacity:0;}}
+@keyframes cel-burst{0%{transform:translate(0,0) scale(1);opacity:1;}100%{transform:translate(var(--dx),var(--dy)) scale(.3);opacity:0;}}
+.cel-overlay{position:fixed;inset:0;pointer-events:none;z-index:99999;overflow:hidden;}
+.cel-ring{position:absolute;left:50%;top:50%;width:70px;height:70px;border-radius:50%;background:#e8a866;}
+.cel-msg{position:absolute;left:50%;top:50%;font-family:'DM Sans',sans-serif;font-size:clamp(24px,5vw,38px);font-weight:600;color:#fff;background:#2a9d6a;padding:14px 32px;border-radius:44px;white-space:nowrap;box-shadow:0 10px 34px rgba(0,0,0,.28);}
+.cel-piece{position:absolute;width:9px;height:9px;border-radius:2px;}
 
 /* ====== ANIMATIONS ====== */
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
@@ -707,7 +712,25 @@ function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
    TOAST + CONFETTI
 ══════════════════════════════════════════════════════════ */
 function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
-function fireConfetti(){ const cols=["#7a5fa0","#e8a866","#4caf50","#f44336","#ff9800","#2196f3","#ffeb3b"]; for(let i=0;i<55;i++){const p=document.createElement("div");p.className="confetti-piece";p.style.left=Math.random()*100+"vw";p.style.background=cols[Math.floor(Math.random()*cols.length)];p.style.width=(5+Math.random()*6)+"px";p.style.height=(7+Math.random()*8)+"px";p.style.animationDuration=(1.2+Math.random()*1.8)+"s";p.style.animationDelay=(Math.random()*0.5)+"s";document.body.appendChild(p);p.addEventListener("animationend",()=>p.remove());} }
+function fireCelebration(){
+  const cols=["#7a5fa0","#e8a866","#4caf50","#f44336","#ff9800","#2196f3","#ffeb3b","#e24b8f"];
+  const ov=document.createElement("div"); ov.className="cel-overlay"; document.body.appendChild(ov);
+  const cx=window.innerWidth/2, cy=window.innerHeight/2;
+  const ring=document.createElement("div"); ring.className="cel-ring"; ring.style.animation="cel-ring .7s ease-out forwards"; ov.appendChild(ring);
+  const msg=document.createElement("div"); msg.className="cel-msg"; msg.textContent="🎉 All done!"; msg.style.animation="cel-pop 1.9s ease forwards"; ov.appendChild(msg);
+  for(let i=0;i<36;i++){
+    const ang=Math.PI*2*i/36 + Math.random()*0.3, dist=90+Math.random()*170;
+    const p=document.createElement("div"); p.className="cel-piece";
+    p.style.left=cx+"px"; p.style.top=cy+"px";
+    p.style.background=cols[Math.floor(Math.random()*cols.length)];
+    p.style.borderRadius=Math.random()<0.5?"50%":"2px";
+    p.style.setProperty("--dx",Math.cos(ang)*dist+"px");
+    p.style.setProperty("--dy",Math.sin(ang)*dist+"px");
+    p.style.animation="cel-burst "+(0.8+Math.random()*0.6)+"s cubic-bezier(.15,.6,.3,1) forwards";
+    ov.appendChild(p);
+  }
+  setTimeout(()=>ov.remove(),2100);
+}
 
 /* ══════════════════════════════════════════════════════════
    STORAGE KEYS  (shared with 04. Checklists.html)
@@ -873,7 +896,7 @@ function updateOverallProgress(){
   document.getElementById("overallFill").style.width=pct+"%";
   document.getElementById("overallPct").textContent=pct+"%";
   document.getElementById("footerStats").textContent=total?`${done} / ${total} items total`:"";
-  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All done!"); }
+  if(pct===100&&total>0){ fireCelebration(); }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1855,7 +1878,7 @@ function updateSimpleProgress(mode){
   document.getElementById("overallFill").style.width=pct+"%";
   document.getElementById("overallPct").textContent=pct+"%";
   document.getElementById("footerStats").textContent=done+" of "+total+" tasks done";
-  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All done!"); }
+  if(pct===100&&total>0){ fireCelebration(); }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2414,7 +2437,7 @@ function updateWkProgress(){
   document.getElementById("overallFill").style.width=pct+"%";
   document.getElementById("overallPct").textContent=pct+"%";
   document.getElementById("footerStats").textContent=done+" of "+total+" tasks done";
-  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All done!"); }
+  if(pct===100&&total>0){ fireCelebration(); }
 }
 
 function renderWeekly(){
