@@ -1397,10 +1397,17 @@ function renderContent(){
 /* ══════════════════════════════════════════════════════════
    MASTER RENDER
 ══════════════════════════════════════════════════════════ */
+let _rendering = false;
 function render(){
-  renderSidebar();
-  renderContent();
-  updateOverallProgress();
+  if (_rendering) return;      // guard: block reentrant render (e.g. a tab-label blur firing mid-rebuild)
+  _rendering = true;
+  try {
+    renderSidebar();
+    renderContent();
+    updateOverallProgress();
+  } finally {
+    _rendering = false;
+  }
 }
 
 /* ══════════════════════════════════════════════════════════
