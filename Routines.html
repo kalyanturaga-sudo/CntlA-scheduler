@@ -873,7 +873,7 @@ function updateOverallProgress(){
   document.getElementById("overallFill").style.width=pct+"%";
   document.getElementById("overallPct").textContent=pct+"%";
   document.getElementById("footerStats").textContent=total?`${done} / ${total} items total`:"";
-  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All routines complete — incredible day!"); }
+  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All done!"); }
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2414,7 +2414,7 @@ function updateWkProgress(){
   document.getElementById("overallFill").style.width=pct+"%";
   document.getElementById("overallPct").textContent=pct+"%";
   document.getElementById("footerStats").textContent=done+" of "+total+" tasks done";
-  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All weekly tasks done!"); }
+  if(pct===100&&total>0){ fireConfetti(); showToast("🎉 All done!"); }
 }
 
 function renderWeekly(){
