@@ -179,6 +179,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 [data-theme="dark"] .r-task:hover{background:rgba(255,255,255,0.09);}
 .r-task.completed .r-task-text{text-decoration:line-through;opacity:.42;}
 .r-task.r-dragging{opacity:.3;}
+.r-task.subtask{margin-left:22px;opacity:.88;}
+.r-task.subtask .r-task-text{font-size:12.5px;}
+.r-task.subtask::before{content:'';position:absolute;left:-12px;top:50%;width:8px;height:1px;background:var(--border);}
+.r-task{position:relative;}
 .r-task.r-drag-over{box-shadow:0 -2px 0 var(--accent);}
 .r-drag-handle{color:var(--text3);cursor:grab;font-size:14px;padding:0 2px;flex-shrink:0;user-select:none;opacity:0;transition:opacity .12s;}
 .r-task:hover .r-drag-handle{opacity:1;}
@@ -452,6 +456,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .wk-task:hover{background:rgba(255,255,255,.82);box-shadow:0 2px 8px rgba(0,0,0,.06);}
 [data-theme="dark"] .wk-task:hover{background:rgba(255,255,255,.09);}
 .wk-task.completed .wk-task-text{text-decoration:line-through;opacity:.44;}
+.wk-task.subtask{margin-left:22px;opacity:.88;}
+.wk-task.subtask .wk-task-text{font-size:12.5px;}
 .wk-drag-handle{color:var(--text3);cursor:grab;font-size:14px;padding:0 2px;flex-shrink:0;user-select:none;opacity:0;transition:opacity .12s;}
 .wk-task:hover .wk-drag-handle{opacity:1;}
 
@@ -875,6 +881,101 @@ let activeRoutineId = _cget(ACTIVE_KEY) || null;
 let _taskDrag = null;  // {routineId, fromIndex}
 let _tabDragSrc = null; // routineId
 
+
+/* ══════════════════════════════════════════════════════════
+   SUB-TASK HELPERS  (shared by Daily / Simple / Weekly engines)
+   Model: flat array + boolean `sub`.
+   A sub-task's parent is the nearest preceding item with sub!==true.
+   Scans NEVER cross a header (isHeader) boundary.
+══════════════════════════════════════════════════════════ */
+function _isHdr(it){ return !!(it && it.isHeader); }
+
+/* index of the parent of item i, or -1 if none (orphan / top-level) */
+function subParentIdx(arr,i){
+  for(let j=i-1;j>=0;j--){
+    if(_isHdr(arr[j])) return -1;   // hit a section header — no parent
+    if(!arr[j].sub) return j;
+  }
+  return -1;
+}
+
+/* how many contiguous sub-tasks sit directly under item i */
+function subChildCount(arr,i){
+  if(!arr[i] || arr[i].sub) return 0;
+  let c=0;
+  for(let j=i+1;j<arr.length;j++){
+    if(_isHdr(arr[j]) || !arr[j].sub) break;
+    c++;
+  }
+  return c;
+}
+
+/* size of the movable group starting at i (parent + its subs, or 1) */
+function subGroupSize(arr,i){ return 1 + subChildCount(arr,i); }
+
+/* two-way done cascade after toggling index i */
+function subCascade(arr,i){
+  const it=arr[i]; if(!it) return;
+  if(!it.sub){
+    // parent → push state down to all children
+    const c=subChildCount(arr,i);
+    for(let j=i+1;j<=i+c;j++) arr[j].done=it.done;
+  } else {
+    // child → pull parent up/down
+    const p=subParentIdx(arr,i);
+    if(p<0) return;
+    if(!it.done){ arr[p].done=false; return; }
+    const c=subChildCount(arr,p);
+    let all=true;
+    for(let j=p+1;j<=p+c;j++){ if(!arr[j].done){ all=false; break; } }
+    if(all) arr[p].done=true;
+  }
+}
+
+/* any sub with no parent gets promoted back to top-level */
+function subDemoteOrphans(arr){
+  if(!arr) return arr;
+  for(let i=0;i<arr.length;i++){
+    if(arr[i] && !_isHdr(arr[i]) && arr[i].sub && subParentIdx(arr,i)<0) arr[i].sub=false;
+  }
+  return arr;
+}
+
+/* done-to-bottom sort that keeps parent+subs together and headers in place.
+   A group only counts as "done" when every member is done. */
+function sortGroupsDoneToBottom(arr){
+  const out=[]; let block=[];
+  function flush(){
+    if(!block.length) return;
+    const groups=[];
+    block.forEach(it=>{
+      if(!it.sub || !groups.length) groups.push([it]);
+      else groups[groups.length-1].push(it);
+    });
+    const undone=groups.filter(g=>!g.every(t=>t.done));
+    const done  =groups.filter(g=> g.every(t=>t.done));
+    undone.concat(done).forEach(g=>g.forEach(it=>out.push(it)));
+    block=[];
+  }
+  (arr||[]).forEach(it=>{
+    if(_isHdr(it)){ flush(); out.push(it); }
+    else block.push(it);
+  });
+  flush();
+  return out;
+}
+
+/* never let a drop land *inside* a parent's group — slide past its children */
+function subSafeInsert(arr,idx){
+  while(idx>0 && idx<arr.length && arr[idx] && !_isHdr(arr[idx]) && arr[idx].sub) idx++;
+  return idx;
+}
+
+/* can item i be indented? (needs a task above it inside the same section) */
+function subCanIndent(arr,i){
+  return !!(arr[i] && !arr[i].sub && subParentIdx(arr,i) >= 0);
+}
+
 function _getDropIdx(body, clientY){
   const rows=[...body.querySelectorAll(".r-task:not(.r-dragging)")];
   for(let i=0;i<rows.length;i++){
@@ -1023,9 +1124,14 @@ function renderSidebar(){
         const d2=loadData()||{};
         const fromItems=d2[_taskDrag.routineId]&&d2[_taskDrag.routineId].items;
         if(!fromItems){ _taskDrag=null; return; }
-        const [movedTask]=fromItems.splice(_taskDrag.fromIndex,1);
+        const gSize=_taskDrag.groupSize||subGroupSize(fromItems,_taskDrag.fromIndex);
+        const movedGroup=fromItems.splice(_taskDrag.fromIndex,gSize);
+        if(!movedGroup.length){ _taskDrag=null; return; }
+        if(movedGroup[0].sub) movedGroup[0].sub=false;   // lone sub arriving alone → promote
+        subDemoteOrphans(fromItems);
         if(!d2[r.id]) d2[r.id]={items:[]};
-        d2[r.id].items.unshift(movedTask);
+        d2[r.id].items.unshift(...movedGroup);
+        subDemoteOrphans(d2[r.id].items);
         saveData(d2);
         showToast("✓ Moved to " + r.label);
         _taskDrag=null;
@@ -1071,13 +1177,13 @@ function renderContent(){
 
   // sort: headers stay in place, undone before done (among non-headers)
   // For routines with section headers, preserve order entirely
+  subDemoteOrphans(items);
   const hasRoomHeaders=items.some(it=>it.isHeader);
   let sorted;
   if(hasRoomHeaders){
     sorted=[...items];
   } else {
-    const undone=items.filter(it=>!it.done), done=items.filter(it=>it.done);
-    sorted=[...undone,...done];
+    sorted=sortGroupsDoneToBottom(items);   // keeps parent+subs together
     d[routine.id].items=sorted;
   }
   const realItems=sorted.filter(it=>!it.isHeader);
@@ -1154,7 +1260,7 @@ function renderContent(){
   // ── Build a single task row ────────────────────────────────
   function buildTaskRow(item, globalIdx){
     const row=document.createElement("div");
-    row.className="r-task"+(item.done?" completed":"");
+    row.className="r-task"+(item.done?" completed":"")+(item.sub?" subtask":"");
 
     const handle=document.createElement("span"); handle.className="r-drag-handle"; handle.textContent="⠿";
     handle.onpointerdown=()=>row.draggable=true;
@@ -1163,8 +1269,15 @@ function renderContent(){
 
     row.addEventListener("dragstart",e=>{
       if(!row.draggable){e.preventDefault();return;}
-      _taskDrag={routineId:routine.id,fromIndex:globalIdx};
+      _taskDrag={routineId:routine.id,fromIndex:globalIdx,groupSize:subGroupSize(sorted,globalIdx)};
       row.classList.add("r-dragging");
+      // dim the sub-tasks travelling with this parent
+      const _gs=_taskDrag.groupSize;
+      if(_gs>1){
+        const allRows=[...document.querySelectorAll(".r-task")];
+        const myPos=allRows.indexOf(row);
+        for(let k=1;k<_gs && myPos+k<allRows.length;k++) allRows[myPos+k].classList.add("r-dragging");
+      }
       e.dataTransfer.effectAllowed="move";
       e.dataTransfer.setData("text/plain","");
       e.stopPropagation();
@@ -1205,23 +1318,42 @@ function renderContent(){
     editInput.addEventListener("keydown",e=>{ if(e.key==="Enter") commitEdit(); if(e.key==="Escape") render(); });
     editInput.addEventListener("click",e=>e.stopPropagation());
 
+    // indent / unindent
+    const subBtn=document.createElement("button"); subBtn.className="r-act-btn";
+    subBtn.title=item.sub?"Unindent":"Indent as sub-task"; subBtn.innerHTML=item.sub?"↰":"↳";
+    subBtn.onclick=e=>{
+      e.stopPropagation();
+      const d2=loadData()||{}; const arr=d2[routine.id].items;
+      if(!arr||!arr[globalIdx]) return;
+      if(!arr[globalIdx].sub && !subCanIndent(arr,globalIdx)){ showToast("No task above to nest under"); return; }
+      pushUndo();
+      arr[globalIdx].sub=!arr[globalIdx].sub;
+      subDemoteOrphans(arr);
+      saveData(d2); render();
+    };
+    actions.appendChild(subBtn);
+
     const delBtn=document.createElement("button"); delBtn.className="r-act-btn"; delBtn.title="Remove"; delBtn.innerHTML="✕"; delBtn.style.color="#e85c5c";
     delBtn.onclick=e=>{
       e.stopPropagation();
       pushUndo();
       const d2=loadData()||{};
-      d2[routine.id].items.splice(globalIdx,1);
+      const arr=d2[routine.id].items;
+      arr.splice(globalIdx, subGroupSize(arr,globalIdx));   // a parent takes its subs with it
+      subDemoteOrphans(arr);
       saveData(d2); render();
     };
     actions.appendChild(delBtn);
     row.appendChild(handle); row.appendChild(cb); row.appendChild(svgWrap); row.appendChild(textEl); row.appendChild(editInput); row.appendChild(actions);
 
     function toggle(e){
-      if(e&&(e.target===delBtn||editInput.classList.contains("editing"))) return;
+      if(e&&(e.target===delBtn||e.target===subBtn||editInput.classList.contains("editing"))) return;
       pushUndo();
       const d2=loadData()||{}; const arr=d2[routine.id].items;
-      const li=arr.findIndex(it=>!it.isHeader&&it.text===item.text&&it.done===item.done);
-      if(li>-1) arr[li].done=!arr[li].done; saveData(d2); render();
+      if(!arr||!arr[globalIdx]) return;
+      arr[globalIdx].done=!arr[globalIdx].done;   // index, not name-match (fixes duplicate-title bug)
+      subCascade(arr,globalIdx);
+      saveData(d2); render();
     }
     cb.addEventListener("change",()=>toggle(null));
     textEl.addEventListener("click",e=>{
@@ -1243,7 +1375,7 @@ function renderContent(){
         const v=ni.value.trim(); if(!v) return;
         pushUndo();
         const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
-        d2[routine.id].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false});
+        d2[routine.id].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false,sub:false});
         saveData(d2); render(); showToast("✓ Task added");
       }
       e.stopPropagation();
@@ -1349,13 +1481,16 @@ function renderContent(){
           insertAt=lastItem ? lastItem.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
         }
 
-        if(fromIndex===insertAt){ _taskDrag=null; return; }
+        insertAt=subSafeInsert(arr,insertAt);
+        const gSize=_taskDrag.groupSize||subGroupSize(arr,fromIndex);
+        // no-op if dropping back inside its own group
+        if(insertAt>=fromIndex && insertAt<=fromIndex+gSize){ _taskDrag=null; return; }
 
         pushUndo();
-        const [moved]=arr.splice(fromIndex,1);
-        // adjust target index after splice
-        const adjustedInsert=fromIndex<insertAt ? insertAt-1 : insertAt;
-        arr.splice(adjustedInsert,0,moved);
+        const movedGroup=arr.splice(fromIndex,gSize);
+        const adjustedInsert=fromIndex<insertAt ? insertAt-gSize : insertAt;
+        arr.splice(adjustedInsert,0,...movedGroup);
+        subDemoteOrphans(arr);
         saveData(d2); _taskDrag=null; render();
       });
 
@@ -1372,7 +1507,7 @@ function renderContent(){
           // Insert after the last item in this section, or after the header
           const lastEntry=sec.items[sec.items.length-1];
           const insertAt=lastEntry ? lastEntry.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
-          arr.splice(insertAt,0,{text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false});
+          arr.splice(insertAt,0,{text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false,sub:false});
           saveData(d2); render();
           showToast("✓ Task added");
         }
@@ -1403,7 +1538,7 @@ function renderContent(){
   btnRow.appendChild(addSecBtn);
   if(realItems.some(it=>it.done)){
     const clrBtn=document.createElement("button"); clrBtn.className="r-clear-done-btn"; clrBtn.textContent="✓ Clear completed";
-    clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items) d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); saveData(d2); render(); };
+    clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items){ d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); subDemoteOrphans(d2[routine.id].items); } saveData(d2); render(); };
     btnRow.appendChild(clrBtn);
   }
   const resetBtn=document.createElement("button"); resetBtn.className="r-reset-btn"; resetBtn.textContent="↺ Reset this routine";
@@ -1518,7 +1653,8 @@ function printRoutinesBW(selectedIds, override){
             ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:8px;flex-shrink:0;background:#333;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
             :`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:8px;flex-shrink:0;"></span>`;
           const text=typeof item==="string"?item:item.text;
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;">${box}<span style="font-size:12.5px;font-weight:500;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+          const ind=item.sub?"margin-left:16px;":"";
+          rowsHTML+=`<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;${ind}">${box}<span style="font-size:${item.sub?"11.5px":"12.5px"};font-weight:${item.sub?"400":"500"};${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
         }
       });
     } else {
@@ -1528,7 +1664,8 @@ function printRoutinesBW(selectedIds, override){
           ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:8px;flex-shrink:0;background:#333;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
           :`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:8px;flex-shrink:0;"></span>`;
         const text=typeof item==="string"?item:item.text;
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;">${box}<span style="font-size:12.5px;font-weight:500;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+        const ind=item.sub?"margin-left:16px;":"";
+        rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;${ind}">${box}<span style="font-size:${item.sub?"11.5px":"12.5px"};font-weight:${item.sub?"400":"500"};${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
       });
     }
     sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;"><div style="padding:9px 12px 7px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;"><span style="font-size:13.5px;font-weight:700;">${r.icon} ${r.label}</span><span style="font-size:11px;color:#888;">${done}/${total}</span></div><div style="padding:4px 12px 8px;">${rowsHTML}</div></div>`;
@@ -1574,7 +1711,7 @@ function printRoutinesColor(selectedIds, override){
           const box=isDone
             ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:8px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
             :`<span style="display:inline-block;width:14px;height:14px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:8px;flex-shrink:0;background:#fff;"></span>`;
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid ${pal.hdr};">${box}<span style="font-size:12.5px;font-weight:500;${strike}flex:1;color:#1a1714;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+          rowsHTML+=`<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid ${pal.hdr};${item.sub?"margin-left:16px;":""}">${box}<span style="font-size:${item.sub?"11.5px":"12.5px"};font-weight:${item.sub?"400":"500"};${strike}flex:1;color:#1a1714;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
         }
       });
     } else {
@@ -1585,7 +1722,7 @@ function printRoutinesColor(selectedIds, override){
         const box=isDone
           ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:8px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
           :`<span style="display:inline-block;width:14px;height:14px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:8px;flex-shrink:0;background:#fff;"></span>`;
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.hdr};">${box}<span style="font-size:12.5px;font-weight:500;${strike}flex:1;color:#1a1714;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+        rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.hdr};${item.sub?"margin-left:16px;":""}">${box}<span style="font-size:${item.sub?"11.5px":"12.5px"};font-weight:${item.sub?"400":"500"};${strike}flex:1;color:#1a1714;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
       });
     }
     const barFill=`<div style="height:4px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
@@ -1841,7 +1978,7 @@ function getAllSimpleSections(mode){
     const defs = (SIMPLE_DEFAULTS[mode]||[]).map(s=>({id:s.id,icon:s.icon,label:s.label,cls:s.cls}));
     saveSimpleSections(mode, defs);
     const d={};
-    (SIMPLE_DEFAULTS[mode]||[]).forEach(s=>{ d[s.id]={items:s.items.map(t=>({text:t,done:false}))}; });
+    (SIMPLE_DEFAULTS[mode]||[]).forEach(s=>{ d[s.id]={items:s.items.map(t=>({text:t,done:false,sub:false}))}; });
     saveSimpleData(mode, d);
     saved=defs;
   }
@@ -2004,8 +2141,9 @@ function renderSimpleContent(mode){
   let d=loadSimpleData(mode);
   if(!d[sec.id]) d[sec.id]={items:[]};
   const items=d[sec.id].items;
-  const undone=items.filter(it=>!it.done), doneItems=items.filter(it=>it.done);
-  const sorted=[...undone,...doneItems];
+  subDemoteOrphans(items);
+  const sorted=sortGroupsDoneToBottom(items);   // keeps parent+subs together
+  const doneItems=sorted.filter(it=>it.done);
   d[sec.id].items=sorted;
   const total=sorted.length, done=doneItems.length;
   const pct=total?Math.round(done/total*100):0;
@@ -2060,7 +2198,7 @@ function renderSimpleContent(mode){
     if(e.key==="Enter"){
       const v=ni.value.trim(); if(!v) return;
       const d2=loadSimpleData(mode); if(!d2[sec.id]) d2[sec.id]={items:[]};
-      d2[sec.id].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false});
+      d2[sec.id].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,sub:false});
       saveSimpleData(mode,d2); renderSimple(mode); showToast("✓ Task added");
     }
     e.stopPropagation();
@@ -2069,13 +2207,26 @@ function renderSimpleContent(mode){
 
   // Task rows
   function buildRow(item,idx){
-    const row=document.createElement("div"); row.className="r-task"+(item.done?" completed":"");
+    const row=document.createElement("div"); row.className="r-task"+(item.done?" completed":"")+(item.sub?" subtask":"");
     const handle=document.createElement("span"); handle.className="r-drag-handle"; handle.textContent="⠿";
     handle.onpointerdown=()=>row.draggable=true; handle.onpointerup=()=>row.draggable=false; handle.onmouseleave=()=>row.draggable=false;
-    row.addEventListener("dragstart",e=>{ if(!row.draggable){e.preventDefault();return;} _simpleTaskDrag={mode,secId:sec.id,fromIndex:idx}; row.classList.add("r-dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",""); e.stopPropagation(); });
+    row.addEventListener("dragstart",e=>{ if(!row.draggable){e.preventDefault();return;} _simpleTaskDrag={mode,secId:sec.id,fromIndex:idx,groupSize:subGroupSize(sorted,idx)}; row.classList.add("r-dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",""); e.stopPropagation(); });
     row.addEventListener("dragend",()=>{ row.classList.remove("r-dragging"); row.draggable=false; setTimeout(()=>_simpleTaskDrag=null,50); document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over")); });
     row.addEventListener("dragover",e=>{ if(!_simpleTaskDrag||_simpleTaskDrag.secId!==sec.id) return; e.preventDefault(); document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over")); row.classList.add("r-drag-over"); });
-    row.addEventListener("drop",e=>{ if(!_simpleTaskDrag||_simpleTaskDrag.secId!==sec.id) return; e.preventDefault(); document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over")); const from=_simpleTaskDrag.fromIndex; _simpleTaskDrag=null; if(from===idx) return; const d2=loadSimpleData(mode); const arr=d2[sec.id].items; const [mv]=arr.splice(from,1); arr.splice(from<idx?idx-1:idx,0,mv); saveSimpleData(mode,d2); renderSimple(mode); });
+    row.addEventListener("drop",e=>{
+      if(!_simpleTaskDrag||_simpleTaskDrag.secId!==sec.id) return;
+      e.preventDefault();
+      document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over"));
+      const from=_simpleTaskDrag.fromIndex, gSize=_simpleTaskDrag.groupSize||1;
+      _simpleTaskDrag=null;
+      const d2=loadSimpleData(mode); const arr=d2[sec.id].items;
+      let to=subSafeInsert(arr,idx);
+      if(to>=from && to<=from+gSize) return;   // dropped inside its own group
+      const grp=arr.splice(from,gSize);
+      arr.splice(from<to?to-gSize:to,0,...grp);
+      subDemoteOrphans(arr);
+      saveSimpleData(mode,d2); renderSimple(mode);
+    });
 
     const svgW=document.createElement("span"); svgW.className="task-cb-svg"+(item.done?" tcb-on":"");
     svgW.innerHTML='<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;"><rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/><path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/></svg>';
@@ -2093,13 +2244,32 @@ function renderSimpleContent(mode){
     }
     editInp.addEventListener("keydown",e=>{ if(e.key==="Enter") commitEdit2(); if(e.key==="Escape") renderSimple(mode); });
     editInp.addEventListener("click",e=>e.stopPropagation());
+    const subBtn=document.createElement("button"); subBtn.className="r-act-btn";
+    subBtn.title=item.sub?"Unindent":"Indent as sub-task"; subBtn.innerHTML=item.sub?"↰":"↳";
+    subBtn.onclick=e=>{
+      e.stopPropagation();
+      const d2=loadSimpleData(mode); const arr=d2[sec.id].items;
+      if(!arr||!arr[idx]) return;
+      if(!arr[idx].sub && !subCanIndent(arr,idx)){ showToast("No task above to nest under"); return; }
+      arr[idx].sub=!arr[idx].sub;
+      subDemoteOrphans(arr);
+      saveSimpleData(mode,d2); renderSimple(mode);
+    };
+    acts.appendChild(subBtn);
+
     const delBtn=document.createElement("button"); delBtn.className="r-act-btn"; delBtn.title="Remove"; delBtn.innerHTML="✕"; delBtn.style.color="#e85c5c";
-    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadSimpleData(mode); d2[sec.id].items.splice(idx,1); saveSimpleData(mode,d2); renderSimple(mode); };
+    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadSimpleData(mode); const arr=d2[sec.id].items; arr.splice(idx, subGroupSize(arr,idx)); subDemoteOrphans(arr); saveSimpleData(mode,d2); renderSimple(mode); };
     acts.appendChild(delBtn);
 
     row.appendChild(handle); row.appendChild(svgW); row.appendChild(textEl); row.appendChild(editInp); row.appendChild(acts);
 
-    function toggle(){ const d2=loadSimpleData(mode); const arr=d2[sec.id].items; const li=arr.findIndex(it=>it.text===item.text&&it.done===item.done); if(li>-1) arr[li].done=!arr[li].done; saveSimpleData(mode,d2); renderSimple(mode); }
+    function toggle(){
+      const d2=loadSimpleData(mode); const arr=d2[sec.id].items;
+      if(!arr||!arr[idx]) return;
+      arr[idx].done=!arr[idx].done;   // index, not name-match
+      subCascade(arr,idx);
+      saveSimpleData(mode,d2); renderSimple(mode);
+    }
     textEl.addEventListener("click",e=>{
       e.stopPropagation();
       textEl.classList.add("editing"); editInp.classList.add("editing");
@@ -2117,7 +2287,7 @@ function renderSimpleContent(mode){
   btnRow.appendChild(addSecBtn2);
   if(sorted.some(it=>it.done)){
     const clr=document.createElement("button"); clr.className="r-clear-done-btn"; clr.textContent="✓ Clear completed";
-    clr.onclick=()=>{ const d2=loadSimpleData(mode); if(d2[sec.id]) d2[sec.id].items=d2[sec.id].items.filter(it=>!it.done); saveSimpleData(mode,d2); renderSimple(mode); };
+    clr.onclick=()=>{ const d2=loadSimpleData(mode); if(d2[sec.id]){ d2[sec.id].items=d2[sec.id].items.filter(it=>!it.done); subDemoteOrphans(d2[sec.id].items); } saveSimpleData(mode,d2); renderSimple(mode); };
     btnRow.appendChild(clr);
   }
   const rst=document.createElement("button"); rst.className="r-reset-btn"; rst.textContent="↺ Reset section";
@@ -2299,36 +2469,40 @@ function renderWeeklySidebar(){
     tab.addEventListener("dragstart",e=>{ _wkDragSrc=day.id; tab.style.opacity=".35"; e.dataTransfer.setData("text/plain",day.id); });
     tab.addEventListener("dragend",()=>{ tab.draggable=false; tab.style.opacity=""; _wkDragSrc=null; sb.querySelectorAll(".wk-day-tab").forEach(t=>t.style.boxShadow=""); });
     tab.addEventListener("dragover",e=>{
-      // task being dragged from another day → allow drop onto this tab
+      // a task is being dragged → allow dropping it onto this day
       if(_wkTaskDrag){
         e.preventDefault();
         if(_wkTaskDrag.dayId!==day.id) tab.style.boxShadow="0 0 0 2px var(--accent)";
         return;
       }
-      if(!_wkDragSrc||_wkDragSrc===day.id) return;
-      e.preventDefault(); tab.style.boxShadow="inset 0 2px 0 var(--accent)";
+      if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="inset 0 2px 0 var(--accent)";
     });
     tab.addEventListener("dragleave",()=>tab.style.boxShadow="");
- tab.addEventListener("drop",e=>{
-      // --- cross-day task move ---
+    tab.addEventListener("drop",e=>{
+      // ── cross-day task move (parent carries its sub-tasks) ──
       if(_wkTaskDrag){
         e.preventDefault(); tab.style.boxShadow="";
         const drag=_wkTaskDrag; _wkTaskDrag=null;
-        if(drag.dayId===day.id){ showToast&&showToast("Already in this day"); return; }
+        if(drag.dayId===day.id){ showToast("Already in this day"); return; }
         const d2=loadWkData()||{days:[]};
         const from=d2.days.find(x=>x.id===drag.dayId);
         const to  =d2.days.find(x=>x.id===day.id);
         if(!from||!to) return;
-        const [mv]=from.items.splice(drag.fromIdx,1);
-        if(!mv) return;
-        (to.items=to.items||[]).push(mv);
+        const gSize=drag.groupSize||subGroupSize(from.items,drag.fromIdx);
+        const grp=from.items.splice(drag.fromIdx,gSize);
+        if(!grp.length) return;
+        if(grp[0].sub) grp[0].sub=false;   // lone sub arriving alone → promote
+        subDemoteOrphans(from.items);
+        to.items=(to.items||[]).concat(grp);
+        subDemoteOrphans(to.items);
         saveWkData(d2);
         renderWeeklySidebar();
         if(getWkActive()) renderWeeklyCard(getWkActive());
-        showToast&&showToast("Moved to "+day.label);
+        updateWkProgress();
+        showToast("✓ Moved to "+day.label);
         return;
       }
-      // --- day reorder (unchanged) ---
+      // ── day reorder ──
       if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="";
       const ordered=getOrderedWkDays(), ids=ordered.map(x=>x.id);
       const fi=ids.indexOf(_wkDragSrc), ti=ids.indexOf(day.id);
@@ -2393,19 +2567,33 @@ function renderWeeklyCard(dayId){
   const nt=document.createElement("div"); nt.className="wk-new-task";
   nt.innerHTML='<input placeholder="Add task… (Enter to save)">';
   const ni=nt.querySelector("input");
-  ni.onkeydown=e=>{ if(e.key==="Enter"){ const v=ni.value.trim(); if(!v) return; const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false}); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); setTimeout(()=>ni.focus(),0); showToast("✓ Task added"); } e.stopPropagation(); };
+  ni.onkeydown=e=>{ if(e.key==="Enter"){ const v=ni.value.trim(); if(!v) return; const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,sub:false}); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); setTimeout(()=>ni.focus(),0); showToast("✓ Task added"); } e.stopPropagation(); };
   body.appendChild(nt);
 
   // task rows
   items.forEach((item,i)=>{
-    const row=document.createElement("div"); row.className="wk-task"+(item.done?" completed":"");
+    const row=document.createElement("div"); row.className="wk-task"+(item.done?" completed":"")+(item.sub?" subtask":"");
 
     const handle=document.createElement("span"); handle.className="wk-drag-handle"; handle.textContent="⠿";
     handle.onpointerdown=()=>row.draggable=true; handle.onpointerup=()=>row.draggable=false; handle.onmouseleave=()=>row.draggable=false;
-    row.addEventListener("dragstart",e=>{ if(!row.draggable){e.preventDefault();return;} _wkTaskDrag={dayId,fromIdx:i}; row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",""); e.stopPropagation(); });
+    row.addEventListener("dragstart",e=>{ if(!row.draggable){e.preventDefault();return;} _wkTaskDrag={dayId,fromIdx:i,groupSize:subGroupSize(items,i)}; row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",""); e.stopPropagation(); });
     row.addEventListener("dragend",()=>{ row.classList.remove("dragging"); row.draggable=false; setTimeout(()=>_wkTaskDrag=null,50); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); });
     row.addEventListener("dragover",e=>{ if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return; e.preventDefault(); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); row.classList.add("wk-drag-over"); });
-    row.addEventListener("drop",e=>{ if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return; e.preventDefault(); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); const from=_wkTaskDrag.fromIdx; _wkTaskDrag=null; if(from===i) return; const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; const arr=d2.days[idx].items; const [mv]=arr.splice(from,1); arr.splice(from<i?i-1:i,0,mv); saveWkData(d2); renderWeeklyCard(dayId); });
+    row.addEventListener("drop",e=>{
+      if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return;
+      e.preventDefault();
+      body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over"));
+      const from=_wkTaskDrag.fromIdx, gSize=_wkTaskDrag.groupSize||1;
+      _wkTaskDrag=null;
+      const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
+      const arr=d2.days[idx].items;
+      let to=subSafeInsert(arr,i);
+      if(to>=from && to<=from+gSize) return;   // dropped inside its own group
+      const grp=arr.splice(from,gSize);
+      arr.splice(from<to?to-gSize:to,0,...grp);
+      subDemoteOrphans(arr);
+      saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar();
+    });
 
     // SVG checkbox
     const cbSvg=document.createElement("span"); cbSvg.className="wk-cb-svg"+(item.done?" on":"");
@@ -2418,20 +2606,33 @@ function renderWeeklyCard(dayId){
     tx.onkeydown=e=>{ if(e.key==="Enter"){ tx.blur(); } e.stopPropagation(); };
     tx.addEventListener("mousedown",e=>{ row.draggable=false; e.stopPropagation(); });
 
+    const subBtn=document.createElement("button"); subBtn.className="wk-task-btn";
+    subBtn.title=item.sub?"Unindent":"Indent as sub-task"; subBtn.textContent=item.sub?"↰":"↳";
+    subBtn.onclick=e=>{
+      e.stopPropagation();
+      const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
+      const arr=d2.days[idx].items;
+      if(!arr[i]) return;
+      if(!arr[i].sub && !subCanIndent(arr,i)){ showToast("No task above to nest under"); return; }
+      arr[i].sub=!arr[i].sub;
+      subDemoteOrphans(arr);
+      saveWkData(d2); renderWeeklyCard(dayId);
+    };
+
     const delBtn=document.createElement("button"); delBtn.className="wk-task-btn del"; delBtn.title="Remove"; delBtn.textContent="✕";
-    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0) d2.days[idx].items.splice(i,1); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
+    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ const arr=d2.days[idx].items; arr.splice(i, subGroupSize(arr,i)); subDemoteOrphans(arr); } saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
 
     function toggle(){
       const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
       const arr=d2.days[idx].items; if(!arr[i]) return;
       arr[i].done=!arr[i].done;
-      // sort done to bottom
-      const undone2=arr.filter(t=>!t.done), done2=arr.filter(t=>t.done);
-      d2.days[idx].items=[...undone2,...done2];
+      subCascade(arr,i);
+      // done-to-bottom, but move parent+subs as one unit
+      d2.days[idx].items=sortGroupsDoneToBottom(arr);
       saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress();
     }
 
-    row.appendChild(handle); row.appendChild(cbSvg); row.appendChild(tx); row.appendChild(delBtn);
+    row.appendChild(handle); row.appendChild(cbSvg); row.appendChild(tx); row.appendChild(subBtn); row.appendChild(delBtn);
     body.appendChild(row);
   });
 
@@ -2442,7 +2643,7 @@ function renderWeeklyCard(dayId){
   wkBtnRow.appendChild(addDayBtn2);
   if(items.some(t=>t.done)){
     const clr=document.createElement("button"); clr.className="r-clear-done-btn"; clr.textContent="✓ Clear completed";
-    clr.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0) d2.days[idx].items=d2.days[idx].items.filter(t=>!t.done); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
+    clr.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ d2.days[idx].items=d2.days[idx].items.filter(t=>!t.done); subDemoteOrphans(d2.days[idx].items); } saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
     wkBtnRow.appendChild(clr);
   }
   const rstDay=document.createElement("button"); rstDay.className="r-reset-btn"; rstDay.textContent="↺ Reset this day";
@@ -2532,7 +2733,7 @@ function printWeeklyBW(ids){
     const items=day.items||[];
     const done=items.filter(t=>t.done).length, total=items.length;
     let rowsHTML="";
-    items.forEach(item=>{ rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #e0d8ce;"><span style="display:inline-block;width:13px;height:13px;border:1.5px solid #888;border-radius:3px;margin-right:8px;flex-shrink:0;${item.done?"background:#555;":"background:#fff;"}">${item.done?'<span style="color:#fff;font-size:9px;line-height:13px;display:block;text-align:center;">✓</span>':""}</span><span style="font-size:12.5px;color:#1a1714;${item.done?"text-decoration:line-through;opacity:.5;":""}">${item.text.replace(/</g,"&lt;")}</span></div>`; });
+    items.forEach(item=>{ rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #e0d8ce;${item.sub?"margin-left:16px;":""}"><span style="display:inline-block;width:13px;height:13px;border:1.5px solid #888;border-radius:3px;margin-right:8px;flex-shrink:0;${item.done?"background:#555;":"background:#fff;"}">${item.done?'<span style="color:#fff;font-size:9px;line-height:13px;display:block;text-align:center;">✓</span>':""}</span><span style="font-size:${item.sub?"11.5px":"12.5px"};color:#1a1714;${item.done?"text-decoration:line-through;opacity:.5;":""}">${item.text.replace(/</g,"&lt;")}</span></div>`; });
     sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:8px;overflow:hidden;margin-bottom:14px;"><div style="padding:9px 12px;border-bottom:1px solid #ccc;display:flex;justify-content:space-between;background:#f5f2ee;"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:14px;">${day.icon} ${day.label}</span><span style="font-size:11px;color:#666;">${done}/${total}</span></div><div style="padding:6px 12px 10px;">${rowsHTML||"<div style='font-size:12px;color:#aaa;padding:8px 0;'>No tasks</div>"}</div></div>`;
   });
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Weekly — B&W — ${now}</title><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1714;background:#fff;padding:22px 26px;}@page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body><div style="margin-bottom:18px;padding-bottom:10px;border-bottom:2px solid #1a1714;display:flex;justify-content:space-between;align-items:flex-end;"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;">Weekly Planner</div><div style="font-size:12px;color:#666;margin-top:4px;">${now}</div></div></div>${sectionsHTML}</body></html>`;
@@ -2548,7 +2749,7 @@ function printWeeklyColor(ids){
   days.forEach(day=>{
     const items=day.items||[]; const done=items.filter(t=>t.done).length, total=items.length;
     const pal=PALS[day.id]||fallPal;
-    let rowsHTML=""; items.forEach(item=>{ rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.hdr};"><span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:8px;flex-shrink:0;${item.done?`background:${pal.accent};`:""}">${item.done?`<span style="color:#fff;font-size:10px;line-height:1;">✓</span>`:""}</span><span style="font-size:12.5px;color:#1a1714;${item.done?`text-decoration:line-through;opacity:.5;`:""}">${item.text.replace(/</g,"&lt;")}</span></div>`; });
+    let rowsHTML=""; items.forEach(item=>{ rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.hdr};${item.sub?"margin-left:16px;":""}"><span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:8px;flex-shrink:0;${item.done?`background:${pal.accent};`:""}">${item.done?`<span style="color:#fff;font-size:10px;line-height:1;">✓</span>`:""}</span><span style="font-size:${item.sub?"11.5px":"12.5px"};color:#1a1714;${item.done?`text-decoration:line-through;opacity:.5;`:""}">${item.text.replace(/</g,"&lt;")}</span></div>`; });
     sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid ${pal.border};border-radius:8px;overflow:hidden;margin-bottom:14px;background:${pal.bg};"><div style="padding:9px 12px;border-bottom:1.5px solid ${pal.border};display:flex;justify-content:space-between;background:${pal.hdr};"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:14px;color:${pal.accent};">${day.icon} ${day.label}</span><span style="font-size:11px;color:${pal.accent};opacity:.7;">${done}/${total}</span></div><div style="padding:6px 12px 10px;">${rowsHTML||`<div style='font-size:12px;color:${pal.accent};opacity:.5;padding:8px 0;'>No tasks</div>`}</div></div>`;
   });
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Weekly — Colour — ${now}</title><link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;600&display=swap" rel="stylesheet"><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',sans-serif;color:#1a1714;background:#fff;padding:22px 26px;}@page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body><div style="background:linear-gradient(135deg,#f5f0ea,#ede5d8 60%,#e0d4c4);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:1.5px solid #d8ccbc;"><div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;color:#3a2e20;">Weekly Planner</div><div style="font-size:12px;color:#7a6a56;margin-top:4px;">${now}</div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${sectionsHTML}</div></body></html>`;
