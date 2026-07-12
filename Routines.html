@@ -2298,9 +2298,37 @@ function renderWeeklySidebar(){
     tab.addEventListener("pointerup",()=>tab.draggable=false);
     tab.addEventListener("dragstart",e=>{ _wkDragSrc=day.id; tab.style.opacity=".35"; e.dataTransfer.setData("text/plain",day.id); });
     tab.addEventListener("dragend",()=>{ tab.draggable=false; tab.style.opacity=""; _wkDragSrc=null; sb.querySelectorAll(".wk-day-tab").forEach(t=>t.style.boxShadow=""); });
-    tab.addEventListener("dragover",e=>{ if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="inset 0 2px 0 var(--accent)"; });
+    tab.addEventListener("dragover",e=>{
+      // task being dragged from another day → allow drop onto this tab
+      if(_wkTaskDrag){
+        e.preventDefault();
+        if(_wkTaskDrag.dayId!==day.id) tab.style.boxShadow="0 0 0 2px var(--accent)";
+        return;
+      }
+      if(!_wkDragSrc||_wkDragSrc===day.id) return;
+      e.preventDefault(); tab.style.boxShadow="inset 0 2px 0 var(--accent)";
+    });
     tab.addEventListener("dragleave",()=>tab.style.boxShadow="");
-    tab.addEventListener("drop",e=>{
+ tab.addEventListener("drop",e=>{
+      // --- cross-day task move ---
+      if(_wkTaskDrag){
+        e.preventDefault(); tab.style.boxShadow="";
+        const drag=_wkTaskDrag; _wkTaskDrag=null;
+        if(drag.dayId===day.id){ showToast&&showToast("Already in this day"); return; }
+        const d2=loadWkData()||{days:[]};
+        const from=d2.days.find(x=>x.id===drag.dayId);
+        const to  =d2.days.find(x=>x.id===day.id);
+        if(!from||!to) return;
+        const [mv]=from.items.splice(drag.fromIdx,1);
+        if(!mv) return;
+        (to.items=to.items||[]).push(mv);
+        saveWkData(d2);
+        renderWeeklySidebar();
+        if(getWkActive()) renderWeeklyCard(getWkActive());
+        showToast&&showToast("Moved to "+day.label);
+        return;
+      }
+      // --- day reorder (unchanged) ---
       if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="";
       const ordered=getOrderedWkDays(), ids=ordered.map(x=>x.id);
       const fi=ids.indexOf(_wkDragSrc), ti=ids.indexOf(day.id);
