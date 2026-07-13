@@ -459,11 +459,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       </table>
     </div>
 
-    <!-- Day Portal -->
-    <div id="meal__dayPortal">
-      <div class="portal-title">Move to day</div>
-      <div id="meal__dayPortalItems"></div>
-    </div>
 
     <style>
     #panel-meal .mp-ov { position:fixed; inset:0; background:rgba(20,18,16,0.42); z-index:9998; display:none; align-items:center; justify-content:center; }
@@ -674,7 +669,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         </div>
       </div>
       <table class="mp-tbl"><thead><tr>
-        <th style="width:26%">Dish</th><th style="width:26%">Needs veggies</th><th style="width:26%">Needs staples</th><th style="width:16%">Dinner after sambar</th><th style="width:6%"></th>
+        <th style="width:31%">Dish</th><th style="width:31%">Needs veggies</th><th style="width:31%">Needs staples</th><th style="width:7%"></th>
       </tr></thead><tbody id="brek__body"></tbody></table>
       <div class="mp-note">Sandwiches aren't here — they're dinner dishes in Recipes whose leftovers carry into breakfast.</div>
     </div>
@@ -1089,12 +1084,7 @@ function meal_closeDayPortal() {
   portalMeal = portalDay = portalIdx = null;
 }
 
-document.addEventListener("click", e => {
-  const portal = document.getElementById("meal__dayPortal");
-  if (!portal.contains(e.target) && !e.target.classList.contains("move-day-btn")) {
-    meal_closeDayPortal();
-  }
-});
+
 
 function meal_render() {
   updateWeekLabel();
@@ -1149,20 +1139,17 @@ function meal_render() {
           <input type="text" value="${item.text.replace(/"/g,'&quot;')}">
           <button title="Move up" ${i===0?"disabled":""}>↑</button>
           <button title="Move down" ${i===data[key].length-1?"disabled":""}>↓</button>
-          <button class="move-day-btn" title="Move to day">⇄</button>
           <button title="Remove">✕</button>
         `;
 
         div.addEventListener("dragstart", () => { dragItem = i; dragKey = key; });
 
         const [tx, up, down] = div.querySelectorAll("input, button");
-        const moveDayBtn = div.querySelector(".move-day-btn");
-        const delBtn     = div.querySelectorAll("button")[3];
+        const delBtn     = div.querySelectorAll("button")[2];
 
         tx.oninput    = e => { item.text = e.target.value; saveData(data); };
         up.onclick    = () => { data[key].splice(i-1, 0, data[key].splice(i,1)[0]); saveData(data); meal_render(); };
         down.onclick  = () => { data[key].splice(i+1, 0, data[key].splice(i,1)[0]); saveData(data); meal_render(); };
-        moveDayBtn.onclick = e => { e.stopPropagation(); meal_openDayPortal(moveDayBtn, meal, day, i); };
         delBtn.onclick = () => { data[key].splice(i, 1); saveData(data); meal_render(); };
 
         cell.appendChild(div);
@@ -1401,7 +1388,9 @@ function meal_genRun() {
 
   const dayIdx = parseInt(document.getElementById("meal__genDay").value, 10) || 0;
   const days = isDay ? [dayIdx] : [0,1,2,3,4,5,6];
-  const res = MP.generatePlan({ days: days, meals: meals, existing: loadData() });
+  /* Whole week wipes the board: pass no existing state, so unticked rows come out blank.
+     Single day reads the live grid so carry-overs still work. */
+  const res = MP.generatePlan({ days: days, meals: meals, existing: isDay ? loadData() : {} });
   meal_genCancel();
 
   if (!isDay) {
@@ -1911,7 +1900,7 @@ const SEED_RECIPES = [
   R("r34","sambar","liquid",["carrot"],[],LD),
   R("r35","rasam","liquid",[],[],LD),
   R("r36","majjiga pulusu","liquid",[],[],LD),
-  R("r37","sambar rice","liquid",[],[],LD,{needsPrev:"sambar"}),
+  R("r37","sambar rice","liquid",[],[],LD),
   R("r38","snake gourd perugu pachadi","chutney",["snake gourd"],[],LD),
   R("r39","avocado sandwich","other",["avocado"],["bread"],BDK),
   R("r40","potato sandwich","other",["potato"],["bread"],BDK),
@@ -1923,7 +1912,7 @@ const SEED_RECIPES = [
 ];
 
 const SEED_BREAKFAST = [
-  {name:"idli",            veggies:[],          pantry:["idli rava"],       dinnerAfterSambar:true},
+  {name:"idli",            veggies:[],          pantry:["idli rava"]},
   {name:"dosa",            veggies:[],          pantry:["rice flour"]},
   {name:"pesarattu",       veggies:[],          pantry:["whole moong dal"]},
   {name:"poori",           veggies:[],          pantry:["aata"]},
@@ -2059,7 +2048,6 @@ function generatePlan(opts){
 
   var dinnerAll = m.recipes.filter(function(r){ return r.slots && r.slots.D; });
   var lunchAll  = m.recipes.filter(function(r){ return r.slots && r.slots.L; });
-  var idliList  = m.breakfast.filter(function(b){ return b.dinnerAfterSambar; });
 
   var picks = {};
   var gen = function(i, mealSel){ return inScope[i] && mealSel; };
@@ -2078,11 +2066,9 @@ function generatePlan(opts){
     var prev = i>0 ? dinners[i-1] : null;
     var cands = dinnerAll.filter(function(r){
       if(usedD[r.name]) return false;
-      if(r.needsPrev && r.needsPrev !== prev) return false;
       if(r.weekendOnly && !isWeekend(i)) return false;
       return true;
     });
-    if(prev === "sambar") idliList.forEach(function(b){ if(!usedD[b.name]) cands.push(b); });
     var ok = cands.filter(function(r){ return makeable(r, av); });
     if(ok.length){ var c = pick(ok); dinners[i] = c.name; usedD[c.name] = 1; }
     else dinners[i] = insufficientLabel(cands, av);
@@ -2110,7 +2096,6 @@ function generatePlan(opts){
     var cands = lunchAll.filter(function(r){
       if(usedL[r.name]) return false;
       if(usedD[r.name]) return false;
-      if(r.needsPrev && r.needsPrev !== prevD) return false;
       if(r.weekendOnly && !isWeekend(i)) return false;
       return true;
     });
@@ -2426,9 +2411,8 @@ function renderRec(){
     var slots = ["B","L","D","K"].map(function(s){
       return '<label><input type="checkbox" data-k="recipes" data-i="'+i+'" data-f="slot'+s+'"'+(sl[s]?" checked":"")+'>'+s+'</label>';
     }).join("");
-    var prev = r.needsPrev ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;">needs yesterday: '+esc(r.needsPrev)+'</div>' : '';
     return '<tr>'+
-      '<td><input type="text" data-k="recipes" data-i="'+i+'" data-f="name" value="'+esc(r.name)+'">'+prev+'</td>'+
+      '<td><input type="text" data-k="recipes" data-i="'+i+'" data-f="name" value="'+esc(r.name)+'"></td>'+
       '<td><select data-k="recipes" data-i="'+i+'" data-f="category">'+opts+'</select></td>'+
       ingCells(r,i,"recipes",kn)+
       '<td><div class="slotbox">'+slots+'</div></td>'+
@@ -2446,7 +2430,6 @@ function renderBrek(){
     return '<tr>'+
       '<td><input type="text" data-k="breakfast" data-i="'+i+'" data-f="name" value="'+esc(b.name)+'"></td>'+
       ingCells(b,i,"breakfast",kn)+
-      '<td><label class="mp-chk" style="padding:0"><input type="checkbox" data-k="breakfast" data-i="'+i+'" data-f="dinnerAfterSambar"'+(b.dinnerAfterSambar?" checked":"")+'> yes</label></td>'+
       '<td><button class="rowdel" data-k="breakfast" data-del="'+i+'">&times;</button></td></tr>';
   }).join("");
   var c = document.getElementById("brek__count");
@@ -2482,7 +2465,7 @@ function wire(){
       var k = el.dataset.k, i = parseInt(el.dataset.i,10), f = el.dataset.f;
       var it = m[k][i]; if(!it) return;
       if(f.indexOf("slot")===0){ it.slots = it.slots||{}; it.slots[f.slice(4)] = el.checked; }
-      else if(f==="weekendOnly" || f==="dinnerAfterSambar"){ it[f] = el.checked; }
+      else if(f==="weekendOnly"){ it[f] = el.checked; }
       else if(f==="veggies" || f==="pantry"){ it[f] = parseList(el.value); }
       else { it[f] = el.value.trim(); }
       MP.saveMaster(m);
