@@ -392,6 +392,49 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   margin-bottom: 0;
 }
 /* ── END NAV HEADER NORMALIZED ── */
+
+/* ===== VERTICAL SUB-TAB RAIL (meal planner) ===== */
+:root { --vrail-width: 176px; }
+
+.vrail {
+  position: fixed; top: 48px; left: var(--nav-width); bottom: 48px;
+  width: var(--vrail-width); z-index: 1500;
+  background: var(--surface); border-right: 1px solid var(--border);
+  padding: 12px 8px; overflow-y: auto;
+  display: none; flex-direction: column; gap: 2px;
+}
+body.has-vrail .vrail   { display: flex; }
+body.has-vrail .panels  { left: calc(var(--nav-width) + var(--vrail-width)); }
+body.nav-is-collapsed .vrail            { left: 0 !important; }
+body.nav-is-collapsed.has-vrail .panels { left: var(--vrail-width) !important; }
+
+.vrail-title { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text3); font-weight: 600; padding: 2px 8px 8px; }
+
+.vtab-wrap { display: flex; align-items: center; gap: 2px; }
+.vtab {
+  flex: 1; min-width: 0; text-align: left;
+  padding: 8px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+  border: 1px solid transparent; border-radius: 8px; background: none;
+  color: #5c5a60; cursor: pointer; transition: all 0.15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vtab:hover  { background: #f8f7f5; color: #16151a; }
+.vtab.active { background: rgba(29,79,214,0.12); color: #1d4fd6; border-color: rgba(29,79,214,0.25); font-weight: 500; }
+[data-theme="dark"] .vtab        { color: #a3a1a8; }
+[data-theme="dark"] .vtab:hover  { background: #1f1f26; color: #ededf0; }
+[data-theme="dark"] .vtab.active { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.vtab.dragging { opacity: 0.4; }
+
+.vtab-mini { font-size: 10px; border: none; background: none; cursor: pointer;
+  padding: 2px 3px; border-radius: 3px; opacity: 0; transition: opacity 0.15s; line-height: 1; }
+.vtab-wrap:hover .vtab-mini { opacity: 1; }
+
+@media (max-width: 700px) {
+  :root { --vrail-width: 132px; }
+  .vtab { font-size: 12px; padding: 7px 8px; }
+}
+@media print { .vrail { display: none !important; } }
 </style>
 </head>
 <body>
@@ -420,6 +463,9 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <div class="tab-strip" id="tabStrip"></div>
   <div class="topbar-right"></div>
 </div>
+
+<!-- ===== VERTICAL SUB-TAB RAIL (meal planner) ===== -->
+<div class="vrail" id="vRail"></div>
 
 <!-- ===== PANELS ===== -->
 <div class="panels">
@@ -794,162 +840,178 @@ OT.onReady(async () => {
 </script>
 <script>
 (function(){
-  const TABS_ORDER_KEY  = "WEEKLY_PLANNERS_TAB_ORDER";
-  const TABS_ACTIVE_KEY = "WEEKLY_PLANNERS_TAB_ACTIVE";
-  const TABS_LABELS_KEY = "WEEKLY_PLANNERS_TAB_LABELS";
-  const DEFAULT_TABS = [
-    { id: "meal",   label: "🍽 Planner" },
+  /* ===== TABS: 2 top tabs (Meal Planner / Exercise Plan).
+     The meal-planner sub-pages live in a VERTICAL rail on the left. ===== */
+  const ACTIVE_KEY    = "WEEKLY_PLANNERS_TAB_ACTIVE";
+  const SUB_ORDER_KEY = "WEEKLY_PLANNERS_SUB_ORDER_V2";
+  const LABELS_KEY    = "WEEKLY_PLANNERS_TAB_LABELS";
+
+  const TOP_TABS = [
+    { id: "meal", label: "🍽 Meal Planner" },
+    { id: "exer", label: "🏋 Exercise Plan" }
+  ];
+  const DEFAULT_SUBS = [
+    { id: "meal",   label: "📅 Planner" },
     { id: "fridge", label: "🧊 Fridge" },
     { id: "rec",    label: "📖 Recipes" },
     { id: "veg",    label: "🥕 Veggies" },
     { id: "pantry", label: "🫙 Pantry" },
     { id: "brek",   label: "🍳 Breakfast" },
-    { id: "snk",    label: "🥨 Snacks" },
-    { id: "exer",   label: "🏋 Exercise Plan" }
+    { id: "snk",    label: "🥨 Snacks" }
   ];
+  const ALL_SUB_IDS = DEFAULT_SUBS.map(t => t.id);
 
-  // Custom labels (for rename)
-  let customLabels = (() => {
-    try { return JSON.parse(_cget(TABS_LABELS_KEY) || "{}"); } catch(e){ return {}; }
-  })();
+  let customLabels = {};
+  let subOrder     = ALL_SUB_IDS.slice();
+  let activeId     = "meal";   // active PANEL id
+  let lastSub      = "meal";   // last meal sub-page visited
 
-  function getTabLabel(id) {
-    if (customLabels[id]) return customLabels[id];
-    const def = DEFAULT_TABS.find(t => t.id === id);
-    return def ? def.label : id;
-  }
+  const groupOf   = id => (id === "exer" ? "exer" : "meal");
+  const subLabel  = id => customLabels[id] || (DEFAULT_SUBS.find(t => t.id === id) || {}).label || id;
+  const topLabel  = id => customLabels["top:" + id] || (TOP_TABS.find(t => t.id === id) || {}).label || id;
 
-  let tabOrder = (() => {
-    try {
-      const saved = JSON.parse(_cget(TABS_ORDER_KEY));
-      if (Array.isArray(saved) && saved.length > 0) return saved;
-    } catch(e){}
-    return DEFAULT_TABS.map(t => t.id);
-  })();
-
-  let activeTab = _cget(TABS_ACTIVE_KEY) || tabOrder[0];
-
-  function activatePanel(id) {
+  function activate(id) {
+    if (id !== "exer" && ALL_SUB_IDS.indexOf(id) < 0) id = "meal";
+    activeId = id;
+    if (id !== "exer") lastSub = id;
     window._activeWeeklyTab = id;
-    activeTab = id;
-    _cset(TABS_ACTIVE_KEY, id);
+    _cset(ACTIVE_KEY, id);
+
     document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
     const panel = document.getElementById("panel-" + id);
     if (panel) panel.classList.add("active");
-    document.querySelectorAll(".tab-btn-wrap").forEach(b => {
-      b.classList.toggle("active", b.dataset.tabId === id);
-      b.querySelector(".tab-btn").classList.toggle("active", b.dataset.tabId === id);
-    });
+
+    document.body.classList.toggle("has-vrail", groupOf(id) === "meal");
+    render();
   }
 
-  function renameTab(id) {
-    const current = getTabLabel(id);
-    const newLabel = prompt("Rename tab:", current);
-    if (newLabel && newLabel.trim() && newLabel.trim() !== current) {
-      customLabels[id] = newLabel.trim();
-      _cset(TABS_LABELS_KEY, JSON.stringify(customLabels));
-      renderTabs();
+  function renameTab(key, current, after) {
+    const v = prompt("Rename tab:", current);
+    if (v && v.trim() && v.trim() !== current) {
+      customLabels[key] = v.trim();
+      _cset(LABELS_KEY, JSON.stringify(customLabels));
+      if (after) after();
     }
   }
 
-  function deleteTab(id) {
-    const def = DEFAULT_TABS.find(t => t.id === id);
-    const label = getTabLabel(id);
-    const msg = def
-      ? `Hide "${label}" tab? (It's a built-in tab — data is kept, you can restore it by adding it back.)`
-      : `Delete "${label}" tab? This cannot be undone.`;
-    if (!confirm(msg)) return;
-    tabOrder = tabOrder.filter(t => t !== id);
-    _cset(TABS_ORDER_KEY, JSON.stringify(tabOrder));
-    if (activeTab === id) {
-      activeTab = tabOrder[0] || "";
-      if (activeTab) activatePanel(activeTab);
-    }
-    renderTabs();
+  function hideSub(id) {
+    if (id === "meal") { alert("The Planner page can't be hidden."); return; }
+    if (!confirm('Hide "' + subLabel(id) + '"? (Data is kept — reset the tab order to bring it back.)')) return;
+    subOrder = subOrder.filter(x => x !== id);
+    _cset(SUB_ORDER_KEY, JSON.stringify(subOrder));
+    if (activeId === id) activate(subOrder[0] || "meal"); else render();
   }
 
-  function renderTabs() {
+  function render() {
+    /* ---- top strip: only the two groups ---- */
     const strip = document.getElementById("tabStrip");
-    strip.innerHTML = "";
-    tabOrder.forEach(id => {
-      const wrap = document.createElement("span");
-      wrap.className = "tab-btn-wrap" + (id === activeTab ? " active" : "");
+    if (strip) {
+      strip.innerHTML = "";
+      TOP_TABS.forEach(t => {
+        const wrap = document.createElement("span");
+        wrap.className = "tab-btn-wrap" + (groupOf(activeId) === t.id ? " active" : "");
+        wrap.dataset.tabId = t.id;
+        wrap.style.cssText = "display:inline-flex;align-items:center;gap:2px;position:relative;";
+
+        const btn = document.createElement("button");
+        btn.className = "tab-btn" + (groupOf(activeId) === t.id ? " active" : "");
+        btn.dataset.tabId = t.id;
+        btn.textContent = topLabel(t.id);
+        btn.onclick = () => activate(t.id === "meal" ? lastSub : "exer");
+
+        const ren = document.createElement("button");
+        ren.title = "Rename tab";
+        ren.textContent = "✏";
+        ren.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:var(--text3);padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
+        ren.onclick = e => { e.stopPropagation(); renameTab("top:" + t.id, topLabel(t.id), render); };
+
+        wrap.addEventListener("mouseenter", () => { ren.style.opacity = "1"; });
+        wrap.addEventListener("mouseleave", () => { ren.style.opacity = "0"; });
+
+        wrap.appendChild(btn);
+        wrap.appendChild(ren);
+        strip.appendChild(wrap);
+      });
+    }
+
+    /* ---- vertical rail: meal-planner sub-pages ---- */
+    const rail = document.getElementById("vRail");
+    if (!rail) return;
+    rail.innerHTML = "";
+
+    const title = document.createElement("div");
+    title.className = "vrail-title";
+    title.textContent = "Meal Planner";
+    rail.appendChild(title);
+
+    subOrder.forEach(id => {
+      const wrap = document.createElement("div");
+      wrap.className = "vtab-wrap";
       wrap.dataset.tabId = id;
-      wrap.style.cssText = "display:inline-flex;align-items:center;gap:2px;position:relative;";
 
       const btn = document.createElement("button");
-      btn.className = "tab-btn" + (id === activeTab ? " active" : "");
-      btn.dataset.tabId = id;
-      btn.textContent = getTabLabel(id);
+      btn.className = "vtab" + (activeId === id ? " active" : "");
+      btn.textContent = subLabel(id);
       btn.draggable = true;
-      btn.onclick = () => activatePanel(id);
+      btn.onclick = () => activate(id);
 
-      // ✏ Rename button
-      const renBtn = document.createElement("button");
-      renBtn.title = "Rename tab";
-      renBtn.textContent = "✏";
-      renBtn.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:var(--text3);padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
-      renBtn.onclick = e => { e.stopPropagation(); renameTab(id); };
+      const ren = document.createElement("button");
+      ren.className = "vtab-mini";
+      ren.title = "Rename tab";
+      ren.textContent = "✏";
+      ren.style.color = "var(--text3)";
+      ren.onclick = e => { e.stopPropagation(); renameTab(id, subLabel(id), render); };
 
-      // ✕ Delete button
-      const delBtn = document.createElement("button");
-      delBtn.title = "Delete tab";
-      delBtn.textContent = "✕";
-      delBtn.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:#e85c5c;padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
-      delBtn.onclick = e => { e.stopPropagation(); deleteTab(id); };
+      const del = document.createElement("button");
+      del.className = "vtab-mini";
+      del.title = "Hide tab";
+      del.textContent = "✕";
+      del.style.color = "#e85c5c";
+      del.onclick = e => { e.stopPropagation(); hideSub(id); };
 
-      // Show rename/delete on hover
-      wrap.addEventListener("mouseenter", () => { renBtn.style.opacity="1"; delBtn.style.opacity="1"; });
-      wrap.addEventListener("mouseleave", () => { renBtn.style.opacity="0"; delBtn.style.opacity="0"; });
-
-      // Drag-to-reorder
+      /* drag to reorder */
       btn.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", id); btn.classList.add("dragging"); });
       btn.addEventListener("dragend", () => btn.classList.remove("dragging"));
       wrap.addEventListener("dragover", e => e.preventDefault());
       wrap.addEventListener("drop", e => {
         e.preventDefault();
         const fromId = e.dataTransfer.getData("text/plain");
-        if (fromId === id) return;
-        const fi = tabOrder.indexOf(fromId), ti = tabOrder.indexOf(id);
-        tabOrder.splice(fi, 1); tabOrder.splice(ti, 0, fromId);
-        _cset(TABS_ORDER_KEY, JSON.stringify(tabOrder));
-        renderTabs();
+        if (!fromId || fromId === id) return;
+        const fi = subOrder.indexOf(fromId), ti = subOrder.indexOf(id);
+        if (fi < 0 || ti < 0) return;
+        subOrder.splice(fi, 1);
+        subOrder.splice(ti, 0, fromId);
+        _cset(SUB_ORDER_KEY, JSON.stringify(subOrder));
+        render();
       });
 
       wrap.appendChild(btn);
-      wrap.appendChild(renBtn);
-      wrap.appendChild(delBtn);
-      strip.appendChild(wrap);
+      wrap.appendChild(ren);
+      wrap.appendChild(del);
+      rail.appendChild(wrap);
     });
   }
 
-  // Theme now centralized in storage.js — not handled here.
-
   OT.onReady(async () => {
-    if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
-    customLabels = (() => { try { return JSON.parse(_cget(TABS_LABELS_KEY) || "{}"); } catch(e){ return {}; } })();
-    tabOrder = (() => {
-      try {
-        const saved = JSON.parse(_cget(TABS_ORDER_KEY));
-        if (Array.isArray(saved) && saved.length > 0) return saved;
-      } catch(e){}
-      return DEFAULT_TABS.map(t => t.id);
-    })();
-    /* One-time migration: an existing saved tabOrder predates the meal-planner
-       tabs, so merge the new default ids in. Runs once; after that the user's
-       own ordering and hidden tabs are respected. */
-    if (!_cget("MEALPLAN_TABS_MIGRATED_V1")) {
-      const merged = [];
-      DEFAULT_TABS.forEach(t => { if (merged.indexOf(t.id) < 0) merged.push(t.id); });
-      tabOrder.forEach(id => { if (merged.indexOf(id) < 0) merged.push(id); });
-      tabOrder = merged;
-      _cset(TABS_ORDER_KEY, JSON.stringify(tabOrder));
-      _cset("MEALPLAN_TABS_MIGRATED_V1", "1");
-    }
-    activeTab = _cget(TABS_ACTIVE_KEY) || tabOrder[0];
-    if (tabOrder.indexOf(activeTab) < 0) activeTab = tabOrder[0];
-    renderTabs();
-    activatePanel(activeTab);
+    if (!Object.keys(_otCache).length) _otCache = await OT.getAll();
+
+    try { customLabels = JSON.parse(_cget(LABELS_KEY) || "{}"); } catch (e) { customLabels = {}; }
+
+    try {
+      const saved = JSON.parse(_cget(SUB_ORDER_KEY));
+      if (Array.isArray(saved) && saved.length) {
+        subOrder = saved.filter(id => ALL_SUB_IDS.indexOf(id) >= 0);
+      }
+    } catch (e) {}
+    if (!subOrder.length) subOrder = ALL_SUB_IDS.slice();
+    /* make sure any brand-new sub-page ids show up */
+    ALL_SUB_IDS.forEach(id => { if (subOrder.indexOf(id) < 0) subOrder.push(id); });
+
+    activeId = _cget(ACTIVE_KEY) || "meal";
+    if (activeId !== "exer" && ALL_SUB_IDS.indexOf(activeId) < 0) activeId = "meal";
+    lastSub = (activeId === "exer") ? "meal" : activeId;
+
+    activate(activeId);
   });
 })();
 </script>
