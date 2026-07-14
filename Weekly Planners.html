@@ -486,6 +486,7 @@ body.nav-is-collapsed.has-vrail .panels { left: var(--vrail-width) !important; }
         </div>
         <div class="header-right">
           <button class="btn btn-generate" onclick="meal_generate()" title="Generate meals from the Fridge and Pantry">✨ Generate</button>
+          <button class="btn" onclick="meal_tryAgain()" title="Re-roll the week with the last Generate settings">🎲 Try again</button>
           <button class="btn btn-ghost" onclick="meal_printBW()" title="Print black &amp; white / Save as PDF">🖨 Print</button>
           <button class="btn btn-print-color" onclick="meal_printColor()" title="Colour print">🎨 Colour Print</button>
           <input type="date" id="meal__exportDate" class="date-input">
@@ -549,9 +550,9 @@ body.nav-is-collapsed.has-vrail .panels { left: var(--vrail-width) !important; }
         <div class="dlg-sec">
           <div class="dlg-lbl">Meals</div>
           <label class="dlg-row"><input type="checkbox" id="meal__genB" checked onchange="meal_mealSelChanged()"> Breakfast</label>
-          <label class="dlg-row"><input type="checkbox" id="meal__genS1" onchange="meal_mealSelChanged()"> Snack 1</label>
+          <label class="dlg-row"><input type="checkbox" id="meal__genS1" onchange="meal_mealSelChanged()"> Snack (10 AM)</label>
           <label class="dlg-row"><input type="checkbox" id="meal__genL" checked onchange="meal_mealSelChanged()"> Lunch</label>
-          <label class="dlg-row"><input type="checkbox" id="meal__genS2" onchange="meal_mealSelChanged()"> Snack 2</label>
+          <label class="dlg-row"><input type="checkbox" id="meal__genS2" onchange="meal_mealSelChanged()"> Snack (3 PM)</label>
           <label class="dlg-row"><input type="checkbox" id="meal__genD" checked onchange="meal_mealSelChanged()"> Dinner</label>
         </div>
 
@@ -1046,18 +1047,18 @@ OT.onReady(async () => {
 const STORAGE_KEY  = "MEALPLAN_PLAN_V1";
 const SUGGEST_KEY  = "MEALPLAN_SUGGEST_V1";
 const DAYS  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const MEALS = ["Breakfast","Snack Break 1","Lunch","Snack Break 2","Dinner"];
+const MEALS = ["Breakfast","Snack (10 AM)","Lunch","Snack (3 PM)","Dinner"];
 
 /* ── Meal row visibility (driven by Generate-dialog checkboxes, persisted) ── */
 const MEAL_SEL_KEY = "MEALPLAN_MEAL_SEL_V1";
-const MEAL_CB_IDS  = { "Breakfast":"meal__genB", "Snack Break 1":"meal__genS1", "Lunch":"meal__genL", "Snack Break 2":"meal__genS2", "Dinner":"meal__genD" };
+const MEAL_CB_IDS  = { "Breakfast":"meal__genB", "Snack (10 AM)":"meal__genS1", "Lunch":"meal__genL", "Snack (3 PM)":"meal__genS2", "Dinner":"meal__genD" };
 
 function meal_loadMealSel() {
   try {
     const s = JSON.parse(localStorage.getItem(MEAL_SEL_KEY));
     if (s && typeof s === "object") return s;
   } catch (e) {}
-  return { "Breakfast":true, "Snack Break 1":false, "Lunch":true, "Snack Break 2":false, "Dinner":true };
+  return { "Breakfast":true, "Snack (10 AM)":false, "Lunch":true, "Snack (3 PM)":false, "Dinner":true };
 }
 function meal_applyMealSelToCheckboxes() {
   const sel = meal_loadMealSel();
@@ -1077,9 +1078,9 @@ window.meal_mealSelChanged = meal_mealSelChanged;
 
 const MEAL_PALETTES = {
   "Breakfast":    { bg:'#fdf4e3', hdr:'#f8e9c8', accent:'#a07030', border:'#e5cfa0' },
-  "Snack Break 1":{ bg:'#fdeedd', hdr:'#f8ddb8', accent:'#b06020', border:'#e8c898' },
+  "Snack (10 AM)":{ bg:'#fdeedd', hdr:'#f8ddb8', accent:'#b06020', border:'#e8c898' },
   "Lunch":        { bg:'#fde6dc', hdr:'#f8d4c4', accent:'#b04a30', border:'#e8b8a8' },
-  "Snack Break 2":{ bg:'#e0eef8', hdr:'#ccdaee', accent:'#2e5e96', border:'#a8c4de' },
+  "Snack (3 PM)":{ bg:'#e0eef8', hdr:'#ccdaee', accent:'#2e5e96', border:'#a8c4de' },
   "Dinner":       { bg:'#ede8f5', hdr:'#ddd4ee', accent:'#6a4a9a', border:'#c8b8e2' },
 };
 
@@ -1242,6 +1243,15 @@ function meal_render() {
       if (!data[key]) data[key] = [];
       const cell = document.createElement("td");
 
+      /* Snacks never happen on weekends — show a fixed dash, not an editable cell. */
+      if ((meal === "Snack (10 AM)" || meal === "Snack (3 PM)") && (day === "Saturday" || day === "Sunday")) {
+        cell.textContent = "—";
+        cell.style.textAlign = "center";
+        cell.style.opacity = "0.35";
+        row.appendChild(cell);
+        return;
+      }
+
       const count = Math.max(1, data[key].length);
       for (let idx = 0; idx < count; idx++) {
         const wrap = document.createElement("div");
@@ -1350,9 +1360,9 @@ function meal_downloadCalendarICS() {
 
   const mealTimes = {
     "Breakfast":    ["07:00","07:30"],
-    "Snack Break 1":["10:00","10:15"],
+    "Snack (10 AM)":["10:00","10:15"],
     "Lunch":        ["12:00","12:45"],
-    "Snack Break 2":["15:30","15:45"],
+    "Snack (3 PM)":["15:30","15:45"],
     "Dinner":       ["18:30","19:30"],
   };
 
@@ -1450,7 +1460,7 @@ function meal_printColor() {
 window.meal_printColor = meal_printColor;
 
 /* ── Generate: chooser, week write, single-day preview ── */
-const MEAL_ROWS = { B:"Breakfast", S1:"Snack Break 1", L:"Lunch", S2:"Snack Break 2", D:"Dinner" };
+const MEAL_ROWS = { B:"Breakfast", S1:"Snack (10 AM)", L:"Lunch", S2:"Snack (3 PM)", D:"Dinner" };
 
 function meal_generate() {
   if (typeof MP === "undefined") { alert("Meal planner data isn't loaded yet. Try again in a moment."); return; }
@@ -1460,7 +1470,7 @@ function meal_generate() {
   let di = 0;
   if (mon === currentMonday.getTime()) { const g = today.getDay(); di = (g === 0 ? 6 : g - 1); }
   if (sel) sel.value = String(di);
-  Object.keys(MEAL_ROWS).forEach(k => { const c = document.getElementById("meal__gen" + k); if (c) c.checked = true; });
+  meal_applyMealSelToCheckboxes();
   const w = document.getElementById("meal__genScopeWeek"); if (w) w.checked = true;
   meal_genScopeChanged();
   const dlg = document.getElementById("meal__genDialog"); if (dlg) dlg.classList.add("open");
@@ -1496,6 +1506,7 @@ function meal_genRun() {
   meal_genCancel();
 
   if (!isDay) {
+    try { localStorage.setItem("MEALPLAN_LAST_GEN_V1", JSON.stringify(meals)); } catch(e){}
     saveData(res.data);
     meal_render();
     UndoManager.push('meal');
@@ -1522,9 +1533,64 @@ function meal_genRun() {
 }
 window.meal_genRun = meal_genRun;
 
+/* ── Try again: re-roll the whole week with the last-used Generate meal selection ── */
+function meal_tryAgain() {
+  if (typeof MP === "undefined") { alert("Meal planner data isn't loaded yet. Try again in a moment."); return; }
+  let meals = null;
+  try { meals = JSON.parse(localStorage.getItem("MEALPLAN_LAST_GEN_V1")); } catch(e){}
+  if (!meals) {
+    const sel = meal_loadMealSel();
+    meals = { B: sel["Breakfast"]!==false, S1: !!sel["Snack (10 AM)"], L: sel["Lunch"]!==false, S2: !!sel["Snack (3 PM)"], D: sel["Dinner"]!==false };
+  }
+  if (!Object.keys(meals).some(k => meals[k])) { alert("Tick at least one meal in Generate first."); return; }
+  /* Keep visible rows in sync with what we're generating. */
+  const selObj = { "Breakfast": !!meals.B, "Snack (10 AM)": !!meals.S1, "Lunch": !!meals.L, "Snack (3 PM)": !!meals.S2, "Dinner": !!meals.D };
+  try { localStorage.setItem(MEAL_SEL_KEY, JSON.stringify(selObj)); } catch(e){}
+  meal_applyMealSelToCheckboxes();
+  const res = MP.generatePlan({ days: [0,1,2,3,4,5,6], meals: meals, existing: {} });
+  saveData(res.data);
+  meal_render();
+  UndoManager.push('meal');
+  const blanks = Object.keys(res.picks).filter(k => res.picks[k].indexOf("Insufficient") === 0).length;
+  const n = Object.keys(res.picks).length;
+  meal_showToast("Re-rolled — " + n + " cell" + (n===1?"":"s") + " generated" + (blanks ? " — " + blanks + " had nothing makeable" : ""));
+}
+window.meal_tryAgain = meal_tryAgain;
+
 /* ── Boot ── */
 OT.onReady(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
+  /* One-time: rename old snack keys and clear weekend snack entries in saved data. */
+  try {
+    if (_cget("MEALPLAN_SNACK_MIG_V1") !== "1") {
+      const ren = { "Snack Break 1": "Snack (10 AM)", "Snack Break 2": "Snack (3 PM)" };
+      const all = JSON.parse(_cget(STORAGE_KEY) || "{}");
+      Object.keys(all).forEach(wk => {
+        const d = all[wk] || {}, nd = {};
+        Object.keys(d).forEach(k => {
+          const us = k.lastIndexOf("_");
+          let meal = us >= 0 ? k.slice(0, us) : k;
+          const day = us >= 0 ? k.slice(us + 1) : "";
+          if (ren[meal]) meal = ren[meal];
+          if ((meal === "Snack (10 AM)" || meal === "Snack (3 PM)") && (day === "Saturday" || day === "Sunday")) return;
+          nd[meal + "_" + day] = d[k];
+        });
+        all[wk] = nd;
+      });
+      _cset(STORAGE_KEY, JSON.stringify(all));
+      try {
+        const s = JSON.parse(localStorage.getItem(MEAL_SEL_KEY) || "null");
+        if (s) { Object.keys(ren).forEach(o => { if (o in s) { s[ren[o]] = s[o]; delete s[o]; } }); localStorage.setItem(MEAL_SEL_KEY, JSON.stringify(s)); }
+      } catch(e){}
+      _cset("MEALPLAN_SNACK_MIG_V1", "1");
+    }
+  } catch(e){}
+  /* Snacks always start unticked on every page load. */
+  try {
+    const s = meal_loadMealSel();
+    s["Snack (10 AM)"] = false; s["Snack (3 PM)"] = false;
+    localStorage.setItem(MEAL_SEL_KEY, JSON.stringify(s));
+  } catch(e){}
   meal_applyMealSelToCheckboxes();
   updateWeekLabel();
   meal_render();
@@ -1914,7 +1980,7 @@ const MIGRATE_KEY = "MEALPLAN_TABS_MIGRATED_V1";
 const CAPSORT_KEY = "MEALPLAN_CAPSORT_V1";
 
 const DAYS  = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-const MEALS = ["Breakfast","Snack Break 1","Lunch","Snack Break 2","Dinner"];
+const MEALS = ["Breakfast","Snack (10 AM)","Lunch","Snack (3 PM)","Dinner"];
 
 const G_GOURD="Gourds", G_GREEN="Greens", G_ROOT="Roots and tubers", G_OTHER="Others";
 const DEFAULT_REC_CATS = ["Wet curry","Fry","Dal","Liquid","Others"];
@@ -2315,18 +2381,20 @@ function generatePlan(opts){
   var s1 = [], s2 = [];
   for(var i=0;i<7;i++){
     var day  = DAYS[i];
+    /* No snacks on weekends — leave Saturday/Sunday snack cells empty. */
+    if(isWeekend(i)){ s1[i] = ""; s2[i] = ""; continue; }
     var pool = m.snacks.filter(function(s){ return (!s.weekendOnly || isWeekend(i)) && makeable(s, av); });
 
     if(gen(i, meals.S1)){
       s1[i] = pool.length ? pick(pool).name : INSUF;
-      picks["Snack Break 1_"+day] = s1[i];
-    } else s1[i] = cellText(existing, "Snack Break 1", day);
+      picks["Snack (10 AM)_"+day] = s1[i];
+    } else s1[i] = cellText(existing, "Snack (10 AM)", day);
 
     if(gen(i, meals.S2)){
       var rest = pool.filter(function(s){ return s.name !== s1[i]; });
       s2[i] = rest.length ? pick(rest).name : (pool.length ? pool[0].name : INSUF);
-      picks["Snack Break 2_"+day] = s2[i];
-    } else s2[i] = cellText(existing, "Snack Break 2", day);
+      picks["Snack (3 PM)_"+day] = s2[i];
+    } else s2[i] = cellText(existing, "Snack (3 PM)", day);
   }
 
   /* ── Assemble: regenerated cells replaced, everything else preserved verbatim ── */
