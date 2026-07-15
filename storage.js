@@ -111,7 +111,8 @@
     { id: 'jobs',       file: 'Jobs.html',           label: 'Jobs' },
     { id: 'checklists', file: 'Checklists.html',     label: 'Checklists' },
     { id: 'trip',       file: 'Trip Planners.html',  label: 'Trip Planners' },
-    { id: 'weekly',     file: 'Weekly Planners.html',label: 'Weekly Planners' },
+    { id: 'meal',       file: 'Meal Planner.html',   label: 'Meal Planner' },
+    { id: 'workout',    file: 'Workout Planner.html',label: 'Workout Planner' },
     { id: 'libraries',  file: 'Libraries.html',      label: 'Libraries' },
   ];
   /* Settings is intentionally NOT in NAV_PAGES — it's pinned at the
