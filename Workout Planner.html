@@ -6,11 +6,13 @@
 <title data-page="Workout Planner">Workout Planner</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="storage.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 <style>
 
 /* ===== GLOBAL LAYOUT CSS ===== */
 :root {
   --nav-width: 200px;
+  --tab-width: 140px;
   --shadow: 0 2px 12px rgba(0,0,0,0.06);
   --radius: 16px;
   --radius-sm: 4px;
@@ -22,11 +24,11 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
 .topbar { position:fixed; top:0; left:var(--nav-width); right:0; height:48px; z-index:2000; }
-.panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; overflow:hidden; }
+.panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; display:flex; overflow:hidden; }
 .panel { position:absolute; inset:0; opacity:0; pointer-events:none; overflow-y:auto; transition:opacity 0.15s; }
 .panel.active { opacity:1; pointer-events:all; }
 
-/* ===== NAV ===== */
+/* ===== MAIN NAV (left sidebar) ===== */
 .nav {
   position: fixed; left: 0; top: 0; bottom: 0;
   width: var(--nav-width);
@@ -143,55 +145,119 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   flex-shrink: 0;
 }
 
-/* ===== MAIN CONTENT ===== */
-.main { padding: 24px; }
-
-.page-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 32px;
-  font-weight: 400;
-  margin-bottom: 24px;
-  color: var(--text);
-}
-
-/* ===== TABS ===== */
-.tabs-container {
+/* ===== SIDE TAB BAR (left of content) ===== */
+.tab-sidebar {
+  width: var(--tab-width);
+  background: var(--surface2);
+  border-right: 1px solid var(--border);
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 12px 0;
 }
 
-.tab-btn {
-  padding: 12px 16px;
+.tab-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px;
+  margin: 4px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text2);
+  background: var(--surface);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.tab-item:hover {
+  background: var(--surface);
+  border-color: var(--text2);
+}
+
+.tab-item.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-item-label {
+  flex: 1;
+  cursor: text;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.tab-item-label:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] .tab-item-label:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.tab-item-delete {
+  width: 18px;
+  height: 18px;
   border: none;
   background: transparent;
   color: var(--text2);
-  font-size: 13px;
-  font-weight: 500;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.tab-item-delete:hover {
+  color: #E24B4A;
+  background: rgba(226, 75, 74, 0.1);
+}
+
+.add-tab-btn {
+  margin: 12px;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text2);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
   transition: all 0.2s;
-  font-family: 'DM Sans', sans-serif;
 }
 
-.tab-btn:hover {
-  color: var(--text);
-  background: var(--surface2);
-  border-radius: 4px;
-}
-
-.tab-btn.active {
+.add-tab-btn:hover {
+  border-color: var(--accent);
   color: var(--accent);
-  border-bottom-color: var(--accent);
 }
 
-.tab-content {
-  display: none;
+/* ===== MAIN CONTENT ===== */
+.content-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.tab-content.active {
-  display: block;
+.main { 
+  padding: 24px; 
+  overflow-y: auto;
+  flex: 1;
+}
+
+.page-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  font-weight: 400;
+  margin-bottom: 24px;
+  color: var(--text);
 }
 
 /* ===== MUSCLE GROUP ===== */
@@ -201,16 +267,72 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   background: var(--surface2);
   border-radius: 8px;
   border-left: 3px solid var(--accent);
+  cursor: grab;
+  transition: all 0.2s;
+}
+
+.muscle-group:active {
+  cursor: grabbing;
+}
+
+.muscle-group.dragging {
+  opacity: 0.6;
+  transform: scale(0.98);
+}
+
+.muscle-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.muscle-drag-handle {
+  cursor: grab;
+  color: var(--text2);
+  font-size: 14px;
+  user-select: none;
+  flex-shrink: 0;
 }
 
 .muscle-name {
   font-size: 11px;
   color: var(--text2);
   font-style: italic;
-  margin-bottom: 12px;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  flex: 1;
+  cursor: text;
+  padding: 4px 6px;
+  border-radius: 3px;
+  border: 1px solid transparent;
+}
+
+.muscle-name:hover {
+  background: rgba(0,0,0,0.05);
+  border-color: var(--text2);
+}
+
+[data-theme="dark"] .muscle-name:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.muscle-delete-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.muscle-delete-btn:hover {
+  color: #E24B4A;
+  background: rgba(226, 75, 74, 0.1);
 }
 
 /* ===== EXERCISE ROW ===== */
@@ -255,8 +377,12 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 }
 
 .exercise-name:hover {
-  background: var(--accent, rgba(29,79,214,0.08));
-  border-color: var(--accent);
+  background: rgba(0,0,0,0.05);
+  border-color: var(--text2);
+}
+
+[data-theme="dark"] .exercise-name:hover {
+  background: rgba(255,255,255,0.05);
 }
 
 .editable-input {
@@ -338,14 +464,180 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 .add-exercise-btn:hover {
   border-color: var(--accent);
   color: var(--accent);
-  background: rgba(29, 79, 214, 0.08);
+}
+
+.add-muscle-btn {
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text2);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.add-muscle-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ===== FOOTER ACTIONS ===== */
+.tab-footer {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface2);
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.btn:hover {
+  border-color: var(--text);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-accent:hover {
+  opacity: 0.9;
+}
+
+/* ===== LOG BOOK ===== */
+.log-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.log-entry {
+  margin-bottom: 16px;
+  padding: 14px;
+  background: var(--surface2);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+}
+
+.log-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.log-date {
+  font-weight: 600;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.log-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.log-exercise {
+  display: grid;
+  grid-template-columns: 1fr 60px 60px 40px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+  background: var(--surface);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.log-exercise-name {
+  cursor: text;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.log-input {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 12px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.log-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.log-delete-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.log-delete-btn:hover {
+  color: #E24B4A;
+  border-color: #E24B4A;
+}
+
+.add-log-entry-btn {
+  width: 100%;
+  padding: 10px;
+  border: 1px dashed var(--border);
+  background: transparent;
+  color: var(--text2);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.add-log-entry-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* ===== RESPONSIVE ===== */
 @media(max-width:700px){
-  :root{ --nav-width:0px; }
+  :root{ --nav-width:0px; --tab-width:0px; }
   .topbar { left:0; }
   .panels { left:0; }
+  .tab-sidebar { display: none; }
 }
 
 </style>
@@ -354,7 +646,7 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 
 <div id="nav-show-tab" title="Show sidebar">☰</div>
 
-<!-- NAV -->
+<!-- MAIN NAV -->
 <nav class="nav" id="onetrack-nav">
   <div class="nav-header">
     <div class="nav-title">
@@ -378,173 +670,271 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 
 <!-- PANELS -->
 <div class="panels">
-  <div class="panel active">
-    <div class="main">
-      <div class="page-title">Marathon Training</div>
+  <!-- TAB SIDEBAR -->
+  <div class="tab-sidebar" id="tabSidebar">
+    <button class="add-tab-btn" onclick="addNewTab()">+ Add Tab</button>
+  </div>
 
-      <!-- TABS -->
-      <div class="tabs-container">
-        <button class="tab-btn active" onclick="switchTab('lower')">Lower Body</button>
-        <button class="tab-btn" onclick="switchTab('upper')">Upper Body</button>
-        <button class="tab-btn" onclick="switchTab('core')">Core</button>
-        <button class="tab-btn" onclick="switchTab('cardio')">Cardio</button>
-      </div>
-
-      <!-- LOWER BODY TAB -->
-      <div id="lower" class="tab-content active">
-        <div id="lower-content"></div>
-      </div>
-
-      <!-- UPPER BODY TAB -->
-      <div id="upper" class="tab-content">
-        <div id="upper-content"></div>
-      </div>
-
-      <!-- CORE TAB -->
-      <div id="core" class="tab-content">
-        <div id="core-content"></div>
-      </div>
-
-      <!-- CARDIO TAB -->
-      <div id="cardio" class="tab-content">
-        <div id="cardio-content"></div>
-      </div>
-    </div>
+  <!-- MAIN CONTENT -->
+  <div class="content-wrapper">
+    <div class="main" id="mainContent"></div>
+    <div class="tab-footer" id="tabFooter"></div>
   </div>
 </div>
 
 <script>
 
-const workoutData = {
-  lower: [
-    { muscle: 'Ankles & Calves (Gastrocnemius, Soleus, Tibialis Anterior)', exercises: [
-      { name: 'Calf raises', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Single leg calf raises', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Single leg skip', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Quadriceps (Front Thigh)', exercises: [
-      { name: 'Goblet squats', count: 10, reps: 2, date: '', checked: false },
-      { name: '90-90 squats', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Lateral squat', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Inner Thighs (Adductors)', exercises: [
-      { name: 'Cossack squats', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Side leg resistance band (L)', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Side leg resistance band (R)', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Hamstrings (Back Thigh)', exercises: [
-      { name: 'Romanian deadlifts', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Squat to hamstring', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Reverse lunges', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Glutes (Power & Endurance)', exercises: [
-      { name: 'Glute bridge', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Single-leg glute bridge', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Forward leg swings', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Side leg swings', count: 10, reps: 2, date: '', checked: false }
-    ]}
+const appState = {
+  tabs: [
+    { id: 'lower', name: 'Lower Body', order: 0 },
+    { id: 'upper', name: 'Upper Body', order: 1 },
+    { id: 'core', name: 'Core', order: 2 },
+    { id: 'cardio', name: 'Cardio', order: 3 }
   ],
-  upper: [
-    { muscle: 'Hands & Forearms (Flexor Digitorum, Extensor Digitorum, Flexor/Extensor Carpi)', exercises: [
-      { name: 'Farmer carries', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Wrist curls', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Biceps (Front of Arm)', exercises: [
-      { name: 'Dumbbell bicep curls', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Dumbbell hammer curls', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Pull-ups / Assisted pull-ups', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Triceps (Back of Arm)', exercises: [
-      { name: 'Dumbbell overhead press', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Tricep dips', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Chest (Front Upper Body)', exercises: [
-      { name: 'Push-ups', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Dumbbell bench press', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Back & Lats (Posterior)', exercises: [
-      { name: 'Bent-over rows', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Single-arm rows', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Shoulders (Stability & Posture)', exercises: [
-      { name: 'Single-arm press', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Lateral raises', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Face pulls', count: 10, reps: 2, date: '', checked: false }
-    ]}
-  ],
-  core: [
-    { muscle: 'Abs (Flexion Movements)', exercises: [
-      { name: 'Crunches', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Sit-ups', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Obliques (Rotation, Anti-lateral)', exercises: [
-      { name: 'Pallof press', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Side plank (L)', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Side plank (R)', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Hip Flexors & Connectors (Mobility)', exercises: [
-      { name: '90-90 hold stretch', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Erector Spinae (Lower Back, Extension)', exercises: [
-      { name: 'Plank hold', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Dead bug', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Upper Back (Posture)', exercises: [
-      { name: 'Bird dog', count: 10, reps: 2, date: '', checked: false }
-    ]}
-  ],
-  cardio: [
-    { muscle: 'Skip Rope (Calf endurance + cardio)', exercises: [
-      { name: 'Skip rope steady pace', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Skip rope high intensity', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Swimming (Full body, low impact)', exercises: [
-      { name: 'Freestyle swim', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Mixed strokes', count: 10, reps: 2, date: '', checked: false }
-    ]},
-    { muscle: 'Marathon Running (Primary focus)', exercises: [
-      { name: 'Long run', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Tempo run', count: 10, reps: 2, date: '', checked: false },
-      { name: 'Recovery run', count: 10, reps: 2, date: '', checked: false }
-    ]}
-  ]
+  workoutData: {
+    lower: [
+      { muscle: 'Ankles & Calves (Gastrocnemius, Soleus, Tibialis Anterior)', exercises: [
+        { name: 'Calf raises', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Single leg calf raises', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Single leg skip', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Quadriceps (Front Thigh)', exercises: [
+        { name: 'Goblet squats', count: 10, reps: 2, date: '', checked: false },
+        { name: '90-90 squats', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Lateral squat', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Inner Thighs (Adductors)', exercises: [
+        { name: 'Cossack squats', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Side leg resistance band (L)', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Side leg resistance band (R)', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Hamstrings (Back Thigh)', exercises: [
+        { name: 'Romanian deadlifts', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Squat to hamstring', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Reverse lunges', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Glutes (Power & Endurance)', exercises: [
+        { name: 'Glute bridge', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Single-leg glute bridge', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Forward leg swings', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Side leg swings', count: 10, reps: 2, date: '', checked: false }
+      ]}
+    ],
+    upper: [
+      { muscle: 'Hands & Forearms', exercises: [
+        { name: 'Farmer carries', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Wrist curls', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Biceps', exercises: [
+        { name: 'Dumbbell bicep curls', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Dumbbell hammer curls', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Pull-ups / Assisted pull-ups', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Triceps', exercises: [
+        { name: 'Dumbbell overhead press', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Tricep dips', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Chest', exercises: [
+        { name: 'Push-ups', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Dumbbell bench press', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Back & Lats', exercises: [
+        { name: 'Bent-over rows', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Single-arm rows', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Shoulders', exercises: [
+        { name: 'Single-arm press', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Lateral raises', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Face pulls', count: 10, reps: 2, date: '', checked: false }
+      ]}
+    ],
+    core: [
+      { muscle: 'Abs', exercises: [
+        { name: 'Crunches', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Sit-ups', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Obliques', exercises: [
+        { name: 'Pallof press', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Side plank (L)', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Side plank (R)', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Hip Flexors & Connectors', exercises: [
+        { name: '90-90 hold stretch', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Erector Spinae', exercises: [
+        { name: 'Plank hold', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Dead bug', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Upper Back', exercises: [
+        { name: 'Bird dog', count: 10, reps: 2, date: '', checked: false }
+      ]}
+    ],
+    cardio: [
+      { muscle: 'Skip Rope', exercises: [
+        { name: 'Skip rope steady pace', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Skip rope high intensity', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Swimming', exercises: [
+        { name: 'Freestyle swim', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Mixed strokes', count: 10, reps: 2, date: '', checked: false }
+      ]},
+      { muscle: 'Marathon Running', exercises: [
+        { name: 'Long run', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Tempo run', count: 10, reps: 2, date: '', checked: false },
+        { name: 'Recovery run', count: 10, reps: 2, date: '', checked: false }
+      ]}
+    ]
+  },
+  logBook: [],
+  activeTab: 'lower'
 };
 
+// Load data from storage
 function loadData() {
   OT.onReady(async () => {
-    const saved = await OT.get('ONETRACK_WORKOUT_DATA');
+    const saved = await OT.get('ONETRACK_WORKOUT_PLANNER');
     if (saved) {
       try {
-        Object.assign(workoutData, JSON.parse(saved));
+        const loaded = JSON.parse(saved);
+        Object.assign(appState, loaded);
       } catch (e) {
-        console.log('Using default workout data');
+        console.log('Using default data');
       }
     }
-    renderAllTabs();
+    renderTabSidebar();
+    renderTab('lower');
   });
 }
 
+// Save data to storage
 function saveData() {
-  OT.set('ONETRACK_WORKOUT_DATA', JSON.stringify(workoutData));
+  OT.set('ONETRACK_WORKOUT_PLANNER', JSON.stringify(appState));
 }
 
-function renderTab(tabId) {
-  const container = document.getElementById(tabId + '-content');
-  const tab = workoutData[tabId];
-  let html = '';
+// Render tab sidebar
+function renderTabSidebar() {
+  const sidebar = document.getElementById('tabSidebar');
+  const tabsContainer = document.querySelector('.tab-sidebar');
+  const addBtn = tabsContainer.querySelector('.add-tab-btn');
+  
+  sidebar.innerHTML = '';
+  sidebar.appendChild(addBtn);
+  
+  appState.tabs.sort((a, b) => a.order - b.order);
+  
+  appState.tabs.forEach((tab, idx) => {
+    const tabEl = document.createElement('div');
+    tabEl.className = 'tab-item' + (appState.activeTab === tab.id ? ' active' : '');
+    tabEl.draggable = true;
+    tabEl.ondragstart = (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('tabId', tab.id);
+    };
+    tabEl.ondragover = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    };
+    tabEl.ondrop = (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData('tabId');
+      const draggedTab = appState.tabs.find(t => t.id === draggedId);
+      const currentTab = tab;
+      if (draggedTab && currentTab && draggedTab.id !== currentTab.id) {
+        [draggedTab.order, currentTab.order] = [currentTab.order, draggedTab.order];
+        saveData();
+        renderTabSidebar();
+      }
+    };
+    
+    tabEl.onclick = () => {
+      appState.activeTab = tab.id;
+      renderTabSidebar();
+      renderTab(tab.id);
+    };
+    
+    const label = document.createElement('span');
+    label.className = 'tab-item-label';
+    label.textContent = tab.name;
+    label.onclick = (e) => {
+      e.stopPropagation();
+      const newName = prompt('Rename tab:', tab.name);
+      if (newName && newName.trim()) {
+        tab.name = newName.trim();
+        saveData();
+        renderTabSidebar();
+      }
+    };
+    
+    const delBtn = document.createElement('button');
+    delBtn.className = 'tab-item-delete';
+    delBtn.textContent = '✕';
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Delete this tab?')) {
+        appState.tabs = appState.tabs.filter(t => t.id !== tab.id);
+        delete appState.workoutData[tab.id];
+        appState.activeTab = appState.tabs[0]?.id || 'lower';
+        saveData();
+        renderTabSidebar();
+        renderTab(appState.activeTab);
+      }
+    };
+    
+    tabEl.appendChild(label);
+    tabEl.appendChild(delBtn);
+    sidebar.appendChild(tabEl);
+  });
+  
+  const addBtn2 = document.createElement('button');
+  addBtn2.className = 'add-tab-btn';
+  addBtn2.textContent = '+ Add Tab';
+  addBtn2.onclick = addNewTab;
+  sidebar.appendChild(addBtn2);
+}
 
-  tab.forEach((group, groupIdx) => {
-    html += `<div class="muscle-group">
-      <div class="muscle-name">${group.muscle}</div>`;
+function addNewTab() {
+  const name = prompt('Tab name:');
+  if (name && name.trim()) {
+    const newId = 'tab_' + Date.now();
+    appState.tabs.push({
+      id: newId,
+      name: name.trim(),
+      order: appState.tabs.length
+    });
+    appState.workoutData[newId] = [];
+    saveData();
+    renderTabSidebar();
+  }
+}
+
+// Render tab content
+function renderTab(tabId) {
+  const content = document.getElementById('mainContent');
+  const footer = document.getElementById('tabFooter');
+  const tab = appState.tabs.find(t => t.id === tabId);
+  
+  if (!tab) return;
+  
+  let html = `<div class="page-title">${tab.name}</div>`;
+  
+  const muscles = appState.workoutData[tabId] || [];
+  
+  muscles.forEach((group, groupIdx) => {
+    html += `<div class="muscle-group" draggable="true" ondragstart="dragMusclStart('${tabId}', ${groupIdx})" ondrop="dragMusclDrop('${tabId}', ${groupIdx})" ondragover="dragOver(event)" data-tab="${tabId}" data-group="${groupIdx}">
+      <div class="muscle-header">
+        <span class="muscle-drag-handle">⋮</span>
+        <span class="muscle-name" ondblclick="editMuscleName('${tabId}', ${groupIdx})">${group.muscle}</span>
+        <button class="muscle-delete-btn" onclick="deleteMusclGroup('${tabId}', ${groupIdx})">✕</button>
+      </div>`;
     
     group.exercises.forEach((ex, exIdx) => {
       html += `<div class="exercise-row" draggable="true" ondragstart="dragStart(event, '${tabId}', ${groupIdx}, ${exIdx})" ondrop="dragDrop(event, '${tabId}', ${groupIdx}, ${exIdx})" ondragover="dragOver(event)">
         <div class="drag-handle">⋮</div>
-        <div class="exercise-name" onclick="editField(this, '${tabId}', ${groupIdx}, ${exIdx}, 'name')">${ex.name}</div>
+        <div class="exercise-name" ondblclick="editExerciseName('${tabId}', ${groupIdx}, ${exIdx})">${ex.name}</div>
         <input type="number" class="editable-input" value="${ex.count}" min="1" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'count', this.value); saveData();" placeholder="count">
         <input type="number" class="editable-input" value="${ex.reps}" min="1" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'reps', this.value); saveData();" placeholder="reps">
         <input type="date" class="date-input" value="${ex.date}" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'date', this.value); saveData();">
-        <input type="checkbox" ${ex.checked ? 'checked' : ''} onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'checked', this.checked); saveData();">
+        <div class="checkbox-wrapper"><input type="checkbox" ${ex.checked ? 'checked' : ''} onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'checked', this.checked); saveData();"></div>
         <button class="action-btn delete" onclick="deleteExercise('${tabId}', ${groupIdx}, ${exIdx})">✕</button>
       </div>`;
     });
@@ -552,67 +942,183 @@ function renderTab(tabId) {
     html += `<button class="add-exercise-btn" onclick="addExercise('${tabId}', ${groupIdx})">+ Add Exercise</button>
     </div>`;
   });
-
-  container.innerHTML = html;
-}
-
-function renderAllTabs() {
-  Object.keys(workoutData).forEach(tab => renderTab(tab));
-}
-
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabName).classList.add('active');
-  event.target.classList.add('active');
-}
-
-function editField(el, tabId, groupIdx, exIdx, field) {
-  if (field === 'name') {
-    const current = el.textContent;
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'editable-input';
-    input.value = current;
-    input.style.width = '100%';
-    el.replaceWith(input);
-    input.focus();
-    input.onblur = () => {
-      workoutData[tabId][groupIdx].exercises[exIdx].name = input.value;
-      saveData();
-      renderTab(tabId);
-    };
-    input.onkeypress = (e) => {
-      if (e.key === 'Enter') input.blur();
-    };
-  }
-}
-
-function updateField(tabId, groupIdx, exIdx, field, value) {
-  if (field === 'checked') {
-    workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
+  
+  html += `<button class="add-muscle-btn" onclick="addMusclGroup('${tabId}')">+ Add Muscle Group</button>`;
+  
+  content.innerHTML = html;
+  
+  // Footer
+  if (tabId !== 'logbook') {
+    footer.innerHTML = `<button class="btn btn-accent" onclick="logWorkout('${tabId}')">📋 Log Workout</button>`;
   } else {
-    workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
+    footer.innerHTML = `<button class="btn" onclick="printLogBook()">🖨 Print</button>
+                        <button class="btn" onclick="exportToExcel()">📊 Export Excel</button>`;
   }
 }
 
-function deleteExercise(tabId, groupIdx, exIdx) {
-  if (confirm('Delete this exercise?')) {
-    workoutData[tabId][groupIdx].exercises.splice(exIdx, 1);
+// Render Log Book
+function renderLogBook() {
+  const content = document.getElementById('mainContent');
+  const footer = document.getElementById('tabFooter');
+  
+  let html = `<div class="page-title">Log Book</div>
+              <div class="log-header">
+                <button class="btn" onclick="printLogBook()">🖨 Print</button>
+                <button class="btn" onclick="exportToExcel()">📊 Export Excel</button>
+                <button class="btn btn-accent" onclick="addManualLogEntry()">+ Add Entry</button>
+              </div>`;
+  
+  if (appState.logBook.length === 0) {
+    html += '<p style="color:var(--text2);">No log entries yet</p>';
+  } else {
+    appState.logBook.forEach((entry, idx) => {
+      html += `<div class="log-entry">
+        <div class="log-entry-header">
+          <span class="log-date">${entry.date}</span>
+          <div class="log-actions">
+            <button class="btn" onclick="exportDayToCalendar(${idx})">📅 Calendar</button>
+            <button class="btn delete" onclick="deleteLogEntry(${idx})">✕</button>
+          </div>
+        </div>`;
+      
+      entry.exercises.forEach((ex, exIdx) => {
+        html += `<div class="log-exercise">
+          <input type="text" class="log-exercise-name log-input" value="${ex.name}" onchange="appState.logBook[${idx}].exercises[${exIdx}].name = this.value; saveData();">
+          <input type="number" class="log-input" value="${ex.count}" onchange="appState.logBook[${idx}].exercises[${exIdx}].count = this.value; saveData();">
+          <input type="number" class="log-input" value="${ex.reps}" onchange="appState.logBook[${idx}].exercises[${exIdx}].reps = this.value; saveData();">
+          <button class="log-delete-btn" onclick="appState.logBook[${idx}].exercises.splice(${exIdx}, 1); saveData(); renderLogBook();">✕</button>
+        </div>`;
+      });
+      
+      html += `<button class="add-exercise-btn" onclick="addLogExercise(${idx})">+ Add</button></div>`;
+    });
+  }
+  
+  content.innerHTML = html;
+  footer.innerHTML = '';
+}
+
+// Log workout
+function logWorkout(tabId) {
+  const muscles = appState.workoutData[tabId] || [];
+  const checked = [];
+  const today = new Date().toISOString().split('T')[0];
+  
+  muscles.forEach(group => {
+    group.exercises.forEach(ex => {
+      if (ex.checked) {
+        checked.push({ name: ex.name, count: ex.count, reps: ex.reps });
+      }
+    });
+  });
+  
+  if (checked.length === 0) {
+    alert('No exercises checked');
+    return;
+  }
+  
+  const existingIdx = appState.logBook.findIndex(e => e.date === today);
+  if (existingIdx >= 0) {
+    appState.logBook[existingIdx].exercises.push(...checked);
+  } else {
+    appState.logBook.push({ date: today, exercises: checked });
+  }
+  
+  // Uncheck all
+  muscles.forEach(group => {
+    group.exercises.forEach(ex => ex.checked = false);
+  });
+  
+  saveData();
+  alert('Logged to Log Book');
+  renderTab(tabId);
+}
+
+// Muscle group operations
+function addMusclGroup(tabId) {
+  const name = prompt('Muscle group name:');
+  if (name && name.trim()) {
+    appState.workoutData[tabId].push({
+      muscle: name.trim(),
+      exercises: []
+    });
     saveData();
     renderTab(tabId);
   }
 }
 
+function editMuscleName(tabId, groupIdx) {
+  const newName = prompt('Rename:', appState.workoutData[tabId][groupIdx].muscle);
+  if (newName && newName.trim()) {
+    appState.workoutData[tabId][groupIdx].muscle = newName.trim();
+    saveData();
+    renderTab(tabId);
+  }
+}
+
+function deleteMusclGroup(tabId, groupIdx) {
+  if (confirm('Delete muscle group?')) {
+    appState.workoutData[tabId].splice(groupIdx, 1);
+    saveData();
+    renderTab(tabId);
+  }
+}
+
+function dragMusclStart(tabId, groupIdx) {
+  window.draggedMuscle = { tabId, groupIdx };
+}
+
+function dragMusclDrop(tabId, groupIdx) {
+  if (!window.draggedMuscle) return;
+  const from = window.draggedMuscle;
+  if (from.tabId === tabId && from.groupIdx !== groupIdx) {
+    const muscles = appState.workoutData[tabId];
+    [muscles[from.groupIdx], muscles[groupIdx]] = [muscles[groupIdx], muscles[from.groupIdx]];
+    saveData();
+    renderTab(tabId);
+  }
+}
+
+// Exercise operations
 function addExercise(tabId, groupIdx) {
-  workoutData[tabId][groupIdx].exercises.push({ name: 'New Exercise', count: 10, reps: 2, date: '', checked: false });
+  appState.workoutData[tabId][groupIdx].exercises.push({
+    name: 'New Exercise',
+    count: 10,
+    reps: 2,
+    date: '',
+    checked: false
+  });
   saveData();
   renderTab(tabId);
 }
 
-let draggedItem = null;
+function editExerciseName(tabId, groupIdx, exIdx) {
+  const newName = prompt('Rename:', appState.workoutData[tabId][groupIdx].exercises[exIdx].name);
+  if (newName && newName.trim()) {
+    appState.workoutData[tabId][groupIdx].exercises[exIdx].name = newName.trim();
+    saveData();
+    renderTab(tabId);
+  }
+}
+
+function updateField(tabId, groupIdx, exIdx, field, value) {
+  if (field === 'checked') {
+    appState.workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
+  } else {
+    appState.workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
+  }
+}
+
+function deleteExercise(tabId, groupIdx, exIdx) {
+  if (confirm('Delete exercise?')) {
+    appState.workoutData[tabId][groupIdx].exercises.splice(exIdx, 1);
+    saveData();
+    renderTab(tabId);
+  }
+}
+
 function dragStart(e, tabId, groupIdx, exIdx) {
-  draggedItem = { tabId, groupIdx, exIdx };
+  window.draggedEx = { tabId, groupIdx, exIdx };
   e.dataTransfer.effectAllowed = 'move';
 }
 
@@ -623,21 +1129,95 @@ function dragOver(e) {
 
 function dragDrop(e, tabId, groupIdx, exIdx) {
   e.preventDefault();
-  if (!draggedItem) return;
-  const from = draggedItem;
-  if (from.tabId === tabId && from.groupIdx === groupIdx) {
-    const exercises = workoutData[tabId][groupIdx].exercises;
-    const newIdx = exIdx;
-    if (newIdx >= 0 && newIdx < exercises.length && newIdx !== from.exIdx) {
-      [exercises[from.exIdx], exercises[newIdx]] = [exercises[newIdx], exercises[from.exIdx]];
-      saveData();
-      renderTab(tabId);
-    }
+  if (!window.draggedEx) return;
+  const from = window.draggedEx;
+  if (from.tabId === tabId && from.groupIdx === groupIdx && from.exIdx !== exIdx) {
+    const exercises = appState.workoutData[tabId][groupIdx].exercises;
+    [exercises[from.exIdx], exercises[exIdx]] = [exercises[exIdx], exercises[from.exIdx]];
+    saveData();
+    renderTab(tabId);
   }
-  draggedItem = null;
 }
 
+// Log book operations
+function addManualLogEntry() {
+  const date = prompt('Date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+  if (date) {
+    appState.logBook.push({ date, exercises: [] });
+    saveData();
+    renderLogBook();
+  }
+}
+
+function addLogExercise(entryIdx) {
+  appState.logBook[entryIdx].exercises.push({ name: 'Exercise', count: 10, reps: 2 });
+  saveData();
+  renderLogBook();
+}
+
+function deleteLogEntry(idx) {
+  if (confirm('Delete entry?')) {
+    appState.logBook.splice(idx, 1);
+    saveData();
+    renderLogBook();
+  }
+}
+
+function exportDayToCalendar(entryIdx) {
+  const entry = appState.logBook[entryIdx];
+  const desc = entry.exercises.map(e => `${e.name} (${e.count}x${e.reps})`).join('\\n');
+  const calUrl = `https://calendar.google.com/calendar/u/0/r/eventedit?text=Workout&dates=${entry.date.replace(/-/g, '')}/${entry.date.replace(/-/g, '')}&details=${encodeURIComponent(desc)}`;
+  window.open(calUrl, '_blank');
+}
+
+function printLogBook() {
+  const printWin = window.open('', '_blank');
+  let html = '<h1>Workout Log Book</h1><table border="1" cellpadding="8">';
+  html += '<tr><th>Date</th><th>Exercise</th><th>Count</th><th>Reps</th></tr>';
+  appState.logBook.forEach(entry => {
+    entry.exercises.forEach((ex, idx) => {
+      html += `<tr><td>${idx === 0 ? entry.date : ''}</td><td>${ex.name}</td><td>${ex.count}</td><td>${ex.reps}</td></tr>`;
+    });
+  });
+  html += '</table>';
+  printWin.document.write(html);
+  printWin.document.close();
+  printWin.print();
+}
+
+function exportToExcel() {
+  const data = [['Date', 'Exercise', 'Count', 'Reps']];
+  appState.logBook.forEach(entry => {
+    entry.exercises.forEach(ex => {
+      data.push([entry.date, ex.name, ex.count, ex.reps]);
+    });
+  });
+  
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Log Book');
+  XLSX.writeFile(wb, 'WorkoutLog.xlsx');
+}
+
+// Init
 loadData();
+
+// Handle tab sidebar clicks for logbook
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const sidebar = document.getElementById('tabSidebar');
+    const logbookTab = document.createElement('div');
+    logbookTab.className = 'tab-item' + (appState.activeTab === 'logbook' ? ' active' : '');
+    logbookTab.innerHTML = '<span class="tab-item-label">Log Book</span>';
+    logbookTab.onclick = () => {
+      appState.activeTab = 'logbook';
+      document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+      logbookTab.classList.add('active');
+      renderLogBook();
+    };
+    sidebar.appendChild(logbookTab);
+  }, 500);
+});
 
 </script>
 
