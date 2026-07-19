@@ -20,16 +20,115 @@
   --shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--text); }
+body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
 .topbar { position:fixed; top:0; left:var(--nav-width); right:0; height:48px; z-index:2000; }
 .panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; overflow:hidden; }
 .panel { position:absolute; inset:0; opacity:0; pointer-events:none; overflow-y:auto; transition:opacity 0.15s; }
 .panel.active { opacity:1; pointer-events:all; }
 
+/* ===== NAV ===== */
+.nav {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--nav-width);
+  background: #ffffff;
+  border-right: 1px solid rgba(0,0,0,0.08);
+  display: flex; flex-direction: column;
+  padding: 24px 0; z-index: 100;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+  transition: background 0.3s;
+}
+[data-theme="dark"] .nav { background: #18181d; border-right-color: rgba(255,255,255,0.08); }
+
+.nav a {
+  display: block; padding: 8px 20px;
+  font-size: 13px; color: #5c5a60;
+  text-decoration: none; transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+[data-theme="dark"] .nav a { color: #a3a1a8; }
+.nav a:hover { color: #16151a; background: #f8f7f5; transform: translateX(4px); }
+[data-theme="dark"] .nav a:hover { color: #ededf0; background: #1f1f26; transform: translateX(4px); }
+.nav a.active { color: #1d4fd6; font-weight: 600; border-left-color: #1d4fd6; background: rgba(29,79,214,0.12); }
+[data-theme="dark"] .nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+
+.nav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px 14px; border-bottom: 1px solid var(--border);
+  margin-bottom: 10px; gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+.logo-check svg{overflow:visible;display:block;}
+.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.nav.nav-collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+body.nav-is-collapsed .topbar { left: 0 !important; }
+body.nav-is-collapsed .panels { left: 0 !important; }
+
+#nav-show-tab {
+  display: none;
+  position: fixed; top: 50%; left: 0;
+  transform: translateY(-50%);
+  z-index: 9999;
+  writing-mode: vertical-lr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 6px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+}
+
+body.nav-is-collapsed #nav-show-tab { display: block; }
+
 /* ===== TOPBAR ===== */
 .topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -243,16 +342,41 @@ body { background: var(--bg); font-family: 'DM Sans', sans-serif; color: var(--t
 }
 
 /* ===== RESPONSIVE ===== */
-@media(max-width:700px){ :root{ --nav-width:0px; } .topbar { left:0; } .panels { left:0; } }
+@media(max-width:700px){
+  :root{ --nav-width:0px; }
+  .topbar { left:0; }
+  .panels { left:0; }
+}
 
 </style>
 </head>
 <body>
 
+<div id="nav-show-tab" title="Show sidebar">☰</div>
+
+<!-- NAV -->
+<nav class="nav" id="onetrack-nav">
+  <div class="nav-header">
+    <div class="nav-title">
+      <span class="logo-check" id="logoCheck">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;display:block;overflow:visible;">
+          <rect class="logo-box" x="2" y="2" width="16" height="16" rx="4"/>
+          <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
+        </svg>
+      </span>
+      <span id="otBrandName"></span>
+    </div>
+    <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
+  </div>
+  <div id="onetrack-nav-links"></div>
+</nav>
+
+<!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-logo">Workout Planner</div>
+  <div class="topbar-logo">✦ Workout Planner</div>
 </div>
 
+<!-- PANELS -->
 <div class="panels">
   <div class="panel active">
     <div class="main">
@@ -513,7 +637,6 @@ function dragDrop(e, tabId, groupIdx, exIdx) {
   draggedItem = null;
 }
 
-// Load data on page ready
 loadData();
 
 </script>
