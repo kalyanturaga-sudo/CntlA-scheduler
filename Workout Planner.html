@@ -12,7 +12,7 @@
 /* ===== GLOBAL LAYOUT CSS ===== */
 :root {
   --nav-width: 200px;
-  --tab-width: 180px;
+  --tab-width: 140px;
   --shadow: 0 2px 12px rgba(0,0,0,0.06);
   --radius: 16px;
   --radius-sm: 4px;
@@ -150,22 +150,20 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   width: var(--tab-width);
   background: var(--surface2);
   border-right: 1px solid var(--border);
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
-  padding: 12px;
-  gap: 8px;
-  align-content: start;
+  padding: 12px 0;
 }
 
 .tab-item {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 10px 6px;
+  justify-content: space-between;
+  padding: 8px 8px;
+  margin: 4px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text2);
   background: var(--surface);
@@ -174,8 +172,6 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   transition: all 0.2s;
   user-select: none;
   gap: 4px;
-  text-align: center;
-  min-height: 60px;
 }
 
 .tab-item:hover {
@@ -193,12 +189,11 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 .tab-drag-handle {
   cursor: grab;
   color: var(--text2);
-  font-size: 12px;
+  font-size: 14px;
   user-select: none;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  margin-bottom: 2px;
 }
 
 .tab-drag-handle:active {
@@ -206,13 +201,11 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 }
 
 .tab-item-label {
+  flex: 1;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
-  text-align: center;
-  font-size: 11px;
-  flex: 1;
-  word-break: break-word;
+  text-align: left;
 }
 
 .tab-item-label:hover {
@@ -224,8 +217,8 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 }
 
 .tab-item-delete {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border: none;
   background: transparent;
   color: var(--text2);
@@ -234,9 +227,8 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 12px;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
 .tab-item-delete:hover {
@@ -245,7 +237,7 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 }
 
 .add-tab-btn {
-  grid-column: 1 / -1;
+  margin: 12px;
   padding: 8px;
   border: 1px dashed var(--border);
   background: transparent;
@@ -274,6 +266,15 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   padding: 24px; 
   overflow-y: auto;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-content: start;
 }
 
 .page-title {
@@ -824,6 +825,10 @@ function loadData() {
         console.log('Using default data');
       }
     }
+    // Ensure Log Book tab always exists
+    if (!appState.tabs.find(t => t.id === 'logbook')) {
+      appState.tabs.push({ id: 'logbook', name: 'Log Book', order: appState.tabs.length });
+    }
     renderTabSidebar();
     renderTab('lower');
   });
@@ -955,7 +960,7 @@ function renderTab(tabId) {
   
   if (!tab) return;
   
-  let html = `<div class="page-title">${tab.name}</div>`;
+  let html = `<div class="page-title">${tab.name}</div><div class="main-content-grid">`;
   
   const muscles = appState.workoutData[tabId] || [];
   
@@ -983,7 +988,7 @@ function renderTab(tabId) {
     </div>`;
   });
   
-  html += `<button class="add-muscle-btn" onclick="addMusclGroup('${tabId}')">+ Add Muscle Group</button>`;
+  html += `</div><button class="add-muscle-btn" onclick="addMusclGroup('${tabId}')">+ Add Muscle Group</button>`;
   
   content.innerHTML = html;
   
@@ -997,7 +1002,7 @@ function renderLogBook() {
   const footer = document.getElementById('tabFooter');
   
   let html = `<div class="page-title">Log Book</div>
-              <div class="log-header">
+              <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
                 <button class="btn" onclick="printLogBook()">🖨 Print</button>
                 <button class="btn" onclick="exportToExcel()">📊 Export Excel</button>
                 <button class="btn btn-accent" onclick="addManualLogEntry()">+ Add Entry</button>
