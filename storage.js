@@ -89,7 +89,7 @@
      code anywhere.
      CONFIG:
    ============================================================ */
-  const GITHUB_CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID_HERE';
+  const GITHUB_CLIENT_ID = 'Ov23liLYniiDSo0hzf2U';
   const DRIVE_FILE_NAME  = 'onetrack-data.json';
   const REDIRECT_URI     = 'https://kalyanturaga-sudo.github.io/CntlA-scheduler/oauth-callback.html';
 
