@@ -169,9 +169,10 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   background: var(--surface);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
   user-select: none;
   gap: 4px;
+  position: relative;
 }
 
 .tab-item:hover {
@@ -184,6 +185,35 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
   background: var(--accent-soft);
   border-color: var(--accent);
   font-weight: 600;
+}
+
+/* ── SELECTED TAB: breathing pulse ── */
+@keyframes tabPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 5px transparent; }
+}
+
+.tab-item.active,
+.tab-item.active:hover {
+  animation: tabPulse 3s ease-in-out infinite;
+}
+
+.tab-item.active::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+  opacity: 0.9;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-item.active,
+  .tab-item.active:hover { animation: none; }
 }
 
 .tab-drag-handle {
