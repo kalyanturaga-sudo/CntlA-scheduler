@@ -48,7 +48,7 @@
    HOW STORAGE WORKS (v4.0, unchanged):
    1. Banner shows "Sign in to sync".
    2. Tapping Sign in saves the current page URL, then does a
-      normal full-page redirect to GitHub's consent screen.
+      normal full-page redirect to Google's consent screen.
    3. Google redirects back to oauth-callback.html (a single
       fixed page, registered as the OAuth redirect URI).
    4. That page grabs the token from the URL, stores it in
@@ -87,9 +87,10 @@
      does use them for its per-section colour theming, and this
      is what keeps that working without needing page-specific
      code anywhere.
-     CONFIG:
+
+   CONFIG:
    ============================================================ */
-  const GITHUB_CLIENT_ID = 'Ov23liLYniiDSo0hzf2U';
+  const GOOGLE_CLIENT_ID = '356548061716-4fjrgh28vetubhuu2cf4ano859tnftuv.apps.googleusercontent.com';
   const DRIVE_FILE_NAME  = 'onetrack-data.json';
   const REDIRECT_URI     = 'https://kalyanturaga-sudo.github.io/CntlA-scheduler/oauth-callback.html';
 
@@ -141,7 +142,11 @@
 (function (global) {
   'use strict';
 
-  const SCOPE        = 'user:email';
+  /* drive.file = this app can only see files IT created or that the
+     user explicitly opens with it. It is a NON-SENSITIVE scope, so
+     Google does NOT require app verification — that is why we use it
+     instead of the full 'drive' scope. */
+  const SCOPE        = 'https://www.googleapis.com/auth/drive.file';
   const BANNER_ID     = 'ot-storage-banner';
   const INDICATOR_ID  = 'ot-sync-indicator';
 
@@ -232,7 +237,7 @@
 
   function _signInBannerMsg() {
     return [
-      '<strong style="color:#5b7fff;">Sign in with GitHub</strong><br><span style="color:#a3a1a8;font-size:12px;">Connect your GitHub account to sync your checklists.</span>',
+      '<strong style="color:#5b7fff;">Sign in with Google</strong><br><span style="color:#a3a1a8;font-size:12px;">Connect your Google Drive to sync your checklists.</span>',
       'Sign in',
       _signIn,
     ];
@@ -242,14 +247,35 @@
      REDIRECT-BASED SIGN-IN
   ══════════════════════════════════════════════════════════ */
 
+  /* Random, unguessable value round-tripped through Google and checked
+     in oauth-callback.html. Blocks a third party from feeding us a
+     token we never asked for (CSRF on the redirect). */
+  function _makeState() {
+    const buf = new Uint8Array(16);
+    (window.crypto || window.msCrypto).getRandomValues(buf);
+    return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
   function _signIn() {
     sessionStorage.setItem('OT_RETURN_PATH', window.location.href);
+
+    const state = _makeState();
+    sessionStorage.setItem('OT_OAUTH_STATE', state);
+
+    /* response_type=token  = OAuth 2.0 implicit flow. The token comes
+       straight back in the URL fragment, so there is NO server-side
+       code-for-token exchange and NO client secret anywhere. That is
+       what lets this run as a pure static GitHub Pages site. */
     const params = new URLSearchParams({
-      client_id: GITHUB_CLIENT_ID,
-      redirect_uri: REDIRECT_URI,
-      scope: 'user:email',
+      client_id:     GOOGLE_CLIENT_ID,
+      redirect_uri:  REDIRECT_URI,
+      response_type: 'token',
+      scope:         SCOPE,
+      state:         state,
+      include_granted_scopes: 'true',
     });
-    window.location.href = 'https://github.com/login/oauth/authorize?' + params.toString();
+    window.location.href =
+      'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
   }
 
   function _checkForExistingToken() {
@@ -874,6 +900,7 @@
       _ready       = false;
       sessionStorage.removeItem('OT_ACCESS_TOKEN');
       sessionStorage.removeItem('OT_TOKEN_EXPIRES');
+      sessionStorage.removeItem('OT_OAUTH_STATE');
       _setIndicator('unlinked');
       _showBanner(..._signInBannerMsg());
     },
@@ -1034,4 +1061,3 @@
   _init();
 
 })(window);
-

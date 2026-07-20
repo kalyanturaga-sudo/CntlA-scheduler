@@ -14,55 +14,64 @@
 </style>
 </head>
 <body>
-  <div>☁️ Signing in with GitHub…</div>
+  <div id="msg">☁️ Signing in with Google…</div>
   <script>
+    /* ============================================================
+       oauth-callback.html — Google OAuth 2.0 implicit flow
+
+       Google sends the result back in the URL *FRAGMENT*, not the
+       query string:
+
+         .../oauth-callback.html#access_token=ya29...&expires_in=3599&state=...
+
+       The fragment never leaves the browser (it is not sent to the
+       web server), which is why this works on a static GitHub Pages
+       host with no backend and no client secret. There is no code to
+       exchange, so the old /api/github-auth Vercel call is gone.
+       ============================================================ */
     (function () {
-      const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
-      const error = params.get('error');
+
+      // Errors can arrive in either place depending on how far Google got.
+      const hash  = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const query = new URLSearchParams(window.location.search);
+
+      const accessToken = hash.get('access_token');
+      const expiresIn   = hash.get('expires_in');      // seconds, ~3599
+      const returnedState = hash.get('state') || query.get('state');
+      const error = hash.get('error') || query.get('error');
+
+      const expectedState = sessionStorage.getItem('OT_OAUTH_STATE');
+      sessionStorage.removeItem('OT_OAUTH_STATE');
 
       if (error) {
-        sessionStorage.setItem('OT_OAUTH_ERROR', error);
+        fail(error);
+      } else if (!accessToken) {
+        fail('No access token returned');
+      } else if (!expectedState || returnedState !== expectedState) {
+        // Someone else initiated this redirect — do not trust the token.
+        fail('State mismatch — sign-in was not started from this app');
+      } else {
+        sessionStorage.setItem('OT_ACCESS_TOKEN', accessToken);
+        sessionStorage.setItem(
+          'OT_TOKEN_EXPIRES',
+          // Shave 60s off so we never hand storage.js a token that
+          // expires mid-request.
+          String(Date.now() + ((parseInt(expiresIn, 10) || 3600) - 60) * 1000)
+        );
+        // Strip the token out of the address bar / history before moving on.
+        history.replaceState(null, '', window.location.pathname);
         redirectHome();
-      } else if (code) {
-        // Store the GitHub authorization code
-        sessionStorage.setItem('OT_GITHUB_CODE', code);
-        
-        // Exchange code for access token using Vercel API
-        exchangeCodeForToken(code);
       }
 
-      function exchangeCodeForToken(code) {
-        fetch('https://cntla-scheduler.vercel.app/api/github-auth', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: code
-          })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.access_token) {
-            sessionStorage.setItem('OT_ACCESS_TOKEN', data.access_token);
-            sessionStorage.setItem('OT_TOKEN_EXPIRES', String(Date.now() + (3600 * 1000)));
-            redirectHome();
-          } else {
-            sessionStorage.setItem('OT_OAUTH_ERROR', data.error || 'Failed to get access token');
-            redirectHome();
-          }
-        })
-        .catch(error => {
-          console.error('Token exchange error:', error);
-          sessionStorage.setItem('OT_OAUTH_ERROR', 'Network error during login');
-          redirectHome();
-        });
+      function fail(reason) {
+        sessionStorage.setItem('OT_OAUTH_ERROR', reason);
+        document.getElementById('msg').textContent = '⚠️ Sign-in failed: ' + reason;
+        redirectHome();
       }
 
       function redirectHome() {
         const returnPath = sessionStorage.getItem('OT_RETURN_PATH') || './';
-        setTimeout(() => {
+        setTimeout(function () {
           window.location.replace(returnPath);
         }, 1000);
       }
