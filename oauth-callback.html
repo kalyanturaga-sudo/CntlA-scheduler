@@ -14,24 +14,61 @@
 </style>
 </head>
 <body>
-  <div>☁️ Signing in…</div>
+  <div>☁️ Signing in with GitHub…</div>
   <script>
     (function () {
-      const hash = window.location.hash.substring(1);
-      const params = new URLSearchParams(hash);
-      const token = params.get('access_token');
-      const expiresIn = params.get('expires_in');
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
       const error = params.get('error');
 
       if (error) {
         sessionStorage.setItem('OT_OAUTH_ERROR', error);
-      } else if (token) {
-        sessionStorage.setItem('OT_ACCESS_TOKEN', token);
-        sessionStorage.setItem('OT_TOKEN_EXPIRES', String(Date.now() + (parseInt(expiresIn || '3600', 10) * 1000)));
+      } else if (code) {
+        // Store the GitHub authorization code
+        sessionStorage.setItem('OT_GITHUB_CODE', code);
+        
+        // Exchange code for access token
+        exchangeCodeForToken(code);
       }
 
-      const returnPath = sessionStorage.getItem('OT_RETURN_PATH') || './';
-      window.location.replace(returnPath);
+      function exchangeCodeForToken(code) {
+        const CLIENT_ID = 'YOUR_GITHUB_CLIENT_ID_HERE';
+        const CLIENT_SECRET = 'YOUR_GITHUB_CLIENT_SECRET_HERE';
+
+        // Option 1: If you have a backend/serverless function
+        // Make a request to your backend to exchange the code
+        fetch('/.netlify/functions/github-auth', {
+          method: 'POST',
+          body: JSON.stringify({
+            code: code,
+            clientId: CLIENT_ID,
+            clientSecret: CLIENT_SECRET
+          })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.access_token) {
+            sessionStorage.setItem('OT_ACCESS_TOKEN', data.access_token);
+            sessionStorage.setItem('OT_TOKEN_EXPIRES', String(Date.now() + (3600 * 1000)));
+            redirectHome();
+          } else {
+            sessionStorage.setItem('OT_OAUTH_ERROR', 'Failed to get access token');
+            redirectHome();
+          }
+        })
+        .catch(error => {
+          console.error('Token exchange error:', error);
+          sessionStorage.setItem('OT_OAUTH_ERROR', 'Network error during login');
+          redirectHome();
+        });
+      }
+
+      function redirectHome() {
+        const returnPath = sessionStorage.getItem('OT_RETURN_PATH') || './';
+        setTimeout(() => {
+          window.location.replace(returnPath);
+        }, 1000);
+      }
     })();
   </script>
 </body>
