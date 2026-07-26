@@ -525,6 +525,23 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 [data-theme="dark"] .wk-slot-sat{background:linear-gradient(160deg,rgba(32,26,10,.7),rgba(26,22,5,.7) 80%);}
 [data-theme="dark"] .wk-slot-sun{background:linear-gradient(160deg,rgba(32,22,8,.7),rgba(28,20,6,.7) 80%);}
 
+/* ====== WEEKLY DAY GRID (no sidebar) ====== */
+.wk-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;}
+@media(max-width:1240px){.wk-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:920px){.wk-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px){.wk-grid{grid-template-columns:1fr;}}
+.wk-grid .wk-card{margin:0;}
+.wk-grid .wk-card-hdr{padding:11px 14px 9px;}
+.wk-grid .wk-card-title{font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wk-grid .wk-card-body{padding:10px 14px 14px;}
+.wk-tile-grip{cursor:grab;color:var(--text3);font-size:14px;line-height:1;padding:2px 3px;flex-shrink:0;user-select:none;align-self:flex-start;margin-top:3px;}
+.wk-tile-grip:hover{color:var(--accent);}
+.wk-tile-grip:active{cursor:grabbing;}
+.wk-card.wk-tile-dragging{opacity:.35;}
+.wk-card.wk-tile-drop{box-shadow:0 0 0 2px var(--accent);}
+.wk-card.wk-task-drop{box-shadow:0 0 0 2px var(--accent);}
+.wk-add-day-bottom{max-width:260px;margin:20px auto 0;}
+
 /* Print modal */
 #wkPrintModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;}
 #wkPrintModal.open{display:flex;}
@@ -604,17 +621,11 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <div class="r-content" id="rContent"></div>
   </div>
 
-  <!-- BODY — Weekly mode (dedicated day-grid) -->
+  <!-- BODY — Weekly mode (day grid, no sidebar) -->
   <div id="bodyWeekly" style="display:none;">
-    <!-- vertical sidebar -->
-    <div class="wk-sidebar" id="wkSidebar">
-      <div class="wk-sidebar-hdr">Days</div>
-      <div id="wkDayTabs" style="display:flex;flex-direction:column;"></div>
-      <button class="wk-add-day-btn" id="wkAddDayBtn">＋ Add Day</button>
-    </div>
-    <!-- content area -->
     <div class="wk-content" id="wkContent">
-      <div id="wkCardArea"></div>
+      <div id="wkGrid" class="wk-grid"></div>
+      <button class="wk-add-day-btn wk-add-day-bottom" id="wkAddDayBtn">＋ Add Day</button>
     </div>
   </div>
 
@@ -2502,155 +2513,52 @@ function deleteWkDay(day){
   return true;
 }
 
-function renderWeeklySidebar(){
-  const sb=document.getElementById("wkDayTabs"); if(!sb) return;
-  sb.innerHTML="";
-  const days=getOrderedWkDays();
-  const active=getWkActive();
+function renderWeeklySidebar(){ /* sidebar removed in grid layout — no-op */ }
 
-  days.forEach(day=>{
-    const items=day.items||[];
-    const undone=items.filter(t=>!t.done).length;
-    const isAct=active===day.id;
-    const isToday=day.id===todayWkId;
-    const col=WK_TAB_COLORS[day.id]||WK_TAB_COLORS["wk-mon"];
+function closeWkCard(){ const g=document.getElementById("wkGrid"); if(g) g.innerHTML=""; }
 
-    const tab=document.createElement("div");
-    tab.className="wk-day-tab"+(isAct?" active":"")+(isToday?" is-today":"");
-    tab.dataset.id=day.id;
-    if(isToday) tab.style.setProperty("--wk-pulse-color", col.border);
-    if(isAct){ tab.style.background=col.bg; tab.style.borderColor=col.border; }
-    else{
-      tab.addEventListener("mouseenter",()=>{ tab.style.background=col.bg; tab.style.borderColor=col.border; });
-      tab.addEventListener("mouseleave",()=>{ tab.style.background=""; tab.style.borderColor="transparent"; });
-    }
-
-    const grip=document.createElement("span"); grip.className="wk-grip"; grip.textContent="⠿"; grip.title="Drag to reorder";
-    const body=document.createElement("div"); body.className="wk-body";
-    const ico=document.createElement("span"); ico.className="wk-icon"; ico.textContent=day.icon;
-    const lbl=document.createElement("span"); lbl.className="wk-label"; lbl.textContent=day.label;
-    const cnt=document.createElement("span"); cnt.className="wk-count"; cnt.textContent=undone||""; cnt.style.display=undone?"":"none";
-    // rename on dblclick
-    lbl.ondblclick=e=>{
-      e.stopPropagation();
-      const inp=document.createElement("input"); inp.value=lbl.textContent;
-      inp.style.cssText="font:inherit;color:inherit;background:transparent;border:none;outline:1px solid var(--accent);border-radius:3px;padding:0 2px;width:100%;min-width:50px;";
-      lbl.replaceWith(inp); inp.focus(); inp.select();
-      const save2=()=>{
-        const v=inp.value.trim()||day.label;
-        const d=loadWkData()||{days:[]};
-        const idx=d.days.findIndex(x=>x.id===day.id); if(idx>-1) d.days[idx].label=v;
-        saveWkData(d); renderWeeklySidebar(); if(isAct) renderWeeklyCard(day.id);
-      };
-      inp.onblur=save2; inp.onkeydown=e2=>{ if(e2.key==="Enter")inp.blur(); if(e2.key==="Escape"){inp.value=day.label;inp.blur();} };
-    };
-    body.appendChild(ico); body.appendChild(lbl); body.appendChild(cnt);
-
-    const del=document.createElement("button"); del.className="wk-day-del"; del.textContent="✕"; del.title="Delete this day";
-    del.onclick=e=>{ e.stopPropagation(); deleteWkDay(day); };
-
-    tab.appendChild(grip); tab.appendChild(body); tab.appendChild(del);
-
-    // click to open
-    tab.addEventListener("click",e=>{
-      if(e.target.tagName==="INPUT"||e.target===del) return;
-      if(getWkActive()===day.id){ setWkActive(""); closeWkCard(); }
-      else { setWkActive(day.id); renderWeeklyCard(day.id); renderWeeklySidebar(); }
-    });
-
-    // drag reorder
-    grip.addEventListener("pointerdown",()=>tab.draggable=true);
-    tab.addEventListener("pointerup",()=>tab.draggable=false);
-    tab.addEventListener("dragstart",e=>{ _wkDragSrc=day.id; tab.style.opacity=".35"; e.dataTransfer.setData("text/plain",day.id); });
-    tab.addEventListener("dragend",()=>{ tab.draggable=false; tab.style.opacity=""; _wkDragSrc=null; sb.querySelectorAll(".wk-day-tab").forEach(t=>t.style.boxShadow=""); });
-    tab.addEventListener("dragover",e=>{
-      // a task is being dragged → allow dropping it onto this day
-      if(_wkTaskDrag){
-        e.preventDefault();
-        if(_wkTaskDrag.dayId!==day.id) tab.style.boxShadow="0 0 0 2px var(--accent)";
-        return;
-      }
-      if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="inset 0 2px 0 var(--accent)";
-    });
-    tab.addEventListener("dragleave",()=>tab.style.boxShadow="");
-    tab.addEventListener("drop",e=>{
-      // ── cross-day task move (parent carries its sub-tasks) ──
-      if(_wkTaskDrag){
-        e.preventDefault(); tab.style.boxShadow="";
-        const drag=_wkTaskDrag; _wkTaskDrag=null;
-        if(drag.dayId===day.id){ showToast("Already in this day"); return; }
-        const d2=loadWkData()||{days:[]};
-        const from=d2.days.find(x=>x.id===drag.dayId);
-        const to  =d2.days.find(x=>x.id===day.id);
-        if(!from||!to) return;
-        const gSize=drag.groupSize||subGroupSize(from.items,drag.fromIdx);
-        const grp=from.items.splice(drag.fromIdx,gSize);
-        if(!grp.length) return;
-        if(grp[0].sub) grp[0].sub=false;   // lone sub arriving alone → promote
-        subDemoteOrphans(from.items);
-        to.items=(to.items||[]).concat(grp);
-        subDemoteOrphans(to.items);
-        saveWkData(d2);
-        renderWeeklySidebar();
-        if(getWkActive()) renderWeeklyCard(getWkActive());
-        updateWkProgress();
-        showToast("✓ Moved to "+day.label);
-        return;
-      }
-      // ── day reorder ──
-      if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); tab.style.boxShadow="";
-      const ordered=getOrderedWkDays(), ids=ordered.map(x=>x.id);
-      const fi=ids.indexOf(_wkDragSrc), ti=ids.indexOf(day.id);
-      if(fi<0||ti<0) return;
-      ids.splice(fi,1); ids.splice(ti,0,_wkDragSrc);
-      saveWkOrder(ids); _wkDragSrc=null; renderWeeklySidebar();
-    });
-
-    sb.appendChild(tab);
-  });
-}
-
-function closeWkCard(){
-  const area=document.getElementById("wkCardArea"); if(area) area.innerHTML="";
-}
-
-function renderWeeklyCard(dayId){
-  const area=document.getElementById("wkCardArea"); if(!area) return;
-  area.innerHTML="";
+/* Build one day tile (a full day card) and return the element. */
+function buildWeeklyTile(dayId){
   const d=loadWkData()||{days:[]};
-  const day=d.days.find(x=>x.id===dayId); if(!day){ area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3);">Day not found.</div>'; return; }
+  const day=d.days.find(x=>x.id===dayId);
+  const card=document.createElement("div"); card.className=`wk-card ${(day&&day.cls)||""}`;
+  if(!day){ card.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);">Day not found.</div>'; return card; }
+  card.dataset.id=day.id;
   const items=day.items||[];
   const done=items.filter(t=>t.done).length, total=items.length, pct=total?Math.round(done/total*100):0;
 
-  const card=document.createElement("div"); card.className=`wk-card ${day.cls||""}`;
-
-  // header
+  // header (grip + title + actions)
   const hdr=document.createElement("div"); hdr.className="wk-card-hdr";
-  const titleWrap=document.createElement("div");
+  const hdrLeft=document.createElement("div"); hdrLeft.style.cssText="display:flex;align-items:flex-start;gap:6px;min-width:0;";
+  const grip=document.createElement("span"); grip.className="wk-tile-grip"; grip.textContent="⠿"; grip.title="Drag to reorder";
+  grip.addEventListener("pointerdown",()=>{ card.draggable=true; });
+  const titleWrap=document.createElement("div"); titleWrap.style.minWidth="0";
   const te=document.createElement("div"); te.className="wk-card-title"; te.textContent=day.icon+" "+(WK_FULL_DAY[day.label]||day.label);
+  te.title="Double-click to rename";
+  te.ondblclick=e=>{
+    e.stopPropagation();
+    const inp=document.createElement("input"); inp.value=day.label;
+    inp.style.cssText="font:inherit;color:inherit;background:transparent;border:none;outline:1px solid var(--accent);border-radius:4px;padding:0 3px;width:100%;min-width:60px;";
+    te.replaceWith(inp); inp.focus(); inp.select();
+    const save2=()=>{ const v=inp.value.trim()||day.label; const dd=loadWkData()||{days:[]}; const ix=dd.days.findIndex(x=>x.id===day.id); if(ix>-1) dd.days[ix].label=v; saveWkData(dd); renderWeeklyGrid(); };
+    inp.onblur=save2; inp.onkeydown=ev=>{ if(ev.key==="Enter")inp.blur(); if(ev.key==="Escape"){inp.value=day.label;inp.blur();} };
+  };
   const se=document.createElement("div"); se.className="wk-card-subtitle";
   se.textContent=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   titleWrap.appendChild(te); titleWrap.appendChild(se);
+  hdrLeft.appendChild(grip); hdrLeft.appendChild(titleWrap);
 
   const acts=document.createElement("div"); acts.className="wk-card-actions";
-  // ☐ All
   const allBtn=document.createElement("button"); allBtn.style.cssText="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;";
   allBtn.textContent=(total>0&&done===total)?"☑ All":"☐ All";
-  allBtn.onclick=()=>{
-    const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
-    const a=d2.days[idx].items.every(t=>t.done); d2.days[idx].items.forEach(t=>t.done=!a);
-    saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress();
-  };
-  // stat badge
+  allBtn.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; const a=d2.days[idx].items.every(t=>t.done); d2.days[idx].items.forEach(t=>t.done=!a); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
   const stat=document.createElement("div"); stat.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 9px;border:1px solid var(--border);";
   stat.textContent=total?(done+"/"+total):"0";
-  // Uncheck
   const unchk=document.createElement("button"); unchk.style.cssText="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid rgba(232,92,92,.3);background:rgba(232,92,92,.08);color:#c05050;cursor:pointer;font-family:'DM Sans',sans-serif;";
   unchk.textContent="↺ Uncheck";
-  unchk.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
-
+  unchk.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
   acts.appendChild(allBtn); acts.appendChild(stat); acts.appendChild(unchk);
-  hdr.appendChild(titleWrap); hdr.appendChild(acts);
+  hdr.appendChild(hdrLeft); hdr.appendChild(acts);
 
   // progress bar
   const prog=document.createElement("div"); prog.className="wk-prog";
@@ -2662,7 +2570,7 @@ function renderWeeklyCard(dayId){
   const nt=document.createElement("div"); nt.className="wk-new-task";
   nt.innerHTML='<input placeholder="Add task… (Enter to save)">';
   const ni=nt.querySelector("input");
-  ni.onkeydown=e=>{ if(e.key==="Enter"){ const v=ni.value.trim(); if(!v) return; const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,sub:false}); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); setTimeout(()=>ni.focus(),0); showToast("✓ Task added"); } e.stopPropagation(); };
+  ni.onkeydown=e=>{ if(e.key==="Enter"){ const v=ni.value.trim(); if(!v) return; const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,sub:false}); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); showToast("✓ Task added"); } e.stopPropagation(); };
   body.appendChild(nt);
 
   // task rows
@@ -2672,24 +2580,24 @@ function renderWeeklyCard(dayId){
     const handle=document.createElement("span"); handle.className="wk-drag-handle"; handle.textContent="⠿";
     handle.onpointerdown=()=>row.draggable=true; handle.onpointerup=()=>row.draggable=false; handle.onmouseleave=()=>row.draggable=false;
     row.addEventListener("dragstart",e=>{ if(!row.draggable){e.preventDefault();return;} _wkTaskDrag={dayId,fromIdx:i,groupSize:subGroupSize(items,i)}; row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",""); e.stopPropagation(); });
-    row.addEventListener("dragend",()=>{ row.classList.remove("dragging"); row.draggable=false; setTimeout(()=>_wkTaskDrag=null,50); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); });
-    row.addEventListener("dragover",e=>{ if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return; e.preventDefault(); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); row.classList.add("wk-drag-over"); });
+    row.addEventListener("dragend",()=>{ row.classList.remove("dragging"); row.draggable=false; setTimeout(()=>_wkTaskDrag=null,50); document.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); document.querySelectorAll(".wk-card").forEach(c=>c.classList.remove("wk-task-drop")); });
+    row.addEventListener("dragover",e=>{ if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return; e.preventDefault(); e.stopPropagation(); body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over")); row.classList.add("wk-drag-over"); });
     row.addEventListener("drop",e=>{
       if(!_wkTaskDrag||_wkTaskDrag.dayId!==dayId) return;
-      e.preventDefault();
+      e.preventDefault(); e.stopPropagation();
       body.querySelectorAll(".wk-task").forEach(r=>r.classList.remove("wk-drag-over"));
       const from=_wkTaskDrag.fromIdx, gSize=_wkTaskDrag.groupSize||1;
       _wkTaskDrag=null;
       const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
       const arr=d2.days[idx].items;
       let to=subSafeInsert(arr,i,gSize);
-      if(to>=from && to<=from+gSize) return;   // dropped inside its own group
+      if(to>=from && to<=from+gSize) return;
       const grp=arr.splice(from,gSize);
       const at=from<to?to-gSize:to;
       arr.splice(at,0,...grp);
-      if(gSize===1) subAdopt(arr,at);   // dropped among subs → becomes a sub
+      if(gSize===1) subAdopt(arr,at);
       subDemoteOrphans(arr);
-      saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar();
+      saveWkData(d2); renderWeeklyGrid();
     });
 
     // SVG checkbox
@@ -2713,38 +2621,34 @@ function renderWeeklyCard(dayId){
       if(!arr[i].sub && !subCanIndent(arr,i)){ showToast("No task above to nest under"); return; }
       arr[i].sub=!arr[i].sub;
       subDemoteOrphans(arr);
-      saveWkData(d2); renderWeeklyCard(dayId);
+      saveWkData(d2); renderWeeklyGrid();
     };
 
     const delBtn=document.createElement("button"); delBtn.className="wk-task-btn del"; delBtn.title="Remove"; delBtn.textContent="✕";
-    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ const arr=d2.days[idx].items; arr.splice(i, subGroupSize(arr,i)); subDemoteOrphans(arr); } saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
+    delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ const arr=d2.days[idx].items; arr.splice(i, subGroupSize(arr,i)); subDemoteOrphans(arr); } saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
 
     function toggle(){
       const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return;
       const arr=d2.days[idx].items; if(!arr[i]) return;
       arr[i].done=!arr[i].done;
       subCascade(arr,i);
-      // done-to-bottom, but move parent+subs as one unit
       d2.days[idx].items=sortGroupsDoneToBottom(arr);
-      saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress();
+      saveWkData(d2); renderWeeklyGrid(); updateWkProgress();
     }
 
     row.appendChild(handle); row.appendChild(cbSvg); row.appendChild(tx); row.appendChild(subBtn); row.appendChild(delBtn);
     body.appendChild(row);
   });
 
-  // unified footer row
+  // footer — Clear completed / Reset this day / Delete day  (Add Day now lives at grid bottom)
   const wkBtnRow=document.createElement("div"); wkBtnRow.className="r-block-btn-row";
-  const addDayBtn2=document.createElement("button"); addDayBtn2.className="r-carry-btn"; addDayBtn2.textContent="＋ Add Day";
-  addDayBtn2.onclick=()=>{ if(typeof window._openNewSectionModal==="function") window._openNewSectionModal(); };
-  wkBtnRow.appendChild(addDayBtn2);
   if(items.some(t=>t.done)){
     const clr=document.createElement("button"); clr.className="r-clear-done-btn"; clr.textContent="✓ Clear completed";
-    clr.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ d2.days[idx].items=d2.days[idx].items.filter(t=>!t.done); subDemoteOrphans(d2.days[idx].items); } saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
+    clr.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ d2.days[idx].items=d2.days[idx].items.filter(t=>!t.done); subDemoteOrphans(d2.days[idx].items); } saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
     wkBtnRow.appendChild(clr);
   }
   const rstDay=document.createElement("button"); rstDay.className="r-reset-btn"; rstDay.textContent="↺ Reset this day";
-  rstDay.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0) d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyCard(dayId); renderWeeklySidebar(); updateWkProgress(); };
+  rstDay.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0) d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
   wkBtnRow.appendChild(rstDay);
   const delDayBtn=document.createElement("button"); delDayBtn.className="btn-danger-sm"; delDayBtn.textContent="🗑 Delete day";
   delDayBtn.onclick=()=>{ deleteWkDay(day); };
@@ -2752,7 +2656,57 @@ function renderWeeklyCard(dayId){
   body.appendChild(wkBtnRow);
 
   card.appendChild(hdr); card.appendChild(prog); card.appendChild(body);
-  area.appendChild(card);
+
+  // ── tile-level drag: reorder days, and accept a task dragged from another day ──
+  card.addEventListener("pointerup",()=>{ card.draggable=false; });
+  card.addEventListener("dragstart",e=>{ if(!card.draggable) return; _wkDragSrc=day.id; card.classList.add("wk-tile-dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",day.id); });
+  card.addEventListener("dragend",()=>{ card.draggable=false; card.classList.remove("wk-tile-dragging"); _wkDragSrc=null; document.querySelectorAll(".wk-card").forEach(c=>c.classList.remove("wk-tile-drop","wk-task-drop")); });
+  card.addEventListener("dragover",e=>{
+    if(_wkTaskDrag){ if(_wkTaskDrag.dayId!==day.id){ e.preventDefault(); card.classList.add("wk-task-drop"); } return; }
+    if(!_wkDragSrc||_wkDragSrc===day.id) return; e.preventDefault(); card.classList.add("wk-tile-drop");
+  });
+  card.addEventListener("dragleave",e=>{ if(!card.contains(e.relatedTarget)){ card.classList.remove("wk-tile-drop","wk-task-drop"); } });
+  card.addEventListener("drop",e=>{
+    // cross-day task move (parent carries its sub-tasks)
+    if(_wkTaskDrag){
+      if(_wkTaskDrag.dayId===day.id) return;
+      e.preventDefault(); card.classList.remove("wk-task-drop");
+      const drag=_wkTaskDrag; _wkTaskDrag=null;
+      const d2=loadWkData()||{days:[]};
+      const from=d2.days.find(x=>x.id===drag.dayId);
+      const to  =d2.days.find(x=>x.id===day.id);
+      if(!from||!to) return;
+      const gSize=drag.groupSize||subGroupSize(from.items,drag.fromIdx);
+      const grp=from.items.splice(drag.fromIdx,gSize);
+      if(!grp.length) return;
+      if(grp[0].sub) grp[0].sub=false;
+      subDemoteOrphans(from.items);
+      to.items=(to.items||[]).concat(grp);
+      subDemoteOrphans(to.items);
+      saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); showToast("✓ Moved to "+day.label);
+      return;
+    }
+    // day reorder
+    if(!_wkDragSrc||_wkDragSrc===day.id) return;
+    e.preventDefault(); card.classList.remove("wk-tile-drop");
+    const ordered=getOrderedWkDays(), ids=ordered.map(x=>x.id);
+    const fi=ids.indexOf(_wkDragSrc), ti=ids.indexOf(day.id);
+    if(fi<0||ti<0) return;
+    ids.splice(fi,1); ids.splice(ti,0,_wkDragSrc);
+    saveWkOrder(ids); _wkDragSrc=null; renderWeeklyGrid();
+  });
+
+  return card;
+}
+
+/* Alias kept because many inline handlers still call renderWeeklyCard(id). */
+function renderWeeklyCard(dayId){ renderWeeklyGrid(); }
+
+function renderWeeklyGrid(){
+  const grid=document.getElementById("wkGrid"); if(!grid) return;
+  grid.innerHTML="";
+  const days=getOrderedWkDays();
+  days.forEach(day=> grid.appendChild(buildWeeklyTile(day.id)));
 }
 
 function updateWkProgress(){
@@ -2769,18 +2723,7 @@ function updateWkProgress(){
 function renderWeekly(){
   initWkData();
   document.getElementById("bodyWeekly").style.display="";
-
-  // restore active
-  let active=getWkActive();
-  const days=getOrderedWkDays();
-  if(!active||!days.find(d=>d.id===active)){
-    active=days[0]?.id||"";
-    setWkActive(active);
-  }
-
-  renderWeeklySidebar();
-  if(active) renderWeeklyCard(active);
-  else closeWkCard();
+  renderWeeklyGrid();
   updateWkProgress();
 }
 
