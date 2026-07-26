@@ -296,6 +296,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ====== TWO-COLUMN TASK GRID ====== */
 .r-task-grid{display:flex;flex-direction:column;gap:0;}
 .r-task-grid .r-block-btn-row{margin-top:14px;}
+
+/* ====== DAILY ROUTINE GRID (no sidebar) ====== */
+.r-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;}
+@media(max-width:1240px){.r-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:920px){.r-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:600px){.r-grid{grid-template-columns:1fr;}}
+.r-grid .r-block{margin:0;}
+.r-grid .r-block-header{padding:12px 14px 9px;}
+.r-grid .r-block-title{font-size:17px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.r-grid .r-block-body{padding:10px 14px 14px;}
+.r-tile-grip{cursor:grab;color:var(--text3);font-size:14px;line-height:1;padding:2px 3px;flex-shrink:0;user-select:none;align-self:flex-start;margin-top:4px;}
+.r-tile-grip:hover{color:var(--accent);}
+.r-tile-grip:active{cursor:grabbing;}
+.r-block.r-tab-dragging{opacity:.35;}
+.r-block.r-tile-drop{box-shadow:0 0 0 2px var(--accent);}
+.r-block.task-drop-target{box-shadow:0 0 0 2px var(--accent);}
+.btn-add-routine-bottom{max-width:260px;margin:20px auto 0;}
 .r-sections-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;grid-auto-rows:min-content;}
 @media(max-width:860px){.r-sections-grid{grid-template-columns:1fr;}}
 .r-section-card{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface2);height:fit-content;}
@@ -596,7 +613,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <!-- MODE TABS -->
   <div class="mode-tab-bar" id="modeTabBar">
     <button class="mode-tab active" data-mode="daily">☀️ Daily</button>
-    <button class="mode-tab" data-mode="weekend">🌤 Weekend</button>
     <button class="mode-tab" data-mode="weekly">📅 Weekly</button>
     <button class="mode-tab" data-mode="fortnightly">🗓 Fortnightly</button>
     <button class="mode-tab" data-mode="monthly">📆 Monthly</button>
@@ -609,16 +625,12 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <span class="progress-pct" id="overallPct">0%</span>
   </div>
 
-  <!-- BODY — Daily mode -->
+  <!-- BODY — Daily mode (routine grid, no sidebar) -->
   <div class="body-layout" id="bodyDaily">
-    <div class="r-sidebar" id="rSidebar">
-      <div class="r-sidebar-header">
-        <div class="r-sidebar-label">Routines</div>
-        <button class="btn-sidebar-toggle" id="btnSidebarToggle" title="Collapse sidebar">◀</button>
-      </div>
-      <button class="btn-add-routine" id="btnAddRoutine">＋ New Routine</button>
+    <div class="r-content" id="rContent">
+      <div id="rGrid" class="r-grid"></div>
+      <button class="btn-add-routine btn-add-routine-bottom" id="btnAddRoutine">＋ New Routine</button>
     </div>
-    <div class="r-content" id="rContent"></div>
   </div>
 
   <!-- BODY — Weekly mode (day grid, no sidebar) -->
@@ -1079,7 +1091,7 @@ function deleteRoutine(r){
   return true;
 }
 
-function renderSidebar(){
+function renderSidebar(){ return; /* daily sidebar removed — routines now render as a grid */
   const sidebar=document.getElementById("rSidebar");
   // remove old tabs but keep label and add button
   sidebar.querySelectorAll(".r-stab").forEach(t=>t.remove());
@@ -1212,19 +1224,13 @@ function renderSidebar(){
 /* ══════════════════════════════════════════════════════════
    RENDER CONTENT (selected routine)
 ══════════════════════════════════════════════════════════ */
-function renderContent(){
-  const content=document.getElementById("rContent");
-  content.innerHTML="";
-
+function buildRoutineTile(routineId){
   const all=getAllRoutines();
-  const routine=all.find(r=>r.id===activeRoutineId);
+  const routine=all.find(r=>r.id===routineId);
 
   if(!routine){
-    const emp=document.createElement("div");
-    emp.className="r-empty";
-    emp.innerHTML='<div class="r-empty-icon">🔁</div><div>No routines yet — create one using the button in the sidebar.</div>';
-    content.appendChild(emp);
-    return;
+    const emp=document.createElement("div"); emp.className="r-empty";
+    return emp;
   }
 
   let d=loadData()||{};
@@ -1264,10 +1270,21 @@ function renderContent(){
   }
   const titleDiv=document.createElement("div");
   const titleEl=document.createElement("div"); titleEl.className="r-block-title"; titleEl.textContent=routine.label;
+  titleEl.title="Double-click to rename";
+  titleEl.ondblclick=e=>{
+    e.stopPropagation();
+    const inp=document.createElement("input"); inp.value=routine.label;
+    inp.style.cssText="font:inherit;color:inherit;background:transparent;border:none;outline:1px solid var(--accent);border-radius:4px;padding:0 3px;width:100%;min-width:60px;";
+    titleEl.replaceWith(inp); inp.focus(); inp.select();
+    const save2=()=>{ const v=inp.value.trim(); if(!v){ render(); return; } if(routine.isBuiltin){ const n=loadNames(); n[routine.id]=v; saveNames(n); } else { const c=loadCustom(), idx=c.findIndex(x=>x.id===routine.id); if(idx>-1){ c[idx].label=v; saveCustom(c); } } render(); };
+    inp.onblur=save2; inp.onkeydown=ev=>{ if(ev.key==="Enter")inp.blur(); if(ev.key==="Escape") render(); };
+  };
   const subEl=document.createElement("div"); subEl.className="r-block-subtitle";
   subEl.textContent=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   titleDiv.appendChild(titleEl); titleDiv.appendChild(subEl);
-  titleWrap.appendChild(iconEl); titleWrap.appendChild(titleDiv);
+  const rGrip=document.createElement("span"); rGrip.className="r-tile-grip"; rGrip.textContent="⠿"; rGrip.title="Drag to reorder";
+  rGrip.addEventListener("pointerdown",()=>{ block.draggable=true; });
+  titleWrap.appendChild(rGrip); titleWrap.appendChild(iconEl); titleWrap.appendChild(titleDiv);
 
   const actionsDiv=document.createElement("div"); actionsDiv.className="r-block-actions";
   if(isListDone){
@@ -1608,8 +1625,48 @@ function renderContent(){
 
   body.appendChild(grid);
   block.appendChild(hdr); block.appendChild(progBar); block.appendChild(body);
-  content.appendChild(block);
   saveData(d);
+
+  // ── tile-level drag: reorder routines, and accept a task dragged from another routine ──
+  block.dataset.id=routine.id;
+  block.addEventListener("pointerup",()=>{ block.draggable=false; });
+  block.addEventListener("dragstart",e=>{ if(!block.draggable) return; _tabDragSrc=routine.id; block.classList.add("r-tab-dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain",routine.id); });
+  block.addEventListener("dragend",()=>{ block.draggable=false; block.classList.remove("r-tab-dragging"); _tabDragSrc=null; document.querySelectorAll(".r-block").forEach(c=>c.classList.remove("r-tile-drop","task-drop-target")); });
+  block.addEventListener("dragover",e=>{
+    if(_taskDrag){ if(_taskDrag.routineId!==routine.id){ e.preventDefault(); block.classList.add("task-drop-target"); } return; }
+    if(!_tabDragSrc||_tabDragSrc===routine.id) return; e.preventDefault(); block.classList.add("r-tile-drop");
+  });
+  block.addEventListener("dragleave",e=>{ if(!block.contains(e.relatedTarget)){ block.classList.remove("r-tile-drop","task-drop-target"); } });
+  block.addEventListener("drop",e=>{
+    // cross-routine task move (parent carries its sub-tasks)
+    if(_taskDrag){
+      if(_taskDrag.routineId===routine.id){ _taskDrag=null; return; }
+      e.preventDefault(); block.classList.remove("task-drop-target");
+      const d2=loadData()||{};
+      const fromItems=d2[_taskDrag.routineId]&&d2[_taskDrag.routineId].items;
+      if(!fromItems){ _taskDrag=null; return; }
+      const gSize=_taskDrag.groupSize||subGroupSize(fromItems,_taskDrag.fromIndex);
+      const movedGroup=fromItems.splice(_taskDrag.fromIndex,gSize);
+      if(!movedGroup.length){ _taskDrag=null; return; }
+      if(movedGroup[0].sub) movedGroup[0].sub=false;
+      subDemoteOrphans(fromItems);
+      if(!d2[routine.id]) d2[routine.id]={items:[]};
+      d2[routine.id].items.unshift(...movedGroup);
+      subDemoteOrphans(d2[routine.id].items);
+      saveData(d2); _taskDrag=null; showToast("✓ Moved to "+routine.label); render(); return;
+    }
+    // routine reorder
+    if(!_tabDragSrc||_tabDragSrc===routine.id) return;
+    e.preventDefault(); block.classList.remove("r-tile-drop");
+    const ids=getAllRoutines().map(x=>x.id);
+    const fi=ids.indexOf(_tabDragSrc); if(fi<0) return;
+    const [moved]=ids.splice(fi,1);
+    let insertAt=ids.indexOf(routine.id); if(insertAt<0) insertAt=ids.length;
+    ids.splice(insertAt,0,moved);
+    saveOrder(ids); _tabDragSrc=null; render();
+  });
+
+  return block;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1620,12 +1677,23 @@ function render(){
   if (_rendering) return;      // guard: block reentrant render (e.g. a tab-label blur firing mid-rebuild)
   _rendering = true;
   try {
-    renderSidebar();
-    renderContent();
+    renderDailyGrid();
     updateOverallProgress();
   } finally {
     _rendering = false;
   }
+}
+
+function renderDailyGrid(){
+  const grid=document.getElementById("rGrid"); if(!grid) return;
+  grid.innerHTML="";
+  const all=getAllRoutines();
+  if(!all.length){
+    const emp=document.createElement("div"); emp.className="r-empty";
+    emp.innerHTML='<div class="r-empty-icon">🔁</div><div>No routines yet — create one with the button below.</div>';
+    grid.appendChild(emp); return;
+  }
+  all.forEach(r=> grid.appendChild(buildRoutineTile(r.id)));
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -1923,7 +1991,7 @@ document.getElementById("pageDate").textContent=new Date().toLocaleDateString("e
    MODE MANAGEMENT
 ══════════════════════════════════════════════════════════ */
 const MODE_KEY = "ONETRACK_ROUTINES_MODE";
-const MODES = ["daily","weekend","weekly","fortnightly","monthly"];
+const MODES = ["daily","weekly","fortnightly","monthly"];
 let activeMode = "daily";
 
 const MODE_META = {
