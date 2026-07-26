@@ -797,6 +797,7 @@ const ROUTINES_KEY    = "ONETRACK_ROUTINES_V2";
 const CUSTOM_KEY      = "ONETRACK_ROUTINES_CUSTOM_V2";
 const NAMES_KEY       = "ONETRACK_ROUTINES_NAMES_V2";
 const ORDER_KEY       = "ONETRACK_ROUTINES_ORDER_V1";
+const SEED_KEY        = "ONETRACK_ROUTINES_SEED_V1";
 const TODAY_DATE_KEY  = "ONETRACK_ROUTINES_DATE";
 const ACTIVE_KEY      = "ONETRACK_ROUTINES_ACTIVE_TAB";
 const SECHDR_KEY      = "ONETRACK_ROUTINES_SECHDR_V1";
@@ -806,10 +807,10 @@ const SLOT_CLS_CYCLE  = ["slot-9-12","slot-pre-9","slot-12-3","slot-3-6","slot-6
    DEFAULTS
 ══════════════════════════════════════════════════════════ */
 const ROUTINES_DEFAULTS = [
-  { id:"day-opening",    icon:"🌅", label:"00. Day Opening",        cls:"slot-9-12",  items:[] },
-  { id:"office-opening", icon:"🖥️", label:"01. Office Room Opening", cls:"slot-pre-9", items:[] },
-  { id:"ground-floor",   icon:"🏠", label:"10. Ground Floor",        cls:"slot-c4",    items:[] },
-  { id:"day-closing",    icon:"🌙", label:"09. Day Closing",         cls:"slot-post-9",items:[] }
+  { id:"when-you-wake-up", icon:"⏰", label:"When You Wake Up",      cls:"slot-c4",    items:[] },
+  { id:"day-opening",      icon:"🌅", label:"Day Opening",           cls:"slot-9-12",  items:[] },
+  { id:"office-opening",   icon:"🖥️", label:"Office Room Opening",    cls:"slot-pre-9", items:[] },
+  { id:"day-closing",      icon:"🌙", label:"Day Closing",           cls:"slot-post-9",items:[] }
 ];
 
 /* ══════════════════════════════════════════════════════════
@@ -910,6 +911,82 @@ function initData(){
     }
   });
   saveData(d);
+}
+
+/* ══════════════════════════════════════════════════════════
+   ONE-TIME SEED — populate the daily routines from the printed
+   sheet the first time this runs on empty data. Guarded by
+   SEED_KEY (saved to Drive) so it fires exactly once, ever, and
+   only when no tasks exist — so it can never clobber real data.
+══════════════════════════════════════════════════════════ */
+const ROUTINES_SEED = {
+  "when-you-wake-up":[
+    "Exercise 15 to 30 min",
+    "Office: Check all flagged items in Outlook",
+    "Fix breakfast / run through today's agenda",
+    "Brush / floss / mouthwash / bath / change",
+    "Pee",
+    "No phone (messages/reels/news) – avoid doomscroll",
+    "1-2 min: think about today's plan",
+    "Drink water"
+  ],
+  "day-opening":[
+    "Office work / pre-lunch activities",
+    "Lunch – 12 Noon",
+    "Office work / post-lunch activities",
+    "Snack / Soup – 3 PM",
+    "Involve with kids – education / planning",
+    "Organize home",
+    "Plan and prep for next day",
+    "Dinner",
+    "Run Day Closing"
+  ],
+  "office-opening":[
+    "Clear the floor",
+    "Clean the table",
+    "Wet clean monitors, keyboard, mouse, table top",
+    "Water bottle",
+    "Munchings",
+    "Charged headphones and iPad",
+    "Toupee – wear it",
+    "Go to potty",
+    "Put iPad on the desk"
+  ],
+  "day-closing":[
+    "Empty dishwasher",
+    "Load cloth washer",
+    "Empty cloth washer / take clothes upstairs",
+    "Clear trash",
+    "Switch off all non-essential electric appliances",
+    "Charge iPhones, iWatch & iPad",
+    "Lock all doors",
+    "Brush teeth",
+    "Clear floors for running vacuum cleaner",
+    "Run vacuum cleaner",
+    "Pee",
+    "Water bottle beside bed",
+    "Next day breakfast / lunch pre-planning",
+    "Next day breakfast / lunch pre-prep",
+    "Switch on Roomba"
+  ]
+};
+
+function seedRoutinesOnce(){
+  if(_cget(SEED_KEY)) return;                       // already seeded — never touch again
+  const cur = loadData();
+  const hasAnyTasks = cur && Object.values(cur).some(r=>r && Array.isArray(r.items) && r.items.length>0);
+  if(hasAnyTasks){ _cset(SEED_KEY,"1"); return; }   // real data present — mark done, don't overwrite
+  const data={}, names={}, order=[];
+  ROUTINES_DEFAULTS.forEach(r=>{
+    const texts = ROUTINES_SEED[r.id] || [];
+    data[r.id] = { items: texts.map(t=>({text:t, done:false, isHeader:false, sub:false})) };
+    names[r.id] = r.label;
+    order.push(r.id);
+  });
+  saveData(data);
+  saveNames(names);
+  saveOrder(order);
+  _cset(SEED_KEY,"1");
 }
 
 /* auto-reset on new day */
@@ -3261,6 +3338,7 @@ OT.onReady(async () => {
   // Theme/accent/font now applied centrally by storage.js — not handled here.
   // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
   OT.renderBrandFooter('otVersionFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
+  seedRoutinesOnce();   // one-time: fill daily routines from the printed sheet (empty data only)
   initData();
   // Restore active mode tab
   const savedMode = _cget(MODE_KEY);
