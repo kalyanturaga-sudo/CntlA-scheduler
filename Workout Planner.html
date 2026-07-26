@@ -740,6 +740,130 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
     pointer-events: auto;
   }
 }
+
+/* ===== LAST-EDITED ROW HIGHLIGHT ===== */
+.exercise-row.last-edited {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 2px var(--accent-soft), 0 2px 12px rgba(0,0,0,0.14);
+}
+.exercise-row.last-edited:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+/* ===== CUSTOM DATE PICKER BUTTON (exercise rows) ===== */
+.date-picker-btn {
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s, color 0.15s;
+}
+.date-picker-btn:hover { border-color: var(--accent); color: var(--accent); }
+.date-picker-btn.empty { color: var(--text2); }
+
+/* ===== LOG BOOK DATE BUTTON ===== */
+.log-date-btn {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+.log-date-btn:hover { border-color: var(--accent); color: var(--accent); }
+.log-date-btn.empty { color: var(--text2); font-weight: 500; }
+
+/* ===== CALENDAR POPUP ===== */
+.date-popup {
+  position: fixed;
+  display: none;
+  z-index: 3000;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.28);
+  padding: 10px;
+  width: 244px;
+  font-family: 'DM Sans', sans-serif;
+  user-select: none;
+}
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.cal-title { font-weight: 600; font-size: 13px; color: var(--text); }
+.cal-nav {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cal-nav:hover { border-color: var(--accent); color: var(--accent); }
+.cal-dow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 4px;
+}
+.cal-dow span { text-align: center; font-size: 10px; color: var(--text2); font-weight: 600; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-day {
+  aspect-ratio: 1 / 1;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s;
+}
+.cal-day:hover { background: var(--accent-soft); }
+.cal-day.today { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.cal-day.selected { background: var(--accent); color: #fff; }
+.cal-blank { visibility: hidden; }
+.cal-foot { display: flex; gap: 6px; margin-top: 8px; }
+.cal-foot button {
+  flex: 1;
+  padding: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: 'DM Sans', sans-serif;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cal-btn-today:hover { border-color: var(--accent); color: var(--accent); }
+.cal-btn-clear:hover { border-color: #E24B4A; color: #E24B4A; }
 </style>
 </head>
 <body>
@@ -885,7 +1009,8 @@ const appState = {
     ]
   },
   logBook: [],
-  activeTab: 'lower'
+  activeTab: 'lower',
+  lastEdit: null
 };
 
 // Load data from storage
@@ -904,8 +1029,18 @@ function loadData() {
     if (!appState.tabs.find(t => t.id === 'logbook')) {
       appState.tabs.push({ id: 'logbook', name: 'Log Book', order: appState.tabs.length });
     }
+    // Reopen the last-updated workout (fall back to activeTab, then lower)
+    let startTab = 'lower';
+    if (appState.lastEdit && appState.workoutData[appState.lastEdit.tabId]) {
+      startTab = appState.lastEdit.tabId;
+    } else if (appState.activeTab &&
+               (appState.workoutData[appState.activeTab] || appState.activeTab === 'logbook')) {
+      startTab = appState.activeTab;
+    }
+    appState.activeTab = startTab;
     renderTabSidebar();
-    renderTab('lower');
+    if (startTab === 'logbook') renderLogBook();
+    else renderTab(startTab);
   });
 }
 
@@ -1048,12 +1183,17 @@ function renderTab(tabId) {
       </div>`;
     
     group.exercises.forEach((ex, exIdx) => {
-      html += `<div class="exercise-row" draggable="true" ondragstart="dragStart(event, '${tabId}', ${groupIdx}, ${exIdx})" ondrop="dragDrop(event, '${tabId}', ${groupIdx}, ${exIdx})" ondragover="dragOver(event)">
+      const isLast = appState.lastEdit &&
+                     appState.lastEdit.tabId === tabId &&
+                     appState.lastEdit.groupIdx === groupIdx &&
+                     appState.lastEdit.exIdx === exIdx;
+      const dateLabel = ex.date ? formatDMMM(ex.date) : '📅';
+      html += `<div class="exercise-row${isLast ? ' last-edited' : ''}" draggable="true" ondragstart="dragStart(event, '${tabId}', ${groupIdx}, ${exIdx})" ondrop="dragDrop(event, '${tabId}', ${groupIdx}, ${exIdx})" ondragover="dragOver(event)">
         <div class="drag-handle">⋮</div>
         <div class="exercise-name" ondblclick="editExerciseName('${tabId}', ${groupIdx}, ${exIdx})">${ex.name}</div>
         <input type="number" class="editable-input" value="${ex.count}" min="1" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'count', this.value); saveData();" placeholder="count">
         <input type="number" class="editable-input" value="${ex.reps}" min="1" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'reps', this.value); saveData();" placeholder="reps">
-        <input type="date" class="date-input" value="${ex.date}" onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'date', this.value); saveData();">
+        <button type="button" class="date-picker-btn${ex.date ? '' : ' empty'}" title="Set date" onclick="openExerciseDatePicker(event, '${tabId}', ${groupIdx}, ${exIdx})">${dateLabel}</button>
         <div class="checkbox-wrapper"><input type="checkbox" ${ex.checked ? 'checked' : ''} onchange="updateField('${tabId}', ${groupIdx}, ${exIdx}, 'checked', this.checked); saveData();"></div>
         <button class="action-btn delete" onclick="deleteExercise('${tabId}', ${groupIdx}, ${exIdx})">✕</button>
       </div>`;
@@ -1066,6 +1206,12 @@ function renderTab(tabId) {
   html += `</div><button class="add-muscle-btn" onclick="addMusclGroup('${tabId}')">+ Add Muscle Group</button>`;
   
   content.innerHTML = html;
+
+  // Bring the last-edited row into view
+  if (appState.lastEdit && appState.lastEdit.tabId === tabId) {
+    const el = content.querySelector('.exercise-row.last-edited');
+    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
   
   // Footer
   footer.innerHTML = `<button class="btn btn-accent" onclick="logWorkout('${tabId}')">📋 Log Workout</button>`;
@@ -1089,7 +1235,7 @@ function renderLogBook() {
     appState.logBook.forEach((entry, idx) => {
       html += `<div class="log-entry">
         <div class="log-entry-header">
-          <span class="log-date">${entry.date}</span>
+          <button type="button" class="log-date-btn${entry.date ? '' : ' empty'}" onclick="openLogDatePicker(event, ${idx})">${entry.date ? formatDMMMYY(entry.date) : '📅 Set date'}</button>
           <div class="log-actions">
             <button class="btn" onclick="exportDayToCalendar(${idx})">📅 Calendar</button>
             <button class="btn delete" onclick="deleteLogEntry(${idx})">✕</button>
@@ -1117,7 +1263,7 @@ function renderLogBook() {
 function logWorkout(tabId) {
   const muscles = appState.workoutData[tabId] || [];
   const checked = [];
-  const today = new Date().toISOString().split('T')[0];
+  const today = localTodayISO();
   
   muscles.forEach(group => {
     group.exercises.forEach(ex => {
@@ -1203,6 +1349,8 @@ function addExercise(tabId, groupIdx) {
     date: '',
     checked: false
   });
+  appState.lastEdit = { tabId, groupIdx, exIdx: appState.workoutData[tabId][groupIdx].exercises.length - 1 };
+  appState.activeTab = tabId;
   saveData();
   renderTab(tabId);
 }
@@ -1211,22 +1359,26 @@ function editExerciseName(tabId, groupIdx, exIdx) {
   const newName = prompt('Rename:', appState.workoutData[tabId][groupIdx].exercises[exIdx].name);
   if (newName && newName.trim()) {
     appState.workoutData[tabId][groupIdx].exercises[exIdx].name = newName.trim();
+    appState.lastEdit = { tabId, groupIdx, exIdx };
+    appState.activeTab = tabId;
     saveData();
     renderTab(tabId);
   }
 }
 
 function updateField(tabId, groupIdx, exIdx, field, value) {
-  if (field === 'checked') {
-    appState.workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
-  } else {
-    appState.workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
-  }
+  appState.workoutData[tabId][groupIdx].exercises[exIdx][field] = value;
+  appState.lastEdit = { tabId, groupIdx, exIdx };
+  appState.activeTab = tabId;
 }
 
 function deleteExercise(tabId, groupIdx, exIdx) {
   if (confirm('Delete exercise?')) {
     appState.workoutData[tabId][groupIdx].exercises.splice(exIdx, 1);
+    const le = appState.lastEdit;
+    if (le && le.tabId === tabId && le.groupIdx === groupIdx && le.exIdx === exIdx) {
+      appState.lastEdit = null;
+    }
     saveData();
     renderTab(tabId);
   }
@@ -1256,12 +1408,9 @@ function dragDrop(e, tabId, groupIdx, exIdx) {
 
 // Log book operations
 function addManualLogEntry() {
-  const date = prompt('Date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-  if (date) {
-    appState.logBook.push({ date, exercises: [] });
-    saveData();
-    renderLogBook();
-  }
+  appState.logBook.push({ date: localTodayISO(), exercises: [] });
+  saveData();
+  renderLogBook();
 }
 
 function addLogExercise(entryIdx) {
@@ -1312,6 +1461,142 @@ function exportToExcel() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Log Book');
   XLSX.writeFile(wb, 'WorkoutLog.xlsx');
+}
+
+/* ===== DATE HELPERS ===== */
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW_ABBR = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function toISO(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); } // m is 0-based
+function parseISO(iso) { const p = iso.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function localTodayISO() { const d = new Date(); return toISO(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+// "27-Jul"
+function formatDMMM(iso) {
+  if (!iso) return '';
+  const d = parseISO(iso);
+  return pad2(d.getDate()) + '-' + MONTH_ABBR[d.getMonth()];
+}
+// "27-Jul-26"
+function formatDMMMYY(iso) {
+  if (!iso) return '';
+  const d = parseISO(iso);
+  return pad2(d.getDate()) + '-' + MONTH_ABBR[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2);
+}
+
+/* ===== CUSTOM CALENDAR POPUP ===== */
+let calPopup = null;
+const calCtx = { year: 0, month: 0, selected: '', onPick: null };
+
+function ensureCalPopup() {
+  if (calPopup) return calPopup;
+  calPopup = document.createElement('div');
+  calPopup.id = 'datePickerPopup';
+  calPopup.className = 'date-popup';
+  document.body.appendChild(calPopup);
+  return calPopup;
+}
+
+function openCalendar(anchor, currentIso, onPick) {
+  const p = ensureCalPopup();
+  calCtx.onPick = onPick;
+  calCtx.selected = currentIso || '';
+  const base = currentIso ? parseISO(currentIso) : new Date();
+  calCtx.year = base.getFullYear();
+  calCtx.month = base.getMonth();
+
+  renderCalendar();
+  p.style.display = 'block';
+
+  // Position under the anchor, flipping/clamping to stay on screen
+  const r = anchor.getBoundingClientRect();
+  const pw = p.offsetWidth, ph = p.offsetHeight;
+  let left = r.left;
+  let top = r.bottom + 6;
+  if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+  if (left < 8) left = 8;
+  if (top + ph > window.innerHeight - 8) top = r.top - ph - 6;
+  if (top < 8) top = 8;
+  p.style.left = left + 'px';
+  p.style.top = top + 'px';
+
+  setTimeout(() => document.addEventListener('mousedown', calOutside), 0);
+}
+
+function calOutside(e) {
+  if (calPopup && !calPopup.contains(e.target)) closeCalendar();
+}
+
+function closeCalendar() {
+  if (calPopup) calPopup.style.display = 'none';
+  document.removeEventListener('mousedown', calOutside);
+}
+
+function calNav(delta) {
+  calCtx.month += delta;
+  if (calCtx.month < 0) { calCtx.month = 11; calCtx.year--; }
+  if (calCtx.month > 11) { calCtx.month = 0; calCtx.year++; }
+  renderCalendar();
+}
+
+function calPick(iso) {
+  const cb = calCtx.onPick;
+  closeCalendar();
+  if (cb) cb(iso);
+}
+
+function renderCalendar() {
+  const p = ensureCalPopup();
+  const y = calCtx.year, m = calCtx.month;
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const todayIso = localTodayISO();
+
+  let html = `<div class="cal-head">
+      <button type="button" class="cal-nav" onclick="calNav(-1)">‹</button>
+      <span class="cal-title">${MONTH_FULL[m]} ${y}</span>
+      <button type="button" class="cal-nav" onclick="calNav(1)">›</button>
+    </div>
+    <div class="cal-dow">${DOW_ABBR.map(d => `<span>${d}</span>`).join('')}</div>
+    <div class="cal-grid">`;
+
+  for (let i = 0; i < firstDow; i++) html += `<div class="cal-blank"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = toISO(y, m, d);
+    let cls = 'cal-day';
+    if (iso === todayIso) cls += ' today';
+    if (iso === calCtx.selected) cls += ' selected';
+    html += `<button type="button" class="${cls}" onclick="calPick('${iso}')">${d}</button>`;
+  }
+
+  html += `</div>
+    <div class="cal-foot">
+      <button type="button" class="cal-btn-today" onclick="calPick('${todayIso}')">Today</button>
+      <button type="button" class="cal-btn-clear" onclick="calPick('')">Clear</button>
+    </div>`;
+
+  p.innerHTML = html;
+}
+
+/* ===== PICKER OPENERS ===== */
+function openExerciseDatePicker(evt, tabId, groupIdx, exIdx) {
+  const ex = appState.workoutData[tabId][groupIdx].exercises[exIdx];
+  openCalendar(evt.currentTarget, ex.date, (iso) => {
+    updateField(tabId, groupIdx, exIdx, 'date', iso);
+    saveData();
+    renderTab(tabId);
+  });
+}
+
+function openLogDatePicker(evt, entryIdx) {
+  const entry = appState.logBook[entryIdx];
+  openCalendar(evt.currentTarget, entry.date, (iso) => {
+    appState.logBook[entryIdx].date = iso;
+    saveData();
+    renderLogBook();
+  });
 }
 
 // Init

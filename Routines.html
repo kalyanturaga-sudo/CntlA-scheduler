@@ -296,6 +296,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ====== TWO-COLUMN TASK GRID ====== */
 .r-task-grid{display:flex;flex-direction:column;gap:0;}
 .r-task-grid .r-block-btn-row{margin-top:14px;}
+.r-flat-list{display:flex;flex-direction:column;min-height:6px;}
 
 /* ====== DAILY ROUTINE GRID (no sidebar) ====== */
 .r-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;}
@@ -1514,9 +1515,9 @@ function buildRoutineTile(routineId){
     return row;
   }
 
-  // ── Render ─────────────────────────────────────────────────
-  if(sections.length===0){
-    // No sections — flat list with add bar at top
+  // ── Render (flat, generic — no section boxes; matches Weekly) ──
+  // Add-task input at the TOP of the routine
+  {
     const nt=document.createElement("div"); nt.className="r-block-add-task";
     nt.innerHTML=`<input placeholder="Add task… (Enter to save)">`;
     const ni=nt.querySelector("input");
@@ -1531,162 +1532,57 @@ function buildRoutineTile(routineId){
       e.stopPropagation();
     });
     grid.appendChild(nt);
-    sorted.forEach((item,i)=>{ if(!item.isHeader) grid.appendChild(buildTaskRow(item,i)); });
-  } else {
-    const secGrid=document.createElement("div"); secGrid.className="r-sections-grid";
 
-    sections.forEach(sec=>{
-      // Skip virtual "General" section (no header item) if it has no tasks
-      if(sec.hdrIdx<0 && sec.items.length===0) return;
-
-      const card=document.createElement("div"); card.className="r-section-card";
-
-      // ── Card header ────────────────────────────────────────
-      const cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
-      if(sec.isRoom){
-        const lbl=document.createElement("span");
-        lbl.style.cssText="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex:1;";
-        lbl.textContent=sec.label;
-        cardHdr.appendChild(lbl);
-      } else {
-        const titleInp=document.createElement("input");
-        titleInp.type="text"; titleInp.className="r-section-card-title"; titleInp.value=sec.label;
-        titleInp.addEventListener("change",()=>{
-          if(sec.hdrIdx<0) return;
-          const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
-          if(arr){ arr[sec.hdrIdx].text="__hdr__"+titleInp.value.trim(); saveData(d2); }
-        });
-        titleInp.addEventListener("keydown",e=>{
-          if(e.key==="Enter"){
-            const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
-            if(arr&&sec.hdrIdx>=0){ arr[sec.hdrIdx].text="__hdr__"+titleInp.value.trim(); saveData(d2); }
-            titleInp.blur();
-          }
-          if(e.key==="Escape") titleInp.blur();
-          e.stopPropagation();
-        });
-        titleInp.addEventListener("click",e=>e.stopPropagation());
-        const delHdr=document.createElement("button"); delHdr.className="r-section-card-del"; delHdr.title="Delete section (tasks stay)"; delHdr.textContent="✕";
-        delHdr.onclick=e=>{
-          e.stopPropagation();
-          if(!confirm(`Delete section "${sec.label}"? Tasks will remain in the routine.`)) return;
-          pushUndo();
-          const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
-          if(arr){
-            if(sec.hdrIdx>=0){
-              arr.splice(sec.hdrIdx,1);
-            }
-            // For virtual "General" section (hdrIdx<0), just remove all items in that section
-            else {
-              const idxsToRemove=sec.items.map(x=>x.globalIdx).sort((a,b)=>b-a);
-              idxsToRemove.forEach(idx=>arr.splice(idx,1));
-            }
-            saveData(d2); render(); showToast("Section deleted");
-          }
-        };
-        cardHdr.appendChild(titleInp); cardHdr.appendChild(delHdr);
-      }
-      card.appendChild(cardHdr);
-
-      // ── Card body (task rows) ──────────────────────────────
-      const cardBody=document.createElement("div"); cardBody.className="r-section-card-body";
-      sec.items.forEach(({item,globalIdx})=>cardBody.appendChild(buildTaskRow(item,globalIdx)));
-
-      // Cross-section drag-and-drop:
-      // dragover on cardBody highlights the card and allows drop
-      cardBody.addEventListener("dragover",e=>{
-        if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
-        e.preventDefault();
-        document.querySelectorAll(".r-section-card.drag-over-card").forEach(c=>c.classList.remove("drag-over-card"));
-        card.classList.add("drag-over-card");
-      });
-      cardBody.addEventListener("dragleave",e=>{
-        // Only remove highlight if leaving the card entirely
-        if(!card.contains(e.relatedTarget)) card.classList.remove("drag-over-card");
-      });
-      cardBody.addEventListener("drop",e=>{
-        if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
-        e.preventDefault();
-        card.classList.remove("drag-over-card");
-        document.querySelectorAll(".r-task.r-drag-over").forEach(r=>r.classList.remove("r-drag-over"));
-
-        const fromIndex=_taskDrag.fromIndex;
-        const d2=loadData()||{}; const arr=d2[routine.id].items;
-
-        // Figure out drop position within this card
-        const taskRows=[...cardBody.querySelectorAll(".r-task:not(.r-dragging)")];
-        let dropPosInCard=taskRows.length; // default: append to end of card
-        for(let k=0;k<taskRows.length;k++){
-          const r=taskRows[k].getBoundingClientRect();
-          if(e.clientY<r.top+r.height/2){ dropPosInCard=k; break; }
-        }
-
-        // Map card-relative position to global array index
-        let insertAt;
-        if(dropPosInCard < sec.items.length){
-          insertAt=sec.items[dropPosInCard].globalIdx;
-        } else {
-          // append after last item in section, or right after header if section is empty
-          const lastItem=sec.items[sec.items.length-1];
-          insertAt=lastItem ? lastItem.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
-        }
-
-        const gSize=_taskDrag.groupSize||subGroupSize(arr,fromIndex);
-        insertAt=subSafeInsert(arr,insertAt,gSize);
-        // no-op if dropping back inside its own group
-        if(insertAt>=fromIndex && insertAt<=fromIndex+gSize){ _taskDrag=null; return; }
-
-        pushUndo();
-        const movedGroup=arr.splice(fromIndex,gSize);
-        const adjustedInsert=fromIndex<insertAt ? insertAt-gSize : insertAt;
-        arr.splice(adjustedInsert,0,...movedGroup);
-        if(gSize===1) subAdopt(arr,adjustedInsert);   // dropped among subs → becomes a sub
-        subDemoteOrphans(arr);
-        saveData(d2); _taskDrag=null; render();
-      });
-
-      // ── Add task input inside card ─────────────────────────
-      const nt=document.createElement("div"); nt.className="new-task";
-      nt.innerHTML=`<input placeholder="Add task… (Enter to save)">`;
-      const ni=nt.querySelector("input");
-      ni.addEventListener("keydown",e=>{
-        if(e.key==="Enter"){
-          const v=ni.value.trim(); if(!v) return;
-          pushUndo();
-          const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
-          const arr=d2[routine.id].items;
-          // Insert after the last item in this section, or after the header
-          const lastEntry=sec.items[sec.items.length-1];
-          const insertAt=lastEntry ? lastEntry.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
-          arr.splice(insertAt,0,{text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false,sub:false});
-          saveData(d2); render();
-          showToast("✓ Task added");
-        }
-        e.stopPropagation();
-      });
-      cardBody.appendChild(nt);
-
-      card.appendChild(cardBody);
-
-      secGrid.appendChild(card);
+    // Flat task list (all non-header items, in order)
+    const listWrap=document.createElement("div"); listWrap.className="r-flat-list";
+    const renderedIdx=[];   // global indices of the rows we render, in display order
+    sorted.forEach((item,i)=>{
+      if(!item.isHeader){ renderedIdx.push(i); listWrap.appendChild(buildTaskRow(item,i)); }
     });
-    grid.appendChild(secGrid);
+
+    // Drag-to-reorder anywhere within this routine's list
+    listWrap.addEventListener("dragover",e=>{
+      if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
+      e.preventDefault();
+    });
+    listWrap.addEventListener("drop",e=>{
+      if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
+      e.preventDefault();
+      document.querySelectorAll(".r-task.r-drag-over").forEach(r=>r.classList.remove("r-drag-over"));
+
+      const fromIndex=_taskDrag.fromIndex;
+      const d2=loadData()||{}; const arr=d2[routine.id].items;
+
+      // find drop position among the visible (non-dragging) rows
+      const taskRows=[...listWrap.querySelectorAll(".r-task:not(.r-dragging)")];
+      let dropPos=taskRows.length; // default: append to end
+      for(let k=0;k<taskRows.length;k++){
+        const r=taskRows[k].getBoundingClientRect();
+        if(e.clientY<r.top+r.height/2){ dropPos=k; break; }
+      }
+      // map display position to global array index
+      let insertAt = dropPos<renderedIdx.length ? renderedIdx[dropPos] : arr.length;
+
+      const gSize=_taskDrag.groupSize||subGroupSize(arr,fromIndex);
+      insertAt=subSafeInsert(arr,insertAt,gSize);
+      // no-op if dropping back inside its own group
+      if(insertAt>=fromIndex && insertAt<=fromIndex+gSize){ _taskDrag=null; return; }
+
+      pushUndo();
+      const movedGroup=arr.splice(fromIndex,gSize);
+      const adjustedInsert=fromIndex<insertAt ? insertAt-gSize : insertAt;
+      arr.splice(adjustedInsert,0,...movedGroup);
+      if(gSize===1) subAdopt(arr,adjustedInsert);   // dropped among subs → becomes a sub
+      subDemoteOrphans(arr);
+      saveData(d2); _taskDrag=null; render();
+    });
+
+    grid.appendChild(listWrap);
   }
 
   // Bottom action row — spans both columns
   const btnRow=document.createElement("div"); btnRow.className="r-block-btn-row";
 
-  // Add Section button
-  const addSecBtn=document.createElement("button"); addSecBtn.className="r-carry-btn"; addSecBtn.textContent="＋ Add Section";
-  addSecBtn.title="Insert a section heading at the top of the list";
-  addSecBtn.onclick=()=>{
-    const name=prompt("Section heading name (e.g. 🏠 Home):");
-    if(!name||!name.trim()) return;
-    const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
-    d2[routine.id].items.push({text:"__hdr__"+name.trim(),done:false,isHeader:true});
-    saveData(d2); render(); showToast("Section added");
-  };
-  btnRow.appendChild(addSecBtn);
   if(realItems.some(it=>it.done)){
     const clrBtn=document.createElement("button"); clrBtn.className="r-clear-done-btn"; clrBtn.textContent="✓ Clear completed";
     clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items){ d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); subDemoteOrphans(d2[routine.id].items); } saveData(d2); render(); };
