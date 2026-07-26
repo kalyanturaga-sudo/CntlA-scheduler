@@ -310,6 +310,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .r-section-card-body{padding:4px 8px 6px;}
 .r-section-card-body .r-task{margin:2px 0;}
 
+/* ====== FORTNIGHT TWO-LIST BOARD ====== */
+.fnb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+@media(max-width:860px){.fnb-grid{grid-template-columns:1fr;}}
+.fnb-title{font-family:'DM Serif Display',serif;font-size:22px;font-weight:400;color:var(--text);background:transparent;border:none;outline:none;padding:1px 4px;border-radius:6px;cursor:text;min-width:0;flex:1;}
+.fnb-title:hover{background:var(--accent-soft);}
+.fnb-title:focus{background:var(--accent-soft);border-bottom:1.5px solid var(--accent);}
+.fnb-list.fnb-drop-target{box-shadow:0 0 0 2px var(--accent);border-radius:var(--radius);}
+.fnb-empty-hint{font-size:12px;color:var(--text3);font-style:italic;padding:8px 4px;text-align:center;}
+
+/* ====== MOVE TASK MODAL ====== */
+.mv-task-label{font-size:13px;color:var(--text2);margin-bottom:16px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;}
+.mv-group{margin-bottom:16px;}
+.mv-group-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;}
+.mv-opts{display:flex;flex-wrap:wrap;gap:6px;}
+.mv-opt{padding:7px 12px;border-radius:9px;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .12s;}
+.mv-opt:hover{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+
 /* ====== GROUND FLOOR ROOM SECTIONS ====== */
 .gf-room-header{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.09em;padding:12px 4px 4px;border-top:1px solid var(--border);margin-top:4px;}
 .gf-room-header:first-child,.gf-room-header.first{border-top:none;padding-top:4px;margin-top:0;}
@@ -684,6 +701,18 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <div class="modal-actions">
       <button class="btn btn-ghost" id="nlCancel">Cancel</button>
       <button class="btn btn-accent" id="nlCreate">Create Routine</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE TASK MODAL (Weekend → Weekly day / Fortnightly list) -->
+<div class="modal-overlay" id="moveTaskModal">
+  <div class="modal-box" style="width:440px;">
+    <h3>↗ Move task</h3>
+    <div class="mv-task-label" id="mvTaskLabel"></div>
+    <div id="mvBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="mvCancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -1762,7 +1791,9 @@ function printRoutinesColor(selectedIds, override){
 
   function buildList(){
     listEl.innerHTML="";
-    const items = activeMode==="daily" ? getAllRoutines() : getAllSimpleSections(activeMode);
+    const items = activeMode==="daily" ? getAllRoutines()
+      : activeMode==="fortnightly" ? getFortnightBoard().lists.slice(0,2).map(l=>({id:l.id,icon:"🗓",label:l.title}))
+      : getAllSimpleSections(activeMode);
     items.forEach(r=>{
       const label = document.createElement("label");
       label.style.cssText="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;transition:background .12s;font-size:13px;font-weight:500;color:var(--text);";
@@ -1786,6 +1817,12 @@ function printRoutinesColor(selectedIds, override){
 
   function buildOverride(){
     if(activeMode==="daily") return null;
+    if(activeMode==="fortnightly"){
+      const board=getFortnightBoard();
+      const sections=board.lists.slice(0,2).map(l=>({id:l.id,icon:"🗓",label:l.title}));
+      const data={}; board.lists.slice(0,2).forEach(l=>{ data[l.id]={items:l.items.map(t=>({text:t.text,done:!!t.done,sub:!!t.sub}))}; });
+      return { routines: sections, data, title: "Fortnightly" };
+    }
     const sections=getAllSimpleSections(activeMode);
     const data=loadSimpleData(activeMode);
     return { routines: sections, data, title: MODE_META[activeMode].label.replace(/^[^ ]+ /,"") };
@@ -1891,8 +1928,9 @@ function setMode(mode){
   _cset(MODE_KEY, mode);
   // Update tab bar
   document.querySelectorAll(".mode-tab").forEach(t=>t.classList.toggle("active", t.dataset.mode===mode));
-  // Update header
-  document.getElementById("pageTitle").textContent = MODE_META[mode].title;
+  // Update header — Daily title reflects the (renamable) nav label
+  document.getElementById("pageTitle").textContent =
+    (mode==="daily") ? ("🔁 " + _routinesLabel()) : MODE_META[mode].title;
   document.getElementById("progressLabel").textContent = MODE_META[mode].progress;
   // Show/hide bodies
   document.getElementById("bodyDaily").style.display  = mode==="daily"   ? "" : "none";
@@ -1904,8 +1942,34 @@ function setMode(mode){
   // Sidebar label
   document.getElementById("simpleSidebarLabel").textContent = MODE_META[mode].label.replace(/^[^ ]+ /,"");
   // Render
-  if(mode==="daily"){ render(); } else if(mode==="weekly"){ renderWeekly(); } else { renderSimple(mode); }
+  if(mode==="daily"){ render(); }
+  else if(mode==="weekly"){ renderWeekly(); }
+  else if(mode==="fortnightly"){ renderFortnightBoard(); }
+  else { renderSimple(mode); }
 }
+
+/* Current renamable label for the Routines tab (falls back gracefully). */
+function _routinesLabel(){
+  try{ if(typeof OT!=="undefined" && OT.getNavLabel){ return OT.getNavLabel("routines") || "Routines & Chores"; } }catch(e){}
+  return "Routines & Chores";
+}
+
+/* Double-click the page title (on Daily) to rename the tab everywhere. */
+(function wireTitleRename(){
+  const pt=document.getElementById("pageTitle");
+  if(!pt) return;
+  pt.title="Double-click to rename (Daily view)";
+  pt.addEventListener("dblclick",()=>{
+    if(activeMode!=="daily") return;
+    const cur=_routinesLabel();
+    const v=prompt("Rename this tab — shows in the sidebar on every page:",cur);
+    if(v===null) return;
+    const name=v.trim(); if(!name) return;
+    if(typeof OT!=="undefined" && OT.setNavLabel) OT.setNavLabel("routines",name);
+    pt.textContent="🔁 "+name;
+    showToast("✓ Renamed to "+name);
+  });
+})();
 
 document.querySelectorAll(".mode-tab").forEach(t=>{
   t.addEventListener("click", ()=>setMode(t.dataset.mode));
@@ -1926,6 +1990,11 @@ document.getElementById("btnResetAll").addEventListener("click", ()=>{
     saveWkData(d);
     const active=getWkActive(); if(active) renderWeeklyCard(active);
     renderWeeklySidebar(); updateWkProgress(); showToast("↺ Week reset");
+  } else if(activeMode==="fortnightly"){
+    if(!confirm("Uncheck every task in List A and List B?")) return;
+    const b=getFortnightBoard();
+    b.lists.forEach(l=>l.items.forEach(it=>it.done=false));
+    saveFortnightBoard(b); renderFortnightBoard(); showToast("↺ Reset");
   } else {
     if(!confirm("Reset all tasks in this view? This unchecks everything.")) return;
     const d=loadSimpleData(activeMode);
@@ -2275,6 +2344,13 @@ function renderSimpleContent(mode){
       saveSimpleData(mode,d2); renderSimple(mode);
     };
     acts.appendChild(subBtn);
+
+    // Move button — Weekend tasks only → send to a Weekly day or a Fortnight list
+    if(mode==="weekend"){
+      const moveBtn=document.createElement("button"); moveBtn.className="r-act-btn"; moveBtn.title="Move to Weekly day or Fortnightly list"; moveBtn.innerHTML="↗";
+      moveBtn.onclick=e=>{ e.stopPropagation(); openMoveTaskModal(mode,sec.id,idx); };
+      acts.appendChild(moveBtn);
+    }
 
     const delBtn=document.createElement("button"); delBtn.className="r-act-btn"; delBtn.title="Remove"; delBtn.innerHTML="✕"; delBtn.style.color="#e85c5c";
     delBtn.onclick=e=>{ e.stopPropagation(); const d2=loadSimpleData(mode); const arr=d2[sec.id].items; arr.splice(idx, subGroupSize(arr,idx)); subDemoteOrphans(arr); saveSimpleData(mode,d2); renderSimple(mode); };
@@ -2778,10 +2854,327 @@ function printWeeklyColor(ids){
 }
 
 function renderSimple(mode){
+  document.getElementById("rSidebarSimple").style.display="";
   renderSimpleSidebar(mode);
   renderSimpleContent(mode);
   updateSimpleProgress(mode);
 }
+
+/* ══════════════════════════════════════════════════════════
+   FORTNIGHT MODE — TWO-LIST BOARD (List A | List B)
+   Storage: ONETRACK_FORTNIGHT_BOARD_V1
+   Shape: { lists:[ {id,title,items:[{text,done,sub}]}, {…} ] }
+   The old Fortnightly "simple sections" data is left dormant (not
+   deleted) — it just isn't rendered anymore. First run migrates it:
+   first half of sections → List A, second half → List B.
+══════════════════════════════════════════════════════════ */
+const FNB_KEY = "ONETRACK_FORTNIGHT_BOARD_V1";
+function loadFortnightBoard(){ try{ const v=_cget(FNB_KEY); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function saveFortnightBoard(b){ _cset(FNB_KEY, JSON.stringify(b)); }
+function getFortnightBoard(){
+  let b=loadFortnightBoard();
+  if(!b){
+    const secs=getAllSimpleSections("fortnightly")||[];
+    const d=loadSimpleData("fortnightly")||{};
+    const half=Math.ceil(secs.length/2);
+    const aItems=[], bItems=[];
+    secs.forEach((s,i)=>{
+      const items=((d[s.id]&&d[s.id].items)||[]).map(t=>({text:t.text,done:!!t.done,sub:!!t.sub}));
+      (i<half?aItems:bItems).push(...items);
+    });
+    b={ lists:[ {id:"listA",title:"List A",items:aItems}, {id:"listB",title:"List B",items:bItems} ] };
+    saveFortnightBoard(b);
+  }
+  if(!b.lists) b.lists=[];
+  while(b.lists.length<2){ const k=b.lists.length; b.lists.push({id:k===0?"listA":"listB",title:k===0?"List A":"List B",items:[]}); }
+  return b;
+}
+
+let _fnbDrag=null;   // { listIndex, fromIndex, groupSize }
+
+function renderFortnightBoard(){
+  // full-width: this mode has no section sidebar
+  document.getElementById("rSidebarSimple").style.display="none";
+  const content=document.getElementById("rContentSimple");
+  content.innerHTML="";
+  const board=getFortnightBoard();
+
+  const grid=document.createElement("div"); grid.className="fnb-grid";
+  board.lists.slice(0,2).forEach((list,li)=>grid.appendChild(buildFortnightList(board,li)));
+  content.appendChild(grid);
+  updateFortnightProgress();
+}
+
+function buildFortnightList(board,li){
+  const list=board.lists[li];
+  subDemoteOrphans(list.items);
+  const sorted=sortGroupsDoneToBottom(list.items);
+  list.items=sorted;
+  const total=sorted.length, done=sorted.filter(it=>it.done).length;
+  const pct=total?Math.round(done/total*100):0;
+  const isListDone=total>0&&done===total;
+  const cls=li===0?"slot-c1":"slot-c4";
+
+  const block=document.createElement("div");
+  block.className="r-block fnb-list "+cls+(isListDone?" list-done":"");
+  block.dataset.listIndex=li;
+
+  // Header — renamable title + count + uncheck
+  const hdr=document.createElement("div"); hdr.className="r-block-header";
+  const tw=document.createElement("div"); tw.className="r-block-title-wrap";
+  const titleInp=document.createElement("input"); titleInp.type="text"; titleInp.className="fnb-title"; titleInp.value=list.title; titleInp.readOnly=true;
+  titleInp.title="Double-click to rename this list";
+  titleInp.addEventListener("dblclick",e=>{ titleInp.readOnly=false; titleInp.focus(); titleInp.select(); e.stopPropagation(); });
+  titleInp.addEventListener("blur",()=>{
+    titleInp.readOnly=true;
+    const v=titleInp.value.trim();
+    const b2=getFortnightBoard();
+    if(!v){ titleInp.value=b2.lists[li].title; return; }
+    b2.lists[li].title=v; saveFortnightBoard(b2); renderFortnightBoard();
+  });
+  titleInp.addEventListener("keydown",e=>{ if(e.key==="Enter") titleInp.blur(); if(e.key==="Escape"){ titleInp.value=list.title; titleInp.blur(); } e.stopPropagation(); });
+  tw.appendChild(titleInp);
+
+  const ad=document.createElement("div"); ad.className="r-block-actions";
+  if(isListDone){
+    const b=document.createElement("span"); b.className="block-done-badge"; b.textContent="✓ All done"; ad.appendChild(b);
+  } else {
+    const cntEl=document.createElement("div"); cntEl.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 8px;border:1px solid var(--border);";
+    cntEl.textContent=done+"/"+total; ad.appendChild(cntEl);
+  }
+  const ub=document.createElement("button"); ub.className="btn-uncheck-all"; ub.textContent="↺ Uncheck";
+  ub.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items.forEach(it=>it.done=false); saveFortnightBoard(b2); renderFortnightBoard(); };
+  ad.appendChild(ub);
+  hdr.appendChild(tw); hdr.appendChild(ad);
+
+  const pb=document.createElement("div"); pb.className="r-block-progress";
+  const pf=document.createElement("div"); pf.className="r-block-progress-fill"; pf.style.width=pct+"%"; pb.appendChild(pf);
+
+  const body=document.createElement("div"); body.className="r-block-body";
+  const gridBody=document.createElement("div"); gridBody.className="r-task-grid";
+
+  // Add-task input
+  const nt=document.createElement("div"); nt.className="r-block-add-task";
+  nt.innerHTML=`<input placeholder="Add to ${list.title}… (Enter to save)">`;
+  const ni=nt.querySelector("input");
+  ni.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){
+      const v=ni.value.trim(); if(!v) return;
+      const b2=getFortnightBoard();
+      b2.lists[li].items.unshift({text:v.charAt(0).toUpperCase()+v.slice(1),done:false,sub:false});
+      saveFortnightBoard(b2); renderFortnightBoard(); showToast("✓ Task added");
+    }
+    e.stopPropagation();
+  });
+  gridBody.appendChild(nt);
+
+  sorted.forEach((item,i)=>gridBody.appendChild(buildFortnightRow(li,item,i,sorted)));
+
+  if(!sorted.length){
+    const hint=document.createElement("div"); hint.className="fnb-empty-hint"; hint.textContent="Empty — add a task, or drag one here.";
+    gridBody.appendChild(hint);
+  }
+
+  // Per-list bottom buttons
+  const btnRow=document.createElement("div"); btnRow.className="r-block-btn-row";
+  if(sorted.some(it=>it.done)){
+    const clr=document.createElement("button"); clr.className="r-clear-done-btn"; clr.textContent="✓ Clear completed";
+    clr.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items=b2.lists[li].items.filter(it=>!it.done); subDemoteOrphans(b2.lists[li].items); saveFortnightBoard(b2); renderFortnightBoard(); };
+    btnRow.appendChild(clr);
+  }
+  const rst=document.createElement("button"); rst.className="r-reset-btn"; rst.textContent="↺ Reset list";
+  rst.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items.forEach(it=>it.done=false); saveFortnightBoard(b2); renderFortnightBoard(); };
+  btnRow.appendChild(rst);
+  gridBody.appendChild(btnRow);
+
+  body.appendChild(gridBody);
+  block.appendChild(hdr); block.appendChild(pb); block.appendChild(body);
+
+  // Cross-list drop: dropping onto the list body (not a specific row) appends
+  block.addEventListener("dragover",e=>{
+    if(!_fnbDrag) return;
+    e.preventDefault();
+    block.classList.add("fnb-drop-target");
+  });
+  block.addEventListener("dragleave",e=>{ if(!block.contains(e.relatedTarget)) block.classList.remove("fnb-drop-target"); });
+  block.addEventListener("drop",e=>{
+    if(!_fnbDrag) return;
+    e.preventDefault();
+    block.classList.remove("fnb-drop-target");
+    fnbMove(_fnbDrag.listIndex,_fnbDrag.fromIndex,_fnbDrag.groupSize,li,null);
+    _fnbDrag=null;
+  });
+
+  return block;
+}
+
+function buildFortnightRow(li,item,idx,sorted){
+  const row=document.createElement("div"); row.className="r-task"+(item.done?" completed":"")+(item.sub?" subtask":"");
+  const handle=document.createElement("span"); handle.className="r-drag-handle"; handle.textContent="⠿";
+  handle.onpointerdown=()=>row.draggable=true; handle.onpointerup=()=>row.draggable=false; handle.onmouseleave=()=>row.draggable=false;
+
+  row.addEventListener("dragstart",e=>{
+    if(!row.draggable){e.preventDefault();return;}
+    _fnbDrag={listIndex:li,fromIndex:idx,groupSize:subGroupSize(sorted,idx)};
+    row.classList.add("r-dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain","");
+    e.stopPropagation();
+  });
+  row.addEventListener("dragend",()=>{ row.classList.remove("r-dragging"); row.draggable=false; setTimeout(()=>_fnbDrag=null,50); document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over")); document.querySelectorAll(".fnb-list.fnb-drop-target").forEach(b=>b.classList.remove("fnb-drop-target")); });
+  row.addEventListener("dragover",e=>{ if(!_fnbDrag) return; e.preventDefault(); e.stopPropagation(); document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over")); row.classList.add("r-drag-over"); });
+  row.addEventListener("drop",e=>{
+    if(!_fnbDrag) return;
+    e.preventDefault(); e.stopPropagation();
+    document.querySelectorAll(".r-task.r-drag-over").forEach(r2=>r2.classList.remove("r-drag-over"));
+    const src=_fnbDrag; _fnbDrag=null;
+    fnbMove(src.listIndex,src.fromIndex,src.groupSize,li,idx);
+  });
+
+  const svgW=document.createElement("span"); svgW.className="task-cb-svg"+(item.done?" tcb-on":"");
+  svgW.innerHTML='<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;"><rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/><path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/></svg>';
+  svgW.addEventListener("click",e=>{ e.stopPropagation();
+    const b2=getFortnightBoard(); const arr=b2.lists[li].items;
+    if(!arr[idx]) return; arr[idx].done=!arr[idx].done; subCascade(arr,idx);
+    saveFortnightBoard(b2); renderFortnightBoard();
+  });
+
+  const textEl=document.createElement("span"); textEl.className="r-task-text"; textEl.textContent=item.text;
+  if(item.done) textEl.style.cssText="text-decoration:line-through;opacity:0.42;";
+  const editInp=document.createElement("input"); editInp.type="text"; editInp.className="r-task-edit"; editInp.value=item.text;
+  function commitEdit(){ const v=editInp.value.trim(); if(v){ const b2=getFortnightBoard(); b2.lists[li].items[idx].text=v; saveFortnightBoard(b2); } renderFortnightBoard(); }
+  editInp.addEventListener("keydown",e=>{ if(e.key==="Enter") commitEdit(); if(e.key==="Escape") renderFortnightBoard(); e.stopPropagation(); });
+  editInp.addEventListener("click",e=>e.stopPropagation());
+  textEl.addEventListener("click",e=>{ e.stopPropagation(); textEl.classList.add("editing"); editInp.classList.add("editing"); editInp.focus(); editInp.select(); });
+
+  const acts=document.createElement("div"); acts.className="r-task-actions";
+  const subBtn=document.createElement("button"); subBtn.className="r-act-btn";
+  subBtn.title=item.sub?"Unindent":"Indent as sub-task"; subBtn.innerHTML=item.sub?"↰":"↳";
+  subBtn.onclick=e=>{ e.stopPropagation();
+    const b2=getFortnightBoard(); const arr=b2.lists[li].items; if(!arr[idx]) return;
+    if(!arr[idx].sub && !subCanIndent(arr,idx)){ showToast("No task above to nest under"); return; }
+    arr[idx].sub=!arr[idx].sub; subDemoteOrphans(arr); saveFortnightBoard(b2); renderFortnightBoard();
+  };
+  acts.appendChild(subBtn);
+  const delBtn=document.createElement("button"); delBtn.className="r-act-btn"; delBtn.title="Remove"; delBtn.innerHTML="✕"; delBtn.style.color="#e85c5c";
+  delBtn.onclick=e=>{ e.stopPropagation(); const b2=getFortnightBoard(); const arr=b2.lists[li].items; arr.splice(idx,subGroupSize(arr,idx)); subDemoteOrphans(arr); saveFortnightBoard(b2); renderFortnightBoard(); };
+  acts.appendChild(delBtn);
+
+  row.appendChild(handle); row.appendChild(svgW); row.appendChild(textEl); row.appendChild(editInp); row.appendChild(acts);
+  return row;
+}
+
+/* Move a task-group within/between the two fortnight lists.
+   toIdx===null → append to end of destination list. */
+function fnbMove(fromLi,fromIdx,gSize,toLi,toIdx){
+  const b=getFortnightBoard();
+  const fromArr=b.lists[fromLi].items;
+  gSize=gSize||1;
+  if(fromLi===toLi){
+    // reorder within the same list
+    const arr=fromArr;
+    let to=(toIdx===null)?arr.length:subSafeInsert(arr,toIdx,gSize);
+    if(to>=fromIdx && to<=fromIdx+gSize){ return; }
+    const grp=arr.splice(fromIdx,gSize);
+    const at=fromIdx<to?to-gSize:to;
+    arr.splice(at,0,...grp);
+    if(gSize===1 && toIdx!==null) subAdopt(arr,at);
+    subDemoteOrphans(arr);
+  } else {
+    // move across lists
+    const toArr=b.lists[toLi].items;
+    const grp=fromArr.splice(fromIdx,gSize);
+    if(grp[0]) grp[0].sub=false;            // arriving task becomes top-level
+    subDemoteOrphans(fromArr);
+    let at=(toIdx===null)?toArr.length:toIdx;
+    toArr.splice(at,0,...grp);
+    subDemoteOrphans(toArr);
+  }
+  saveFortnightBoard(b); renderFortnightBoard();
+}
+
+function updateFortnightProgress(){
+  const b=getFortnightBoard();
+  let total=0,done=0;
+  b.lists.forEach(l=>{ total+=l.items.length; done+=l.items.filter(it=>it.done).length; });
+  const pct=total?Math.round(done/total*100):0;
+  const fill=document.getElementById("overallFill"); if(fill) fill.style.width=pct+"%";
+  const pctEl=document.getElementById("overallPct"); if(pctEl) pctEl.textContent=pct+"%";
+  const fs=document.getElementById("footerStats"); if(fs) fs.textContent=done+" / "+total+" tasks done";
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOVE-TASK MODAL  (Weekend task → Weekly day / Fortnight list)
+══════════════════════════════════════════════════════════ */
+function openMoveTaskModal(mode, secId, idx){
+  const d=loadSimpleData(mode);
+  const arr=(d[secId]&&d[secId].items)||[];
+  if(!arr[idx]) return;
+  const gSize=subGroupSize(arr,idx);
+  const taskText=arr[idx].text;
+
+  const modal=document.getElementById("moveTaskModal");
+  document.getElementById("mvTaskLabel").textContent =
+    "“"+taskText+"”"+(gSize>1?(" (+"+(gSize-1)+" sub-task"+(gSize-1>1?"s":"")+")"):"");
+  const bodyEl=document.getElementById("mvBody");
+  bodyEl.innerHTML="";
+
+  function doMove(pushFn, toastMsg){
+    const d2=loadSimpleData(mode); const a2=(d2[secId]&&d2[secId].items)||[];
+    const grp=a2.splice(idx,gSize);
+    if(!grp.length) return;
+    if(grp[0]) grp[0].sub=false;
+    subDemoteOrphans(a2);
+    saveSimpleData(mode,d2);
+    pushFn(grp.map(t=>({text:t.text,done:!!t.done,sub:!!t.sub})));
+    modal.classList.remove("open");
+    renderSimple(mode);
+    showToast("✓ "+toastMsg);
+  }
+
+  // ── Weekly days (Monday–Sunday) ──
+  const wkGroup=document.createElement("div"); wkGroup.className="mv-group";
+  const wkTitle=document.createElement("div"); wkTitle.className="mv-group-title"; wkTitle.textContent="📅 Move to a Weekly day";
+  const wkOpts=document.createElement("div"); wkOpts.className="mv-opts";
+  if(typeof initWkData==="function") initWkData();   // seed default days if never visited
+  const days=getOrderedWkDays();
+  if(!days.length){
+    const none=document.createElement("div"); none.className="fnb-empty-hint"; none.textContent="No weekly days set up yet."; wkOpts.appendChild(none);
+  }
+  days.forEach(day=>{
+    const full=WK_FULL_DAY[day.label]||day.label;
+    const btn=document.createElement("button"); btn.className="mv-opt"; btn.textContent=day.icon+" "+full;
+    btn.onclick=()=>doMove(grp=>{
+      const wd=loadWkData()||{days:[]};
+      const target=wd.days.find(x=>x.id===day.id);
+      if(target){ if(!target.items) target.items=[]; target.items.unshift(...grp); saveWkData(wd); }
+    }, "Moved to "+full);
+    wkOpts.appendChild(btn);
+  });
+  wkGroup.appendChild(wkTitle); wkGroup.appendChild(wkOpts);
+  bodyEl.appendChild(wkGroup);
+
+  // ── Fortnightly lists (List A / List B) ──
+  const fnGroup=document.createElement("div"); fnGroup.className="mv-group";
+  const fnTitle=document.createElement("div"); fnTitle.className="mv-group-title"; fnTitle.textContent="🗓 Move to Fortnightly";
+  const fnOpts=document.createElement("div"); fnOpts.className="mv-opts";
+  const board=getFortnightBoard();
+  board.lists.slice(0,2).forEach((list,li)=>{
+    const btn=document.createElement("button"); btn.className="mv-opt"; btn.textContent="🗓 "+list.title;
+    btn.onclick=()=>doMove(grp=>{
+      const b2=getFortnightBoard(); b2.lists[li].items.unshift(...grp); saveFortnightBoard(b2);
+    }, "Moved to "+list.title);
+    fnOpts.appendChild(btn);
+  });
+  fnGroup.appendChild(fnTitle); fnGroup.appendChild(fnOpts);
+  bodyEl.appendChild(fnGroup);
+
+  modal.classList.add("open");
+}
+(function setupMoveModal(){
+  const modal=document.getElementById("moveTaskModal");
+  const cancel=document.getElementById("mvCancel");
+  if(cancel) cancel.onclick=()=>modal.classList.remove("open");
+  if(modal) modal.onclick=e=>{ if(e.target===modal) modal.classList.remove("open"); };
+})();
 
 /* ══════════════════════════════════════════════════════════
    SIMPLE SIDEBAR TOGGLE

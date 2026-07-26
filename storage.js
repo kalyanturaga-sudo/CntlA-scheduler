@@ -132,7 +132,7 @@
   /* ── NAV CONFIG — edit this list to add/rename/remove a page ── */
   const NAV_PAGES = [
     { id: 'ttb',        file: 'TT&B.html',           label: 'TT&B' },
-    { id: 'routines',   file: 'Routines.html',       label: 'Routines' },
+    { id: 'routines',   file: 'Routines.html',       label: 'Routines & Chores' },
     { id: 'jobs',       file: 'Jobs.html',           label: 'Jobs' },
     { id: 'checklists', file: 'Checklists.html',     label: 'Checklists' },
     { id: 'trip',       file: 'Trip Planners.html',  label: 'Trip Planners' },
@@ -653,6 +653,24 @@
     catch (e) { return ''; }
   }
 
+  /* ── Per-page nav-label override (renamable tabs) ──
+     Stored in localStorage so it is available synchronously at nav-build
+     time on every page, before Drive/data has loaded. */
+  const NAV_LABEL_PREFIX = 'ONETRACK_NAV_LABEL_';
+  function _navLabelOverride(id) {
+    try { return localStorage.getItem(NAV_LABEL_PREFIX + id) || null; }
+    catch (e) { return null; }
+  }
+  function _setNavLabelOverride(id, label) {
+    try {
+      if (label && String(label).trim()) {
+        localStorage.setItem(NAV_LABEL_PREFIX + id, String(label).trim());
+      } else {
+        localStorage.removeItem(NAV_LABEL_PREFIX + id);
+      }
+    } catch (e) {}
+  }
+
   function _makeNavLink(page, draggable) {
     const current = _currentFile();
     const a = document.createElement('a');
@@ -671,7 +689,7 @@
 
     const label = document.createElement('span');
     label.className = 'ot-nav-label';
-    label.textContent = page.label;
+    label.textContent = _navLabelOverride(page.id) || page.label;
     a.appendChild(label);
 
     return a;
@@ -1003,6 +1021,21 @@
     applyTheme() { _applyTheme(_cache || {}); },
     // Real page list, single source of truth (also drives the sidebar nav).
     navPages: NAV_PAGES.map(p => ({ ...p })),
+
+    // Renamable nav tabs. The override is stored per-page and shows on every
+    // page's sidebar. Pass a falsy label to clear the override (revert to
+    // the built-in default in NAV_PAGES).
+    getNavLabel(id) {
+      const ov = _navLabelOverride(id);
+      if (ov) return ov;
+      const p = NAV_PAGES.find(x => x.id === id) ||
+                (NAV_SETTINGS.id === id ? NAV_SETTINGS : null);
+      return p ? p.label : '';
+    },
+    setNavLabel(id, label) {
+      _setNavLabelOverride(id, label);
+      _buildNav();
+    },
 
     isReady()   { return _ready; },
 
