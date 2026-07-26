@@ -1,2 +1,0 @@
-# onetrack-scheduler
-Scheduler
