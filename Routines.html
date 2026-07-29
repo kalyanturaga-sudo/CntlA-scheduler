@@ -327,6 +327,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .r-section-card-del:hover{color:#e85c5c;}
 .r-section-card-body{padding:4px 8px 6px;}
 .r-section-card-body .r-task{margin:2px 0;}
+.r-section-card.r-section-bare{border:none;background:transparent;border-radius:0;overflow:visible;}
+.r-section-card.r-section-bare>.r-section-card-body{padding:0;}
 
 /* ====== FORTNIGHT TWO-LIST BOARD ====== */
 .fnb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
@@ -1549,10 +1551,13 @@ function buildRoutineTile(routineId){
       // Skip virtual "General" section (no header item) if it has no tasks
       if(sec.hdrIdx<0 && sec.items.length===0) return;
 
-      const card=document.createElement("div"); card.className="r-section-card";
+      const isBareGeneral=(sec.hdrIdx<0 && !sec.isRoom);   // virtual "General": render tasks with no box/header
+      const card=document.createElement("div"); card.className="r-section-card"+(isBareGeneral?" r-section-bare":"");
 
-      // ── Card header ────────────────────────────────────────
-      const cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
+      // ── Card header (skipped for the virtual General section) ──
+      let cardHdr=null;
+      if(!isBareGeneral){
+      cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
       if(sec.isRoom){
         const lbl=document.createElement("span");
         lbl.style.cssText="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex:1;";
@@ -1597,6 +1602,7 @@ function buildRoutineTile(routineId){
         cardHdr.appendChild(titleInp); cardHdr.appendChild(delHdr);
       }
       card.appendChild(cardHdr);
+      }
 
       // ── Card body (task rows) ──────────────────────────────
       const cardBody=document.createElement("div"); cardBody.className="r-section-card-body";
