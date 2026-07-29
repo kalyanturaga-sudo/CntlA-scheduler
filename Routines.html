@@ -296,7 +296,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ====== TWO-COLUMN TASK GRID ====== */
 .r-task-grid{display:flex;flex-direction:column;gap:0;}
 .r-task-grid .r-block-btn-row{margin-top:14px;}
-.r-flat-list{display:flex;flex-direction:column;min-height:6px;}
 
 /* ====== DAILY ROUTINE GRID (no sidebar) ====== */
 .r-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;}
@@ -484,6 +483,15 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .wk-card-subtitle{font-size:12px;color:var(--text3);margin-top:2px;}
 .wk-card-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
 .wk-card-body{padding:12px 18px 16px;}
+/* ── CURRENT DAY / ACTIVE FORTNIGHT: soft breathing pulse (matches TT&B) ── */
+@keyframes rtnNowPulse{
+  0%,100%{ box-shadow:0 0 0 0 var(--rtn-pulse-color,rgba(193,123,63,.5)), var(--shadow); }
+  50%    { box-shadow:0 0 0 5px transparent, var(--shadow); }
+}
+.wk-card.is-today,.fnb-list.fnb-now{ animation:rtnNowPulse 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce){
+  .wk-card.is-today,.fnb-list.fnb-now{ animation:none; box-shadow:0 0 0 2px var(--rtn-pulse-color,rgba(193,123,63,.5)), var(--shadow); }
+}
 
 /* Task rows — mirrors .task/.task-text from TT&B */
 .wk-task{display:flex;align-items:center;gap:6px;margin:4px 0;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.55);border:1px solid rgba(255,255,255,.7);transition:background .15s;backdrop-filter:blur(4px);}
@@ -1515,9 +1523,9 @@ function buildRoutineTile(routineId){
     return row;
   }
 
-  // ── Render (flat, generic — no section boxes; matches Weekly) ──
-  // Add-task input at the TOP of the routine
-  {
+  // ── Render ─────────────────────────────────────────────────
+  if(sections.length===0){
+    // No sections — flat list with add bar at top
     const nt=document.createElement("div"); nt.className="r-block-add-task";
     nt.innerHTML=`<input placeholder="Add task… (Enter to save)">`;
     const ni=nt.querySelector("input");
@@ -1532,57 +1540,162 @@ function buildRoutineTile(routineId){
       e.stopPropagation();
     });
     grid.appendChild(nt);
+    sorted.forEach((item,i)=>{ if(!item.isHeader) grid.appendChild(buildTaskRow(item,i)); });
+  } else {
+    const secGrid=document.createElement("div"); secGrid.className="r-sections-grid";
 
-    // Flat task list (all non-header items, in order)
-    const listWrap=document.createElement("div"); listWrap.className="r-flat-list";
-    const renderedIdx=[];   // global indices of the rows we render, in display order
-    sorted.forEach((item,i)=>{
-      if(!item.isHeader){ renderedIdx.push(i); listWrap.appendChild(buildTaskRow(item,i)); }
-    });
+    sections.forEach(sec=>{
+      // Skip virtual "General" section (no header item) if it has no tasks
+      if(sec.hdrIdx<0 && sec.items.length===0) return;
 
-    // Drag-to-reorder anywhere within this routine's list
-    listWrap.addEventListener("dragover",e=>{
-      if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
-      e.preventDefault();
-    });
-    listWrap.addEventListener("drop",e=>{
-      if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
-      e.preventDefault();
-      document.querySelectorAll(".r-task.r-drag-over").forEach(r=>r.classList.remove("r-drag-over"));
+      const card=document.createElement("div"); card.className="r-section-card";
 
-      const fromIndex=_taskDrag.fromIndex;
-      const d2=loadData()||{}; const arr=d2[routine.id].items;
-
-      // find drop position among the visible (non-dragging) rows
-      const taskRows=[...listWrap.querySelectorAll(".r-task:not(.r-dragging)")];
-      let dropPos=taskRows.length; // default: append to end
-      for(let k=0;k<taskRows.length;k++){
-        const r=taskRows[k].getBoundingClientRect();
-        if(e.clientY<r.top+r.height/2){ dropPos=k; break; }
+      // ── Card header ────────────────────────────────────────
+      const cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
+      if(sec.isRoom){
+        const lbl=document.createElement("span");
+        lbl.style.cssText="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex:1;";
+        lbl.textContent=sec.label;
+        cardHdr.appendChild(lbl);
+      } else {
+        const titleInp=document.createElement("input");
+        titleInp.type="text"; titleInp.className="r-section-card-title"; titleInp.value=sec.label;
+        titleInp.addEventListener("change",()=>{
+          if(sec.hdrIdx<0) return;
+          const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
+          if(arr){ arr[sec.hdrIdx].text="__hdr__"+titleInp.value.trim(); saveData(d2); }
+        });
+        titleInp.addEventListener("keydown",e=>{
+          if(e.key==="Enter"){
+            const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
+            if(arr&&sec.hdrIdx>=0){ arr[sec.hdrIdx].text="__hdr__"+titleInp.value.trim(); saveData(d2); }
+            titleInp.blur();
+          }
+          if(e.key==="Escape") titleInp.blur();
+          e.stopPropagation();
+        });
+        titleInp.addEventListener("click",e=>e.stopPropagation());
+        const delHdr=document.createElement("button"); delHdr.className="r-section-card-del"; delHdr.title="Delete section (tasks stay)"; delHdr.textContent="✕";
+        delHdr.onclick=e=>{
+          e.stopPropagation();
+          if(!confirm(`Delete section "${sec.label}"? Tasks will remain in the routine.`)) return;
+          pushUndo();
+          const d2=loadData()||{}; const arr=d2[routine.id]&&d2[routine.id].items;
+          if(arr){
+            if(sec.hdrIdx>=0){
+              arr.splice(sec.hdrIdx,1);
+            }
+            // For virtual "General" section (hdrIdx<0), just remove all items in that section
+            else {
+              const idxsToRemove=sec.items.map(x=>x.globalIdx).sort((a,b)=>b-a);
+              idxsToRemove.forEach(idx=>arr.splice(idx,1));
+            }
+            saveData(d2); render(); showToast("Section deleted");
+          }
+        };
+        cardHdr.appendChild(titleInp); cardHdr.appendChild(delHdr);
       }
-      // map display position to global array index
-      let insertAt = dropPos<renderedIdx.length ? renderedIdx[dropPos] : arr.length;
+      card.appendChild(cardHdr);
 
-      const gSize=_taskDrag.groupSize||subGroupSize(arr,fromIndex);
-      insertAt=subSafeInsert(arr,insertAt,gSize);
-      // no-op if dropping back inside its own group
-      if(insertAt>=fromIndex && insertAt<=fromIndex+gSize){ _taskDrag=null; return; }
+      // ── Card body (task rows) ──────────────────────────────
+      const cardBody=document.createElement("div"); cardBody.className="r-section-card-body";
+      sec.items.forEach(({item,globalIdx})=>cardBody.appendChild(buildTaskRow(item,globalIdx)));
 
-      pushUndo();
-      const movedGroup=arr.splice(fromIndex,gSize);
-      const adjustedInsert=fromIndex<insertAt ? insertAt-gSize : insertAt;
-      arr.splice(adjustedInsert,0,...movedGroup);
-      if(gSize===1) subAdopt(arr,adjustedInsert);   // dropped among subs → becomes a sub
-      subDemoteOrphans(arr);
-      saveData(d2); _taskDrag=null; render();
+      // Cross-section drag-and-drop:
+      // dragover on cardBody highlights the card and allows drop
+      cardBody.addEventListener("dragover",e=>{
+        if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
+        e.preventDefault();
+        document.querySelectorAll(".r-section-card.drag-over-card").forEach(c=>c.classList.remove("drag-over-card"));
+        card.classList.add("drag-over-card");
+      });
+      cardBody.addEventListener("dragleave",e=>{
+        // Only remove highlight if leaving the card entirely
+        if(!card.contains(e.relatedTarget)) card.classList.remove("drag-over-card");
+      });
+      cardBody.addEventListener("drop",e=>{
+        if(!_taskDrag||_taskDrag.routineId!==routine.id) return;
+        e.preventDefault();
+        card.classList.remove("drag-over-card");
+        document.querySelectorAll(".r-task.r-drag-over").forEach(r=>r.classList.remove("r-drag-over"));
+
+        const fromIndex=_taskDrag.fromIndex;
+        const d2=loadData()||{}; const arr=d2[routine.id].items;
+
+        // Figure out drop position within this card
+        const taskRows=[...cardBody.querySelectorAll(".r-task:not(.r-dragging)")];
+        let dropPosInCard=taskRows.length; // default: append to end of card
+        for(let k=0;k<taskRows.length;k++){
+          const r=taskRows[k].getBoundingClientRect();
+          if(e.clientY<r.top+r.height/2){ dropPosInCard=k; break; }
+        }
+
+        // Map card-relative position to global array index
+        let insertAt;
+        if(dropPosInCard < sec.items.length){
+          insertAt=sec.items[dropPosInCard].globalIdx;
+        } else {
+          // append after last item in section, or right after header if section is empty
+          const lastItem=sec.items[sec.items.length-1];
+          insertAt=lastItem ? lastItem.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
+        }
+
+        const gSize=_taskDrag.groupSize||subGroupSize(arr,fromIndex);
+        insertAt=subSafeInsert(arr,insertAt,gSize);
+        // no-op if dropping back inside its own group
+        if(insertAt>=fromIndex && insertAt<=fromIndex+gSize){ _taskDrag=null; return; }
+
+        pushUndo();
+        const movedGroup=arr.splice(fromIndex,gSize);
+        const adjustedInsert=fromIndex<insertAt ? insertAt-gSize : insertAt;
+        arr.splice(adjustedInsert,0,...movedGroup);
+        if(gSize===1) subAdopt(arr,adjustedInsert);   // dropped among subs → becomes a sub
+        subDemoteOrphans(arr);
+        saveData(d2); _taskDrag=null; render();
+      });
+
+      // ── Add task input inside card ─────────────────────────
+      const nt=document.createElement("div"); nt.className="new-task";
+      nt.innerHTML=`<input placeholder="Add task… (Enter to save)">`;
+      const ni=nt.querySelector("input");
+      ni.addEventListener("keydown",e=>{
+        if(e.key==="Enter"){
+          const v=ni.value.trim(); if(!v) return;
+          pushUndo();
+          const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
+          const arr=d2[routine.id].items;
+          // Insert after the last item in this section, or after the header
+          const lastEntry=sec.items[sec.items.length-1];
+          const insertAt=lastEntry ? lastEntry.globalIdx+1 : (sec.hdrIdx>=0 ? sec.hdrIdx+1 : arr.length);
+          arr.splice(insertAt,0,{text:v.charAt(0).toUpperCase()+v.slice(1),done:false,isHeader:false,sub:false});
+          saveData(d2); render();
+          showToast("✓ Task added");
+        }
+        e.stopPropagation();
+      });
+      cardBody.appendChild(nt);
+
+      card.appendChild(cardBody);
+
+      secGrid.appendChild(card);
     });
-
-    grid.appendChild(listWrap);
+    grid.appendChild(secGrid);
   }
 
   // Bottom action row — spans both columns
   const btnRow=document.createElement("div"); btnRow.className="r-block-btn-row";
 
+  // Add Section button
+  const addSecBtn=document.createElement("button"); addSecBtn.className="r-carry-btn"; addSecBtn.textContent="＋ Add Section";
+  addSecBtn.title="Insert a section heading at the top of the list";
+  addSecBtn.onclick=()=>{
+    const name=prompt("Section heading name (e.g. 🏠 Home):");
+    if(!name||!name.trim()) return;
+    const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
+    d2[routine.id].items.push({text:"__hdr__"+name.trim(),done:false,isHeader:true});
+    saveData(d2); render(); showToast("Section added");
+  };
+  btnRow.appendChild(addSecBtn);
   if(realItems.some(it=>it.done)){
     const clrBtn=document.createElement("button"); clrBtn.className="r-clear-done-btn"; clrBtn.textContent="✓ Clear completed";
     clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items){ d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); subDemoteOrphans(d2[routine.id].items); } saveData(d2); render(); };
@@ -2536,6 +2649,18 @@ function getOrderedWkDays(){
   }catch(e){ return days; }
 }
 
+/* Display order = saved drag order, rotated so *today* leads.
+   Canonical getOrderedWkDays() stays untouched so drag-save never
+   bakes in the rotation (which would compound on each reload). */
+function getDisplayWkDays(){
+  const days=getOrderedWkDays();
+  if(!days.length) return days;
+  const todayId=WK_JS_DAY[new Date().getDay()];
+  const i=days.findIndex(x=>x.id===todayId);
+  if(i<=0) return days;                                   // today absent or already first
+  return days.slice(i).concat(days.slice(0,i));
+}
+
 let _wkDragSrc=null;
 let _wkTaskDrag=null;
 
@@ -2565,6 +2690,10 @@ function buildWeeklyTile(dayId){
   const card=document.createElement("div"); card.className=`wk-card ${(day&&day.cls)||""}`;
   if(!day){ card.innerHTML='<div style="padding:24px;text-align:center;color:var(--text3);">Day not found.</div>'; return card; }
   card.dataset.id=day.id;
+  if(day.id===WK_JS_DAY[new Date().getDay()]){
+    card.classList.add("is-today");
+    card.style.setProperty("--rtn-pulse-color",(WK_TAB_COLORS[day.id]&&WK_TAB_COLORS[day.id].border)||"rgba(193,123,63,0.5)");
+  }
   const items=day.items||[];
   const done=items.filter(t=>t.done).length, total=items.length, pct=total?Math.round(done/total*100):0;
 
@@ -2746,7 +2875,7 @@ function renderWeeklyCard(dayId){ renderWeeklyGrid(); }
 function renderWeeklyGrid(){
   const grid=document.getElementById("wkGrid"); if(!grid) return;
   grid.innerHTML="";
-  const days=getOrderedWkDays();
+  const days=getDisplayWkDays();
   days.forEach(day=> grid.appendChild(buildWeeklyTile(day.id)));
 }
 
@@ -2781,7 +2910,7 @@ function renderWeekly(){
 
   function openPrintModal(){
     checks.innerHTML="";
-    const days=getOrderedWkDays();
+    const days=getDisplayWkDays();
     days.forEach(day=>{
       const label=document.createElement("label"); label.className="wk-modal-check";
       const cb=document.createElement("input"); cb.type="checkbox"; cb.value=day.id; cb.checked=true;
@@ -2807,7 +2936,7 @@ function renderWeekly(){
 
 function printWeeklyBW(ids){
   const d=loadWkData()||{days:[]};
-  const days=getOrderedWkDays().filter(day=>ids.includes(day.id));
+  const days=getDisplayWkDays().filter(day=>ids.includes(day.id));
   const now=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   let sectionsHTML="";
   days.forEach(day=>{
@@ -2822,7 +2951,7 @@ function printWeeklyBW(ids){
 }
 
 function printWeeklyColor(ids){
-  const days=getOrderedWkDays().filter(day=>ids.includes(day.id));
+  const days=getDisplayWkDays().filter(day=>ids.includes(day.id));
   const now=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const PALS={"wk-mon":{bg:"#e8e4f0",hdr:"#d8d4e8",accent:"#4a3a8a",border:"#b8aed8"},"wk-tue":{bg:"#fdf3e0",hdr:"#f5e8c8",accent:"#8a6020",border:"#d4b870"},"wk-wed":{bg:"#e0e8f5",hdr:"#ccdaee",accent:"#2e5e96",border:"#a8c4de"},"wk-thu":{bg:"#fde8cc",hdr:"#f5d8b0",accent:"#7a4a10",border:"#d4a860"},"wk-fri":{bg:"#fdddd0",hdr:"#f5c8b8",accent:"#8a2e2e",border:"#d48878"},"wk-sat":{bg:"#fff5e0",hdr:"#fce8c0",accent:"#8a5c10",border:"#d4a840"},"wk-sun":{bg:"#ffefdc",hdr:"#fce0c0",accent:"#8a5010",border:"#d49840"}};
   const fallPal={bg:"#f5f0ea",hdr:"#ede5d8",accent:"#6b5540",border:"#c8b898"};
@@ -2884,12 +3013,15 @@ function renderFortnightBoard(){
   const board=getFortnightBoard();
 
   const grid=document.createElement("div"); grid.className="fnb-grid";
-  board.lists.slice(0,2).forEach((list,li)=>grid.appendChild(buildFortnightList(board,li)));
+  const activeIdx=(new Date().getDate()<=15)?0:1;         // 1st–15th → F1, 16th+ → F2
+  const order=activeIdx===0?[0,1]:[1,0];                  // active period rendered on the left
+  order.forEach((li,pos)=>grid.appendChild(buildFortnightList(board,li,pos,li===activeIdx)));
   content.appendChild(grid);
   updateFortnightProgress();
 }
 
-function buildFortnightList(board,li){
+function buildFortnightList(board,li,pos,isActive){
+  if(pos===undefined) pos=li;                             // fallback if called without position
   const list=board.lists[li];
   subDemoteOrphans(list.items);
   const sorted=sortGroupsDoneToBottom(list.items);
@@ -2897,10 +3029,11 @@ function buildFortnightList(board,li){
   const total=sorted.length, done=sorted.filter(it=>it.done).length;
   const pct=total?Math.round(done/total*100):0;
   const isListDone=total>0&&done===total;
-  const cls=li===0?"slot-c1":"slot-c4";
+  const cls=pos===0?"slot-c1":"slot-c4";                  // colour follows the slot, not the list
 
   const block=document.createElement("div");
-  block.className="r-block fnb-list "+cls+(isListDone?" list-done":"");
+  block.className="r-block fnb-list "+cls+(isListDone?" list-done":"")+(isActive?" fnb-now":"");
+  if(isActive) block.style.setProperty("--rtn-pulse-color","rgba(193,123,63,0.5)");
   block.dataset.listIndex=li;
 
   // Header — renamable title + count + uncheck
