@@ -314,7 +314,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .r-block.r-tile-drop{box-shadow:0 0 0 2px var(--accent);}
 .r-block.task-drop-target{box-shadow:0 0 0 2px var(--accent);}
 .btn-add-routine-bottom{max-width:260px;margin:20px auto 0;}
-.r-sections-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;grid-auto-rows:min-content;}
+.r-sections-grid{display:grid;grid-template-columns:1fr;gap:10px;align-items:start;grid-auto-rows:min-content;}
 @media(max-width:860px){.r-sections-grid{grid-template-columns:1fr;}}
 .r-section-card{border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface2);height:fit-content;}
 .r-section-card.drag-over-card{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
@@ -327,8 +327,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .r-section-card-del:hover{color:#e85c5c;}
 .r-section-card-body{padding:4px 8px 6px;}
 .r-section-card-body .r-task{margin:2px 0;}
-.r-section-card.r-section-bare{border:none;background:transparent;border-radius:0;overflow:visible;}
-.r-section-card.r-section-bare>.r-section-card-body{padding:0;}
 
 /* ====== FORTNIGHT TWO-LIST BOARD ====== */
 .fnb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
@@ -1551,13 +1549,10 @@ function buildRoutineTile(routineId){
       // Skip virtual "General" section (no header item) if it has no tasks
       if(sec.hdrIdx<0 && sec.items.length===0) return;
 
-      const isBareGeneral=(sec.hdrIdx<0 && !sec.isRoom);   // virtual "General": render tasks with no box/header
-      const card=document.createElement("div"); card.className="r-section-card"+(isBareGeneral?" r-section-bare":"");
+      const card=document.createElement("div"); card.className="r-section-card";
 
-      // ── Card header (skipped for the virtual General section) ──
-      let cardHdr=null;
-      if(!isBareGeneral){
-      cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
+      // ── Card header ────────────────────────────────────────
+      const cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
       if(sec.isRoom){
         const lbl=document.createElement("span");
         lbl.style.cssText="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;flex:1;";
@@ -1602,7 +1597,6 @@ function buildRoutineTile(routineId){
         cardHdr.appendChild(titleInp); cardHdr.appendChild(delHdr);
       }
       card.appendChild(cardHdr);
-      }
 
       // ── Card body (task rows) ──────────────────────────────
       const cardBody=document.createElement("div"); cardBody.className="r-section-card-body";
@@ -1692,17 +1686,7 @@ function buildRoutineTile(routineId){
   // Bottom action row — spans both columns
   const btnRow=document.createElement("div"); btnRow.className="r-block-btn-row";
 
-  // Add Section button
-  const addSecBtn=document.createElement("button"); addSecBtn.className="r-carry-btn"; addSecBtn.textContent="＋ Add Section";
-  addSecBtn.title="Insert a section heading at the top of the list";
-  addSecBtn.onclick=()=>{
-    const name=prompt("Section heading name (e.g. 🏠 Home):");
-    if(!name||!name.trim()) return;
-    const d2=loadData()||{}; if(!d2[routine.id]) d2[routine.id]={items:[]};
-    d2[routine.id].items.push({text:"__hdr__"+name.trim(),done:false,isHeader:true});
-    saveData(d2); render(); showToast("Section added");
-  };
-  btnRow.appendChild(addSecBtn);
+  // (Add Section button removed — daily footer now mirrors weekly: Clear completed / Reset / Delete)
   if(realItems.some(it=>it.done)){
     const clrBtn=document.createElement("button"); clrBtn.className="r-clear-done-btn"; clrBtn.textContent="✓ Clear completed";
     clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items){ d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); subDemoteOrphans(d2[routine.id].items); } saveData(d2); render(); };
