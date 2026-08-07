@@ -1,5 +1,17 @@
 /* ============================================================
-   storage.js  —  Ctrl+A Shared Storage Engine  v5.7
+   storage.js  —  Ctrl+A Shared Storage Engine  v5.8
+   ------------------------------------------------------------
+   v5.8: FLUSH ON EXIT. Fixes reorders/edits being lost when the
+   page reloaded or closed right after the change. Saving is
+   debounced 300ms and then done as an async Drive PATCH; a fast
+   reload killed that timer or the in-flight write before it
+   landed, and the signed-in load path only reads Drive (never the
+   local mirror), so the just-made change was dropped. Now a
+   pagehide / tab-hidden handler flushes any pending change
+   immediately: the local mirror synchronously (always) plus, when
+   signed in, a synchronous XHR PATCH to Drive. Tracked by a new
+   _dirty flag that's set when a save is scheduled and cleared only
+   when a Drive write actually succeeds. No page-level HTML changed.
    ------------------------------------------------------------
    v5.7: PERSISTENT SESSION. Two changes, both here in this one
    file (plus the two localStorage lines in oauth-callback.html)
@@ -189,6 +201,12 @@
   // lost when the real Drive data arrives.
   let _pendingLocal = {};
   let _writeTimer  = null;
+  // v5.8: true whenever the in-memory cache has a change that Drive may
+  // not have yet. Set when a save is scheduled, cleared only when a Drive
+  // write actually succeeds. Drives the flush-on-exit safety net so a
+  // reorder/edit made right before a reload or tab-close still reaches
+  // Drive instead of dying with the 300ms debounce or an in-flight write.
+  let _dirty       = false;
   let _changeListeners = [];
 
   /* ══════════════════════════════════════════════════════════
@@ -539,6 +557,9 @@
     if (!_fileId || !_accessToken) return;  // not signed in: local-only
     try {
       _setIndicator('saving');
+      // Clear BEFORE the await: any edit that lands mid-write re-dirties
+      // us (via _scheduleSave) so it isn't mistaken for already-saved.
+      _dirty = false;
       await _driveFetch(
         `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
         {
@@ -549,17 +570,52 @@
       );
       _setIndicator('saved');
     } catch (err) {
+      _dirty = true;  // Drive didn't get it — keep it flushable on exit.
       console.error('[' + APP_BRAND.name + ' storage] Write error:', err);
       _setIndicator('error');
     }
   }
 
   function _scheduleSave() {
+    _dirty = true;
     if (_writeTimer) clearTimeout(_writeTimer);
     _writeTimer = setTimeout(() => {
       _writeToFile();
       _writeTimer = null;
     }, 300);
+  }
+
+  /* ── v5.8: FLUSH ON EXIT ──────────────────────────────────────
+     The normal save is debounced 300ms and then does an async Drive
+     PATCH. If the page reloads or closes in that window (e.g. drag a
+     tab, then immediately hit reload), the timer and/or the in-flight
+     write are torn down and the change never reaches Drive — even
+     though it's already safe in the local mirror, which the signed-in
+     load path doesn't read back. This runs on page-hide/tab-hidden:
+       1. Always write the local mirror (instant, synchronous).
+       2. If Drive still doesn't have the latest (_dirty) and we're
+          signed in, push it with a SYNCHRONOUS XHR. Sync XHR is the
+          one mechanism browsers still honour during unload, and
+          unlike sendBeacon it can send the Authorization header Drive
+          requires. Best-effort: if the token is dead we can't renew
+          silently here, but the mirror already holds the change.
+  ────────────────────────────────────────────────────────────── */
+  function _flushPendingSync() {
+    if (_writeTimer) { clearTimeout(_writeTimer); _writeTimer = null; }
+    _writeMirror();                       // instant local backup, always
+    if (!_dirty || !_fileId || !_accessToken) return;
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open(
+        'PATCH',
+        `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
+        false                              // false = synchronous
+      );
+      xhr.setRequestHeader('Authorization', 'Bearer ' + _accessToken);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify(_cache, null, 2));
+      if (xhr.status >= 200 && xhr.status < 300) _dirty = false;
+    } catch (e) { /* best effort — mirror already has it */ }
   }
 
   async function _connectToFile() {
@@ -979,6 +1035,15 @@
     _renderGlobalFooter();
 
     _startRenewalWatchdog();
+
+    // v5.8: flush any pending save the instant the page is hidden or
+    // torn down, so a reorder/edit made just before a reload or close
+    // still reaches Drive. pagehide covers reload/navigation/close;
+    // visibilitychange->hidden covers mobile tab-switch/app-background.
+    window.addEventListener('pagehide', _flushPendingSync);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') _flushPendingSync();
+    });
 
     if (_checkForExistingToken()) {
       _connectToFile();
