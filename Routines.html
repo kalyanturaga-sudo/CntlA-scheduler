@@ -1009,15 +1009,90 @@ function seedRoutinesOnce(){
   _cset(SEED_KEY,"1");
 }
 
-/* auto-reset on new day */
-(function autoReset(){
+/* auto-reset on new day — now a NAMED function, called from the authoritative
+   bootstrap below instead of at parse time. As a parse-time IIFE it ran before
+   any real data had loaded (_otCache was still empty), so it never actually
+   reset yesterday's checkmarks and only ever stamped the date into the pending
+   write buffer. Running it after Drive confirms fixes both. */
+function autoReset(){
   const today=new Date().toLocaleDateString("en-AU");
   if(_cget(TODAY_DATE_KEY)!==today){
     const d=loadData();
     if(d){ Object.keys(d).forEach(id=>{ if(d[id]&&d[id].items) d[id].items.forEach(it=>{it.done=false;}); }); saveData(d); }
     _cset(TODAY_DATE_KEY, today);
   }
-})();
+}
+
+/* ══════════════════════════════════════════════════════════
+   DRIVE-WAIT GATE
+   ------------------------------------------------------------
+   The Daily engine must NOT seed, migrate, reset, render, or be
+   editable until the AUTHORITATIVE store has loaded — Drive when
+   signed in, or the local mirror once we know there's no Drive
+   this session (OT.isAuthoritative() === true, signalled via
+   OT.onSync). Until then we cover the page with a "Fetching from
+   Google Drive…" overlay and run nothing that could write, so a
+   stale browser-mirror snapshot can never be saved back over the
+   real Drive file. Everything that persists is deferred into
+   bootstrapDaily(), which runs exactly once when authority lands.
+══════════════════════════════════════════════════════════ */
+let _daoBooted = false;
+
+function _showDriveWait(){
+  if(document.getElementById("driveWaitOverlay")) return;
+  if(!document.getElementById("driveWaitStyles")){
+    const st=document.createElement("style");
+    st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    document.head.appendChild(st);
+  }
+  const ov=document.createElement("div");
+  ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){
+  const ov=document.getElementById("driveWaitOverlay");
+  if(ov) ov.remove();
+}
+
+/* Runs the seed / migrate / daily-reset + first paint EXACTLY once, only after
+   the authoritative store has loaded. Safe to call repeatedly — the _daoBooted
+   guard makes every call after the first a no-op. */
+async function bootstrapDaily(){
+  if(_daoBooted) return;
+  _daoBooted = true;
+  _otCache = await OT.getAll();          // real Drive data (or the mirror, if there's no Drive)
+  seedRoutinesOnce();                    // one-time seed — only ever runs on genuinely empty authoritative data
+  initData();
+  autoReset();                           // reset yesterday's ticks now that real data is present
+  // Restore active mode tab
+  const savedMode = _cget(MODE_KEY);
+  if(savedMode && MODES.includes(savedMode)) activeMode = savedMode;
+  // Restore simple active sections
+  MODES.filter(m=>m!=="daily").forEach(m=>{
+    const saved=loadSimpleActive(m); if(saved) _simpleActiveId[m]=saved;
+  });
+  _hideDriveWait();
+  setMode(activeMode);                   // first real paint — from authoritative data only
+}
+
+/* Put the overlay up immediately at parse time so the user never sees, or can
+   touch, an empty/stale grid before Drive answers. */
+_showDriveWait();
 
 /* ══════════════════════════════════════════════════════════
    ACTIVE TAB STATE
@@ -3342,29 +3417,35 @@ let _nssIcon="📋";
 
 
 OT.onReady(async () => {
-  _otCache = await OT.getAll();
   // Theme/accent/font now applied centrally by storage.js — not handled here.
   // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
+  _showDriveWait();     // overlay stays up until the authoritative store confirms
   OT.renderBrandFooter('otVersionFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
-  seedRoutinesOnce();   // one-time: fill daily routines from the printed sheet (empty data only)
-  initData();
-  // Restore active mode tab
-  const savedMode = _cget(MODE_KEY);
-  if(savedMode && MODES.includes(savedMode)){
-    activeMode = savedMode;
+
+  // NOTHING is seeded, migrated, reset, painted, or made editable here. In the
+  // mirror-first startup path OT.onReady fires against the stale browser copy
+  // while Drive is still loading; doing any of that now is exactly what let a
+  // stale snapshot get written back over Drive. Instead we wait for authority.
+  //
+  // OT.onSync fires the moment the authoritative store is confirmed — Drive when
+  // signed in, or the local mirror once we know there's no Drive this session.
+  // If it's ALREADY authoritative at registration (the normal, token-valid path)
+  // it fires immediately, so this single path covers both startup routes.
+  if(OT.onSync){
+    OT.onSync(async () => {
+      if(!_daoBooted){ await bootstrapDaily(); return; }
+      // Later hand-over (e.g. a re-sync) — just re-hydrate and repaint.
+      _otCache = await OT.getAll();
+      setMode(activeMode);
+    });
+  } else {
+    // Older storage.js without onSync/authority — degrade gracefully and boot now.
+    await bootstrapDaily();
   }
-  // Restore simple active sections
-  MODES.filter(m=>m!=="daily").forEach(m=>{
-    const saved=loadSimpleActive(m); if(saved) _simpleActiveId[m]=saved;
-  });
-  // If this page first rendered from the offline mirror (a stale/empty snapshot)
-  // and Drive later hands over the real data, re-hydrate the sync cache and
-  // repaint the active tab so the screen reflects saved data — not the seed.
-  if(OT.onSync) OT.onSync(async () => {
-    _otCache = await OT.getAll();
-    setMode(activeMode);
-  });
-  setMode(activeMode);
+
+  // Safety net: if authority never resolves (e.g. a storage failure), don't trap
+  // the user behind the overlay forever — boot against whatever we have.
+  setTimeout(() => { if(!_daoBooted) bootstrapDaily(); }, 15000);
 });
 </script>
 
