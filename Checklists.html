@@ -748,12 +748,12 @@ function buildPrintDoc(title, subtitle, bodyHTML, accentColor){
     h1{font-family:'DM Serif Display',Georgia,serif;font-size:22px;margin-bottom:4px;color:${h1Color};}
     .sub{color:#777;font-size:11px;margin-bottom:16px;}
     .footer{margin-top:20px;font-size:10px;color:#aaa;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
-    .block{border:1px solid #ddd;border-radius:8px;padding:10px 12px;break-inside:avoid;}
-    .block-title{font-size:13px;font-weight:bold;margin-bottom:8px;}
-    .item{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:11px;}
-    .item.level-1{margin-left:18px;}.item.level-2{margin-left:36px;}
-    .cb{width:12px;height:12px;border:1.5px solid #555;border-radius:3px;flex-shrink:0;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
+    .block{border:2px solid #000;border-radius:6px;overflow:hidden;break-inside:avoid;background:#fff;}
+    .block-title{font-size:15px;font-weight:800;color:#000;background:#eee;border-bottom:2px solid #000;padding:8px 12px;}
+    .item{display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid #ccc;font-size:14.5px;font-weight:700;color:#000;}
+    .item.level-1{padding-left:30px;font-size:13.5px;font-weight:600;}.item.level-2{padding-left:42px;font-size:13px;font-weight:600;}
+    .cb{width:17px;height:17px;border:2.25px solid #000;border-radius:3px;flex-shrink:0;background:#fff;}
   </style>
   </head><body>
   <h1>${title}</h1>
@@ -1275,17 +1275,15 @@ function updateProgress(cfg){
 }
 
 /* generic print helpers */
+function colorBlock(icon,label,rowsHTML,accent,bg,hdr){
+  return `<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${accent};border-radius:6px;overflow:hidden;background:${bg};"><div style="font-size:15px;font-weight:800;color:${accent};background:${hdr};border-bottom:2px solid ${accent};padding:8px 12px;">${icon} ${label}</div>${rowsHTML}</div>`;
+}
 function buildPrintRows(items,bw){
   return items.map(item=>{
-    const indent=item.level===1?"padding-left:18px;":item.level===2?"padding-left:36px;":"";
-    const strike=item.done?"text-decoration:line-through;color:#aaa;":"";
-    const weight=item.level===0?"font-weight:600;":"font-weight:400;";
-    const box=bw
-      ?(item.done?`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:8px;vertical-align:middle;background:#333;position:relative;flex-shrink:0;"><span style="position:absolute;top:-1px;left:2px;font-size:11px;color:#fff;line-height:1;">✓</span></span>`
-               :`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:8px;vertical-align:middle;flex-shrink:0;"></span>`)
-      :(item.done?`<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid #555;border-radius:3px;margin-right:8px;flex-shrink:0;background:#555;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
-               :`<span style="display:inline-block;width:14px;height:14px;border:1.5px solid #bbb;border-radius:3px;margin-right:8px;flex-shrink:0;background:#fff;"></span>`);
-    return `<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;${indent}">${box}<span style="font-size:12.5px;${weight}${strike}flex:1;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+    const indent=item.level===1?"padding-left:30px;":item.level===2?"padding-left:42px;":"";
+    const sub=(item.level||0)>=1;
+    const box=`<span style="display:inline-block;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
+    return `<div style="display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(0,0,0,0.12);${indent}">${box}<span style="font-size:${sub?'13.5px':'14.5px'};font-weight:${sub?'600':'700'};flex:1;color:#000;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
   }).join('');
 }
 function openPrint(html){ const w=window.open('','_blank'); w.document.write(html); w.document.close(); w.onload=()=>{w.focus();w.print();}; }
@@ -1458,14 +1456,11 @@ function ftPrint(sel){
 }
 function ftPrintColor(sel){
   const secs=sel?ftSECTIONS.filter(s=>sel.includes(s.id)):ftSECTIONS;
-  const _allIds=secs.flatMap(s=>s.split?[s.split.left.id,s.split.right.id]:[s.id]);
-  const all=_allIds.flatMap(id=>ftData[id]||[]),doneAll=all.filter(t=>t.done).length,pctAll=all.length?Math.round(doneAll/all.length*100):0;
   let sh='';
   secs.forEach(sec=>{
-    if(sec.split){['left','right'].forEach(side=>{const sub=sec.split[side];const items=ftData[sub.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#eef4fb;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sub.icon} ${sub.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});}
-    else{const items=ftData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#eef4fb;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;}
+    if(sec.split){['left','right'].forEach(side=>{const sub=sec.split[side];const items=ftData[sub.id]||[];if(!items.length)return;sh+=colorBlock(sub.icon,sub.label,buildPrintRows(items,false),'#2a6db5','#eef4fb','rgba(42,109,181,0.16)');});}
+    else{const items=ftData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#2a6db5','#eef4fb','rgba(42,109,181,0.16)');}
   });
-  sh+=`<div style="font-size:11px;color:#9e9891;text-align:right;grid-column:1/-1;margin-top:4px;">${pctAll}% complete</div>`;
   openPrint(buildPrintDoc('FT Job Checklist','Pre-shift routine','<div class="grid">'+sh+'</div>','#2a6db5'));
 }
 
@@ -1532,7 +1527,7 @@ function homPrint(sel){
 }
 function homPrintColor(sel){
   const secs=sel?homSECTIONS.filter(s=>sel.includes(s.id)):homSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=homData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(224,112,64,0.2);border-radius:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(224,112,64,0.08),rgba(240,168,112,0.04));"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;color:#e07040;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});
+  let sh=''; secs.forEach(sec=>{const items=homData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#e07040','linear-gradient(135deg,rgba(224,112,64,0.08),rgba(240,168,112,0.04))','rgba(224,112,64,0.16)');});
   openPrint(buildPrintDoc('Come Home Checklist','After-arrival routine','<div class="grid">'+sh+'</div>','#e07040'));
 }
 
@@ -1653,14 +1648,11 @@ function ptPrint(sel){
 }
 function ptPrintColor(sel){
   const secs=sel?ptSECTIONS.filter(s=>sel.includes(s.id)):ptSECTIONS;
-  const _allIds=secs.flatMap(s=>s.split?[s.split.left.id,s.split.right.id]:[s.id]);
-  const all=_allIds.flatMap(id=>ptData[id]||[]),doneAll=all.filter(t=>t.done).length,pctAll=all.length?Math.round(doneAll/all.length*100):0;
   let sh='';
   secs.forEach(sec=>{
-    if(sec.split){['left','right'].forEach(side=>{const sub=sec.split[side];const items=ptData[sub.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#f5f0e8;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sub.icon} ${sub.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});}
-    else{const items=ptData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#f5f0e8;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;}
+    if(sec.split){['left','right'].forEach(side=>{const sub=sec.split[side];const items=ptData[sub.id]||[];if(!items.length)return;sh+=colorBlock(sub.icon,sub.label,buildPrintRows(items,false),'#c17b3f','#f5f0e8','rgba(193,123,63,0.16)');});}
+    else{const items=ptData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#c17b3f','#f5f0e8','rgba(193,123,63,0.16)');}
   });
-  sh+=`<div style="font-size:11px;color:#9e9891;text-align:right;grid-column:1/-1;margin-top:4px;">${pctAll}% complete</div>`;
   openPrint(buildPrintDoc('PT Job Checklist','Pre-shift routine','<div class="grid">'+sh+'</div>','#c17b3f'));
 }
 
@@ -1704,7 +1696,7 @@ function rohPrint(sel){
 }
 function rohPrintColor(sel){
   const secs=sel?rohSECTIONS.filter(s=>sel.includes(s.id)):rohSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=rohData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#f5f0e8;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});
+  let sh=''; secs.forEach(sec=>{const items=rohData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#4a90d9','#f5f0e8','rgba(74,144,217,0.16)');});
   openPrint(buildPrintDoc("Rohan's Routine",'After school checklist','<div class="grid">'+sh+'</div>','#4a90d9'));
 }
 
@@ -1748,7 +1740,7 @@ function eshPrint(sel){
 }
 function eshPrintColor(sel){
   const secs=sel?eshSECTIONS.filter(s=>sel.includes(s.id)):eshSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=eshData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#f5f0e8;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});
+  let sh=''; secs.forEach(sec=>{const items=eshData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#b06aa0','#f5f0e8','rgba(176,106,160,0.16)');});
   openPrint(buildPrintDoc("Esha's Routine",'After school checklist','<div class="grid">'+sh+'</div>','#b06aa0'));
 }
 
@@ -1796,7 +1788,7 @@ function kalPrint(sel){
 }
 function kalPrintColor(sel){
   const secs=sel?kalSECTIONS.filter(s=>sel.includes(s.id)):kalSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=kalData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(42,157,106,0.2);border-radius:8px;padding:10px 12px;background:linear-gradient(135deg,rgba(42,157,106,0.08),rgba(94,201,154,0.04));"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;color:#2a9d6a;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});
+  let sh=''; secs.forEach(sec=>{const items=kalData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#2a9d6a','linear-gradient(135deg,rgba(42,157,106,0.08),rgba(94,201,154,0.04))','rgba(42,157,106,0.16)');});
   openPrint(buildPrintDoc("Kalyan's Chores",'Household & personal','<div class="grid">'+sh+'</div>','#2a9d6a'));
 }
 
@@ -1836,7 +1828,7 @@ function trvPrint(sel){
 }
 function trvPrintColor(sel){
   const secs=sel?trvSECTIONS.filter(s=>sel.includes(s.id)):trvSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=trvData[sec.id]||[];if(!items.length)return;const done=items.filter(t=>t.done).length;sh+=`<div style="break-inside:avoid;border:1px solid rgba(0,0,0,0.1);border-radius:8px;padding:10px 12px;background:#f5f0e8;"><div style="font-size:13px;font-weight:bold;margin-bottom:8px;">${sec.icon} ${sec.label} <span style="font-size:10px;font-weight:400;color:#888;">${done}/${items.length}</span></div>${buildPrintRows(items,false)}</div>`;});
+  let sh=''; secs.forEach(sec=>{const items=trvData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#1a7fbf','#f5f0e8','rgba(26,127,191,0.16)');});
   openPrint(buildPrintDoc('Travel Checklist','To carry & to do','<div class="grid">'+sh+'</div>','#1a7fbf'));
 }
 
