@@ -1,17 +1,5 @@
 /* ============================================================
-   storage.js  —  Ctrl+A Shared Storage Engine  v5.8
-   ------------------------------------------------------------
-   v5.8: FLUSH ON EXIT. Fixes reorders/edits being lost when the
-   page reloaded or closed right after the change. Saving is
-   debounced 300ms and then done as an async Drive PATCH; a fast
-   reload killed that timer or the in-flight write before it
-   landed, and the signed-in load path only reads Drive (never the
-   local mirror), so the just-made change was dropped. Now a
-   pagehide / tab-hidden handler flushes any pending change
-   immediately: the local mirror synchronously (always) plus, when
-   signed in, a synchronous XHR PATCH to Drive. Tracked by a new
-   _dirty flag that's set when a save is scheduled and cleared only
-   when a Drive write actually succeeds. No page-level HTML changed.
+   storage.js  —  Ctrl+A Shared Storage Engine  v5.7
    ------------------------------------------------------------
    v5.7: PERSISTENT SESSION. Two changes, both here in this one
    file (plus the two localStorage lines in oauth-callback.html)
@@ -201,13 +189,12 @@
   // lost when the real Drive data arrives.
   let _pendingLocal = {};
   let _writeTimer  = null;
-  // v5.8: true whenever the in-memory cache has a change that Drive may
-  // not have yet. Set when a save is scheduled, cleared only when a Drive
-  // write actually succeeds. Drives the flush-on-exit safety net so a
-  // reorder/edit made right before a reload or tab-close still reaches
-  // Drive instead of dying with the 300ms debounce or an in-flight write.
-  let _dirty       = false;
   let _changeListeners = [];
+  // True once the AUTHORITATIVE store is confirmed loaded: Drive when signed in,
+  // or the local mirror once we know there's no Drive this session. Pages use
+  // this to avoid seeding defaults over data that simply hasn't loaded yet.
+  let _authoritative = false;
+  let _syncListeners = [];
 
   /* ══════════════════════════════════════════════════════════
      INDICATOR
@@ -557,9 +544,6 @@
     if (!_fileId || !_accessToken) return;  // not signed in: local-only
     try {
       _setIndicator('saving');
-      // Clear BEFORE the await: any edit that lands mid-write re-dirties
-      // us (via _scheduleSave) so it isn't mistaken for already-saved.
-      _dirty = false;
       await _driveFetch(
         `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
         {
@@ -570,52 +554,17 @@
       );
       _setIndicator('saved');
     } catch (err) {
-      _dirty = true;  // Drive didn't get it — keep it flushable on exit.
       console.error('[' + APP_BRAND.name + ' storage] Write error:', err);
       _setIndicator('error');
     }
   }
 
   function _scheduleSave() {
-    _dirty = true;
     if (_writeTimer) clearTimeout(_writeTimer);
     _writeTimer = setTimeout(() => {
       _writeToFile();
       _writeTimer = null;
     }, 300);
-  }
-
-  /* ── v5.8: FLUSH ON EXIT ──────────────────────────────────────
-     The normal save is debounced 300ms and then does an async Drive
-     PATCH. If the page reloads or closes in that window (e.g. drag a
-     tab, then immediately hit reload), the timer and/or the in-flight
-     write are torn down and the change never reaches Drive — even
-     though it's already safe in the local mirror, which the signed-in
-     load path doesn't read back. This runs on page-hide/tab-hidden:
-       1. Always write the local mirror (instant, synchronous).
-       2. If Drive still doesn't have the latest (_dirty) and we're
-          signed in, push it with a SYNCHRONOUS XHR. Sync XHR is the
-          one mechanism browsers still honour during unload, and
-          unlike sendBeacon it can send the Authorization header Drive
-          requires. Best-effort: if the token is dead we can't renew
-          silently here, but the mirror already holds the change.
-  ────────────────────────────────────────────────────────────── */
-  function _flushPendingSync() {
-    if (_writeTimer) { clearTimeout(_writeTimer); _writeTimer = null; }
-    _writeMirror();                       // instant local backup, always
-    if (!_dirty || !_fileId || !_accessToken) return;
-    try {
-      const xhr = new XMLHttpRequest();
-      xhr.open(
-        'PATCH',
-        `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
-        false                              // false = synchronous
-      );
-      xhr.setRequestHeader('Authorization', 'Bearer ' + _accessToken);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.send(JSON.stringify(_cache, null, 2));
-      if (xhr.status >= 200 && xhr.status < 300) _dirty = false;
-    } catch (e) { /* best effort — mirror already has it */ }
   }
 
   async function _connectToFile() {
@@ -626,7 +575,9 @@
       _hideBanner();
       _setIndicator('saved');
       _applyTheme(_cache || {});
+      _authoritative = true;   // Drive is now the source of truth
       _markReady();
+      _fireSync();             // repaint any page that first rendered from the mirror
     } catch (err) {
       console.error('[' + APP_BRAND.name + ' storage] Connect error:', err);
       _setIndicator('error');
@@ -646,6 +597,15 @@
   function _fireChange(key, value) {
     _changeListeners.forEach(fn => {
       try { fn(key, value); } catch (e) { console.error('[' + APP_BRAND.name + ' storage] onChange listener error:', e); }
+    });
+  }
+
+  // Fired once the authoritative store is loaded (and on later full reloads).
+  // Lets a page that already painted from the offline mirror repaint with the
+  // real data once it arrives.
+  function _fireSync() {
+    _syncListeners.forEach(fn => {
+      try { fn(); } catch (e) { console.error('[' + APP_BRAND.name + ' storage] onSync listener error:', e); }
     });
   }
 
@@ -1036,13 +996,11 @@
 
     _startRenewalWatchdog();
 
-    // v5.8: flush any pending save the instant the page is hidden or
-    // torn down, so a reorder/edit made just before a reload or close
-    // still reaches Drive. pagehide covers reload/navigation/close;
-    // visibilitychange->hidden covers mobile tab-switch/app-background.
-    window.addEventListener('pagehide', _flushPendingSync);
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') _flushPendingSync();
+    // If an edit is still sitting in the 300ms debounce when the page is closed
+    // or navigated away from, flush it now. _writeToFile() persists the local
+    // mirror synchronously, so a reload always keeps the last change.
+    window.addEventListener('pagehide', () => {
+      if (_writeTimer) { clearTimeout(_writeTimer); _writeTimer = null; _writeToFile(); }
     });
 
     if (_checkForExistingToken()) {
@@ -1057,6 +1015,10 @@
         if (renewed) { _connectToFile(); return; }
         _setIndicator('unlinked');
         _showBanner(..._signInBannerMsg());
+        // No Drive this session — the local mirror IS the source of truth now.
+        // Only now is it safe for pages to seed defaults into genuinely empty data.
+        _authoritative = true;
+        _fireSync();
       });
       // Work offline: seed the cache from the local mirror so every page's
       // onReady() fires and the UI renders (and stays editable) even without
@@ -1104,9 +1066,22 @@
 
     isReady()   { return _ready; },
 
+    // True once the authoritative store (Drive, or the mirror when there is no
+    // Drive this session) has finished loading. Pages should not seed defaults
+    // into "empty" data until this is true.
+    isAuthoritative() { return _authoritative; },
+
     onReady(fn) {
       if (_ready) fn();
       else _readyQueue.push(fn);
+    },
+
+    // Fires when authoritative data lands (and on later full reloads). If it is
+    // already authoritative when you register, fires immediately so late
+    // registrants still repaint.
+    onSync(fn) {
+      _syncListeners.push(fn);
+      if (_authoritative) { try { fn(); } catch (e) {} }
     },
 
     onChange(fn) {

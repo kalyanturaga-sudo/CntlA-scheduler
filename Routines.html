@@ -2607,7 +2607,14 @@ function initWkData(){
   let d=loadWkData();
   if(!d){
     d={days:WK_DAY_DEFAULTS.map(x=>({...x,items:x.items.map(i=>({...i}))}))};
-    saveWkData(d);
+    // Only PERSIST the default seed once we actually know storage is empty —
+    // i.e. the authoritative store (Drive when signed in, otherwise the local
+    // mirror) has finished loading. During the brief pre-load gap the cache can
+    // look empty even though real data exists; persisting here used to stamp
+    // these defaults into the pending-write buffer and clobber saved data on
+    // merge. When not yet authoritative we still return the defaults for display,
+    // but do NOT write them — the onSync repaint below swaps in real data.
+    if(typeof OT==="undefined" || !OT.isAuthoritative || OT.isAuthoritative()) saveWkData(d);
   } else {
     // Migrate any existing full day names to 3-letter abbreviations
     let changed=false;
@@ -3349,6 +3356,13 @@ OT.onReady(async () => {
   // Restore simple active sections
   MODES.filter(m=>m!=="daily").forEach(m=>{
     const saved=loadSimpleActive(m); if(saved) _simpleActiveId[m]=saved;
+  });
+  // If this page first rendered from the offline mirror (a stale/empty snapshot)
+  // and Drive later hands over the real data, re-hydrate the sync cache and
+  // repaint the active tab so the screen reflects saved data — not the seed.
+  if(OT.onSync) OT.onSync(async () => {
+    _otCache = await OT.getAll();
+    setMode(activeMode);
   });
   setMode(activeMode);
 });
