@@ -252,6 +252,16 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .btn-accent:hover{opacity:.88;}
 .btn-uncheck-all{font-size:11px;padding:3px 8px;background:rgba(232,92,92,0.08);color:#c05050;border:1px solid rgba(232,92,92,0.2);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;}
 .btn-uncheck-all:hover{background:rgba(232,92,92,0.16);color:#e85c5c;}
+/* ── uniform header controls (All toggle / count / delete) across all tabs ── */
+.hdr-all-btn{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;white-space:nowrap;}
+.hdr-all-btn:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft);}
+.hdr-all-btn.all-on{border-color:rgba(42,157,106,.4);background:rgba(42,157,106,.1);color:#2a9d6a;}
+.hdr-count{font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 9px;border:1px solid var(--border);}
+.hdr-del-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:24px;font-size:13px;line-height:1;border-radius:8px;border:1px solid transparent;background:none;color:var(--text3);cursor:pointer;transition:all .15s;}
+.hdr-del-btn:hover{background:rgba(232,92,92,.12);color:#e85c5c;border-color:rgba(232,92,92,.25);}
+/* ── virtual "General" bucket: render tasks with no card chrome ── */
+.r-section-card.is-general{border:none;background:transparent;border-radius:0;}
+.r-section-card.is-general .r-section-card-body{padding:0;}
 
 /* ====== FOOTER ====== */
 .panel-footer{position:fixed;bottom:0;left:var(--nav-width);right:0;background:var(--surface);border-top:2px solid var(--accent);padding:12px 28px;display:flex;align-items:center;gap:10px;z-index:50;}
@@ -1374,20 +1384,14 @@ function buildRoutineTile(routineId){
   titleWrap.appendChild(rGrip); titleWrap.appendChild(iconEl); titleWrap.appendChild(titleDiv);
 
   const actionsDiv=document.createElement("div"); actionsDiv.className="r-block-actions";
-  if(isListDone){
-    const badge=document.createElement("span"); badge.className="block-done-badge"; badge.textContent="✓ All done";
-    actionsDiv.appendChild(badge);
-  } else {
-    const allBtn=document.createElement("button"); allBtn.className="btn btn-ghost"; allBtn.style.cssText="font-size:11px;padding:3px 8px;";
-    allBtn.textContent="☐ All"; allBtn.title="Toggle all items";
-    allBtn.onclick=()=>{ pushUndo(); const a=realItems.every(it=>it.done); realItems.forEach(it=>it.done=!a); d[routine.id].items=sorted; saveData(d); render(); };
-    const statsDiv=document.createElement("div"); statsDiv.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 8px;border:1px solid var(--border);";
-    statsDiv.textContent=doneCount+"/"+total;
-    actionsDiv.appendChild(allBtn); actionsDiv.appendChild(statsDiv);
-  }
-  const unchkBtn=document.createElement("button"); unchkBtn.className="btn-uncheck-all"; unchkBtn.textContent="↺ Uncheck";
-  unchkBtn.onclick=()=>{ pushUndo(); realItems.forEach(it=>it.done=false); d[routine.id].items=sorted; saveData(d); render(); };
-  actionsDiv.appendChild(unchkBtn);
+  const allOn=total>0&&doneCount===total;
+  const allBtn=document.createElement("button"); allBtn.className="hdr-all-btn"+(allOn?" all-on":"");
+  allBtn.textContent=(allOn?"☑":"☐")+" All"; allBtn.title="Check or uncheck all";
+  allBtn.onclick=()=>{ pushUndo(); const a=realItems.every(it=>it.done); realItems.forEach(it=>it.done=!a); d[routine.id].items=sorted; saveData(d); render(); };
+  const statsDiv=document.createElement("div"); statsDiv.className="hdr-count"; statsDiv.textContent=doneCount+"/"+total;
+  const delRtnBtn=document.createElement("button"); delRtnBtn.className="hdr-del-btn"; delRtnBtn.textContent="🗑"; delRtnBtn.title="Delete routine";
+  delRtnBtn.onclick=()=>{ deleteRoutine(routine); };
+  actionsDiv.appendChild(allBtn); actionsDiv.appendChild(statsDiv); actionsDiv.appendChild(delRtnBtn);
   hdr.appendChild(titleWrap); hdr.appendChild(actionsDiv);
 
   // Progress bar
@@ -1549,9 +1553,11 @@ function buildRoutineTile(routineId){
       // Skip virtual "General" section (no header item) if it has no tasks
       if(sec.hdrIdx<0 && sec.items.length===0) return;
 
-      const card=document.createElement("div"); card.className="r-section-card";
+      const isGeneral=sec.hdrIdx<0;
+      const card=document.createElement("div"); card.className="r-section-card"+(isGeneral?" is-general":"");
 
-      // ── Card header ────────────────────────────────────────
+      // ── Card header (skipped for the virtual "General" bucket) ──
+      if(!isGeneral){
       const cardHdr=document.createElement("div"); cardHdr.className="r-section-card-header";
       if(sec.isRoom){
         const lbl=document.createElement("span");
@@ -1597,6 +1603,7 @@ function buildRoutineTile(routineId){
         cardHdr.appendChild(titleInp); cardHdr.appendChild(delHdr);
       }
       card.appendChild(cardHdr);
+      }
 
       // ── Card body (task rows) ──────────────────────────────
       const cardBody=document.createElement("div"); cardBody.className="r-section-card-body";
@@ -1692,13 +1699,7 @@ function buildRoutineTile(routineId){
     clrBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items){ d2[routine.id].items=d2[routine.id].items.filter(it=>it.isHeader||!it.done); subDemoteOrphans(d2[routine.id].items); } saveData(d2); render(); };
     btnRow.appendChild(clrBtn);
   }
-  const resetBtn=document.createElement("button"); resetBtn.className="r-reset-btn"; resetBtn.textContent="↺ Reset this routine";
-  resetBtn.onclick=()=>{ pushUndo(); const d2=loadData()||{}; if(d2[routine.id]&&d2[routine.id].items) d2[routine.id].items.forEach(it=>{ if(!it.isHeader) it.done=false; }); saveData(d2); render(); };
-  btnRow.appendChild(resetBtn);
-  const delRoutineBtn=document.createElement("button"); delRoutineBtn.className="btn-danger-sm"; delRoutineBtn.textContent="🗑 Delete routine";
-  delRoutineBtn.onclick=()=>{ deleteRoutine(routine); };
-  btnRow.appendChild(delRoutineBtn);
-  grid.appendChild(btnRow);
+  if(btnRow.children.length) grid.appendChild(btnRow);
 
   body.appendChild(grid);
   block.appendChild(hdr); block.appendChild(progBar); block.appendChild(body);
@@ -2413,17 +2414,20 @@ function renderSimpleContent(mode){
   td.appendChild(te); td.appendChild(se); tw.appendChild(iconEl); tw.appendChild(td);
 
   const ad=document.createElement("div"); ad.className="r-block-actions";
-  if(isListDone){
-    const b=document.createElement("span"); b.className="block-done-badge"; b.textContent="✓ All done"; ad.appendChild(b);
-  } else {
-    const ab=document.createElement("button"); ab.className="btn btn-ghost"; ab.style.cssText="font-size:11px;padding:3px 8px;"; ab.textContent="☐ All";
-    ab.onclick=()=>{ const a=items.every(it=>it.done); items.forEach(it=>it.done=!a); d[sec.id].items=items; saveSimpleData(mode,d); renderSimple(mode); };
-    const sd=document.createElement("div"); sd.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 8px;border:1px solid var(--border);";
-    sd.textContent=done+"/"+total; ad.appendChild(ab); ad.appendChild(sd);
-  }
-  const ub=document.createElement("button"); ub.className="btn-uncheck-all"; ub.textContent="↺ Uncheck";
-  ub.onclick=()=>{ items.forEach(it=>it.done=false); d[sec.id].items=items; saveSimpleData(mode,d); renderSimple(mode); };
-  ad.appendChild(ub); hdr.appendChild(tw); hdr.appendChild(ad);
+  const allOn=total>0&&done===total;
+  const ab=document.createElement("button"); ab.className="hdr-all-btn"+(allOn?" all-on":"");
+  ab.textContent=(allOn?"☑":"☐")+" All"; ab.title="Check or uncheck all";
+  ab.onclick=()=>{ const a=items.every(it=>it.done); items.forEach(it=>it.done=!a); d[sec.id].items=items; saveSimpleData(mode,d); renderSimple(mode); };
+  const sd=document.createElement("div"); sd.className="hdr-count"; sd.textContent=done+"/"+total;
+  const delBin=document.createElement("button"); delBin.className="hdr-del-btn"; delBin.textContent="🗑"; delBin.title="Delete section";
+  delBin.onclick=()=>showWarnModal("Delete Section?",`"${sec.label}" and all its tasks will be permanently removed.`,()=>{
+    const sArr=loadSimpleSections(mode)||[], idx=sArr.findIndex(x=>x.id===sec.id); if(idx>-1) sArr.splice(idx,1);
+    saveSimpleSections(mode,sArr); const d2=loadSimpleData(mode); delete d2[sec.id]; saveSimpleData(mode,d2);
+    const rem=getAllSimpleSections(mode).filter(x=>x.id!==sec.id); _simpleActiveId[mode]=rem[0]?.id||null;
+    renderSimple(mode); showToast("Section deleted");
+  });
+  ad.appendChild(ab); ad.appendChild(sd); ad.appendChild(delBin);
+  hdr.appendChild(tw); hdr.appendChild(ad);
 
   const pb=document.createElement("div"); pb.className="r-block-progress";
   const pf=document.createElement("div"); pf.className="r-block-progress-fill"; pf.style.width=pct+"%";
@@ -2541,17 +2545,6 @@ function renderSimpleContent(mode){
     clr.onclick=()=>{ const d2=loadSimpleData(mode); if(d2[sec.id]){ d2[sec.id].items=d2[sec.id].items.filter(it=>!it.done); subDemoteOrphans(d2[sec.id].items); } saveSimpleData(mode,d2); renderSimple(mode); };
     btnRow.appendChild(clr);
   }
-  const rst=document.createElement("button"); rst.className="r-reset-btn"; rst.textContent="↺ Reset section";
-  rst.onclick=()=>{ const d2=loadSimpleData(mode); if(d2[sec.id]) d2[sec.id].items.forEach(it=>it.done=false); saveSimpleData(mode,d2); renderSimple(mode); };
-  btnRow.appendChild(rst);
-  const delSec=document.createElement("button"); delSec.className="btn-danger-sm"; delSec.textContent="🗑 Delete section";
-  delSec.onclick=()=>showWarnModal("Delete Section?",`"${sec.label}" and all its tasks will be permanently removed.`,()=>{
-    const sArr=loadSimpleSections(mode)||[], idx=sArr.findIndex(x=>x.id===sec.id); if(idx>-1) sArr.splice(idx,1);
-    saveSimpleSections(mode,sArr); const d2=loadSimpleData(mode); delete d2[sec.id]; saveSimpleData(mode,d2);
-    const rem=getAllSimpleSections(mode).filter(x=>x.id!==sec.id); _simpleActiveId[mode]=rem[0]?.id||null;
-    renderSimple(mode); showToast("Section deleted");
-  });
-  btnRow.appendChild(delSec);
   grid.appendChild(btnRow);
   body.appendChild(grid);
   block.appendChild(hdr); block.appendChild(pb); block.appendChild(body);
@@ -2710,15 +2703,15 @@ function buildWeeklyTile(dayId){
   hdrLeft.appendChild(grip); hdrLeft.appendChild(titleWrap);
 
   const acts=document.createElement("div"); acts.className="wk-card-actions";
-  const allBtn=document.createElement("button"); allBtn.style.cssText="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;";
-  allBtn.textContent=(total>0&&done===total)?"☑ All":"☐ All";
+  const allOn=total>0&&done===total;
+  const allBtn=document.createElement("button"); allBtn.className="hdr-all-btn"+(allOn?" all-on":"");
+  allBtn.textContent=(allOn?"☑":"☐")+" All"; allBtn.title="Check or uncheck all";
   allBtn.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; const a=d2.days[idx].items.every(t=>t.done); d2.days[idx].items.forEach(t=>t.done=!a); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
-  const stat=document.createElement("div"); stat.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 9px;border:1px solid var(--border);";
+  const stat=document.createElement("div"); stat.className="hdr-count";
   stat.textContent=total?(done+"/"+total):"0";
-  const unchk=document.createElement("button"); unchk.style.cssText="font-size:11px;padding:3px 9px;border-radius:8px;border:1px solid rgba(232,92,92,.3);background:rgba(232,92,92,.08);color:#c05050;cursor:pointer;font-family:'DM Sans',sans-serif;";
-  unchk.textContent="↺ Uncheck";
-  unchk.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx<0) return; d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
-  acts.appendChild(allBtn); acts.appendChild(stat); acts.appendChild(unchk);
+  const delBin=document.createElement("button"); delBin.className="hdr-del-btn"; delBin.textContent="🗑"; delBin.title="Delete day";
+  delBin.onclick=()=>{ deleteWkDay(day); };
+  acts.appendChild(allBtn); acts.appendChild(stat); acts.appendChild(delBin);
   hdr.appendChild(hdrLeft); hdr.appendChild(acts);
 
   // progress bar
@@ -2801,20 +2794,14 @@ function buildWeeklyTile(dayId){
     body.appendChild(row);
   });
 
-  // footer — Clear completed / Reset this day / Delete day  (Add Day now lives at grid bottom)
+  // footer — Clear completed only  (All-toggle handles reset; delete lives in header)
   const wkBtnRow=document.createElement("div"); wkBtnRow.className="r-block-btn-row";
   if(items.some(t=>t.done)){
     const clr=document.createElement("button"); clr.className="r-clear-done-btn"; clr.textContent="✓ Clear completed";
     clr.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0){ d2.days[idx].items=d2.days[idx].items.filter(t=>!t.done); subDemoteOrphans(d2.days[idx].items); } saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
     wkBtnRow.appendChild(clr);
   }
-  const rstDay=document.createElement("button"); rstDay.className="r-reset-btn"; rstDay.textContent="↺ Reset this day";
-  rstDay.onclick=()=>{ const d2=loadWkData()||{days:[]}; const idx=d2.days.findIndex(x=>x.id===dayId); if(idx>=0) d2.days[idx].items.forEach(t=>t.done=false); saveWkData(d2); renderWeeklyGrid(); updateWkProgress(); };
-  wkBtnRow.appendChild(rstDay);
-  const delDayBtn=document.createElement("button"); delDayBtn.className="btn-danger-sm"; delDayBtn.textContent="🗑 Delete day";
-  delDayBtn.onclick=()=>{ deleteWkDay(day); };
-  wkBtnRow.appendChild(delDayBtn);
-  body.appendChild(wkBtnRow);
+  if(wkBtnRow.children.length) body.appendChild(wkBtnRow);
 
   card.appendChild(hdr); card.appendChild(prog); card.appendChild(body);
 
@@ -3044,15 +3031,12 @@ function buildFortnightList(board,li,pos,isActive){
   tw.appendChild(titleInp);
 
   const ad=document.createElement("div"); ad.className="r-block-actions";
-  if(isListDone){
-    const b=document.createElement("span"); b.className="block-done-badge"; b.textContent="✓ All done"; ad.appendChild(b);
-  } else {
-    const cntEl=document.createElement("div"); cntEl.style.cssText="font-size:11px;font-weight:600;color:var(--text3);background:var(--surface);border-radius:20px;padding:2px 8px;border:1px solid var(--border);";
-    cntEl.textContent=done+"/"+total; ad.appendChild(cntEl);
-  }
-  const ub=document.createElement("button"); ub.className="btn-uncheck-all"; ub.textContent="↺ Uncheck";
-  ub.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items.forEach(it=>it.done=false); saveFortnightBoard(b2); renderFortnightBoard(); };
-  ad.appendChild(ub);
+  const allOn=total>0&&done===total;
+  const ab=document.createElement("button"); ab.className="hdr-all-btn"+(allOn?" all-on":"");
+  ab.textContent=(allOn?"☑":"☐")+" All"; ab.title="Check or uncheck all";
+  ab.onclick=()=>{ const b2=getFortnightBoard(); const a=b2.lists[li].items.every(it=>it.done); b2.lists[li].items.forEach(it=>it.done=!a); saveFortnightBoard(b2); renderFortnightBoard(); };
+  const cntEl=document.createElement("div"); cntEl.className="hdr-count"; cntEl.textContent=done+"/"+total;
+  ad.appendChild(ab); ad.appendChild(cntEl);
   hdr.appendChild(tw); hdr.appendChild(ad);
 
   const pb=document.createElement("div"); pb.className="r-block-progress";
@@ -3090,10 +3074,7 @@ function buildFortnightList(board,li,pos,isActive){
     clr.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items=b2.lists[li].items.filter(it=>!it.done); subDemoteOrphans(b2.lists[li].items); saveFortnightBoard(b2); renderFortnightBoard(); };
     btnRow.appendChild(clr);
   }
-  const rst=document.createElement("button"); rst.className="r-reset-btn"; rst.textContent="↺ Reset list";
-  rst.onclick=()=>{ const b2=getFortnightBoard(); b2.lists[li].items.forEach(it=>it.done=false); saveFortnightBoard(b2); renderFortnightBoard(); };
-  btnRow.appendChild(rst);
-  gridBody.appendChild(btnRow);
+  if(btnRow.children.length) gridBody.appendChild(btnRow);
 
   body.appendChild(gridBody);
   block.appendChild(hdr); block.appendChild(pb); block.appendChild(body);
