@@ -1037,6 +1037,13 @@
 
     brand: APP_BRAND,
 
+    // Set the browser/document title to the given page label. Pages call
+    // this on tab switch and on inline rename; without it they throw
+    // "OT.setTitle is not a function".
+    setTitle(t) {
+      if (t != null) { try { document.title = String(t); } catch (e) {} }
+    },
+
     renderBrandFooter: _renderBrandFooter,
 
     // Canonical theme engine, exposed so Settings.html (or any page)
