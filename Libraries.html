@@ -729,6 +729,79 @@ let _otCache = {};
 function _cget(k){ const v=_otCache[k]; return (v===undefined)?null:v; }
 function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
 function _cdel(k){ delete _otCache[k]; OT.remove(k); }
+
+/* ============================================================
+   DRIVE-WAIT GATE
+   ------------------------------------------------------------
+   Both module boots below are registered via _onAuth() instead
+   of OT.onReady, so they run only once the AUTHORITATIVE store
+   has loaded — Drive when signed in, or the local mirror once we
+   know there is no Drive this session (OT.isAuthoritative(),
+   signalled via OT.onSync). Until then a "Fetching from Google
+   Drive…" overlay is shown and nothing seeds / renders / saves,
+   so a stale browser-mirror snapshot can never be written back
+   over the real Drive file.
+   ============================================================ */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+/* Only persist a default-seed once the authoritative store has loaded. */
+function _authoritative(){
+  return (typeof OT==="undefined" || !OT.isAuthoritative) ? true : OT.isAuthoritative();
+}
+
+/* ── authority-gated boot queue ── */
+var _lbAuthCbs = [];
+var _lbBooted  = false;
+function _onAuth(fn){
+  if(_lbBooted){ Promise.resolve().then(fn); }
+  else { _lbAuthCbs.push(fn); }
+}
+async function _lbRunBoot(){
+  if(_lbBooted) return;
+  _lbBooted = true;
+  try { _otCache = await OT.getAll(); } catch(e){}
+  _hideDriveWait();
+  for (var i=0;i<_lbAuthCbs.length;i++){
+    try { await _lbAuthCbs[i](); } catch(e){ console.error("[libraries boot]", e); }
+  }
+  _lbAuthCbs = [];
+}
+
+/* Robust trigger — first reliable signal wins so the overlay never sticks. */
+if (window.OT && OT.onSync){ OT.onSync(function(){ _lbRunBoot(); }); }
+if (window.OT){
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _lbRunBoot(); }
+  });
+}
+setTimeout(function(){ if(!_lbBooted) _lbRunBoot(); }, 15000);
+
+_showDriveWait();  // overlay up at parse time, before any panel renders
 </script>
 <script>
 /* ── DARK MODE: now centralized in storage.js (ONETRACK_THEME module). Nothing to do here. ── */
@@ -822,7 +895,7 @@ async function loadLibraries() {
   } else {
     // First time ever — seed onetrack-data.json with the default list
     LIBRARIES = DEFAULT_LIBRARIES;
-    try { await OT.set(LIB_STORAGE_KEY, JSON.stringify(DEFAULT_LIBRARIES)); } catch (e) {}
+    try { if(_authoritative()) await OT.set(LIB_STORAGE_KEY, JSON.stringify(DEFAULT_LIBRARIES)); } catch (e) {}
   }
 
   renderLibGrid();
@@ -831,7 +904,7 @@ async function loadLibraries() {
   updateCount();
 }
 
-OT.onReady(async () => { await loadLibraries(); });
+_onAuth(async () => { await loadLibraries(); });
 
 function libSelectGroup(filter) {
   document.querySelectorAll('.lib-item').forEach(el => {
@@ -924,7 +997,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── INIT: theme now applied centrally by storage.js — only cache population needed here. ── */
-OT.onReady(async () => {
+_onAuth(async () => {
   _otCache = await OT.getAll();
   // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
   OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));

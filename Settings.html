@@ -1083,15 +1083,68 @@ function initAll() {
   buildDefaultPageSelect();
 }
 
-/* ── Boot: wait for OT file to be linked, then load everything ── */
-OT.onReady(async () => {
-  _otCache = await OT.getAll();
-  // Brand name + logos now stamped centrally by storage.js (_applyBrand).
-  const aboutTaglineEl = document.getElementById('otAboutTagline');
-  if (aboutTaglineEl && OT.brand) aboutTaglineEl.textContent = OT.brand.tagline;
-  OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
-  initAll();
-});
+/* ── "Fetching from Google Drive…" overlay ── shown until the AUTHORITATIVE
+   store has loaded, so the settings UI is never populated from — nor can the
+   import / reset / export actions run against — stale browser data before Drive
+   confirms in the token-expired startup path. ── */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+/* ── Boot: wait for the AUTHORITATIVE store (Drive when signed in, or the local
+   mirror once we know there's no Drive this session), then load everything.
+   Gating on authority — not merely "ready" — is what stops the settings UI being
+   populated from a stale browser snapshot in the token-expired path. ── */
+let _stBooted = false;
+function _stBoot(){
+  if(_stBooted) return;
+  _stBooted = true;
+  (async () => {
+    try { _otCache = await OT.getAll(); } catch(e){}
+    const aboutTaglineEl = document.getElementById('otAboutTagline');
+    if (aboutTaglineEl && OT.brand) aboutTaglineEl.textContent = OT.brand.tagline;
+    OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
+    _hideDriveWait();
+    initAll();
+  })();
+}
+
+_showDriveWait();  // overlay up at parse time, before the settings UI is usable
+
+/* Robust trigger — first reliable signal wins so the overlay can never stick:
+   onSync (authority, preferred), onReady with authority already known (or an old
+   storage.js that can't report it), and a hard 15s timeout as a last resort. */
+if (!window.OT){ _stBoot(); }
+else {
+  if (OT.onSync){ OT.onSync(function(){ _stBoot(); }); }
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _stBoot(); }
+  });
+  setTimeout(function(){ if(!_stBooted) _stBoot(); }, 15000);
+}
 </script>
 
 <script>
