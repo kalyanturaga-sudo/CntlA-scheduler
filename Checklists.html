@@ -189,7 +189,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .cl-stab.vt-drop-below::after{content:'';position:absolute;bottom:0;left:8px;right:8px;height:2px;background:var(--accent);border-radius:2px;}
 .cl-stab-grip{font-size:13px;color:var(--text3);cursor:grab;opacity:0;transition:opacity .15s;flex-shrink:0;padding:0 2px;}
 .cl-stab:hover .cl-stab-grip{opacity:1;}
-.cl-stab-icon{font-size:14px;flex-shrink:0;}
+.cl-stab-icon{font-size:14px;flex-shrink:0;cursor:pointer;border-radius:5px;padding:1px 2px;transition:background .12s;}
+.cl-stab-icon:hover{background:var(--accent-soft);}
+.cl-stab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.10);}
+.list-style-pop{position:fixed;z-index:9998;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-hover);padding:12px;width:236px;font-family:'DM Sans',sans-serif;}
+.list-style-pop .lsp-h{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:11px;}
+.list-style-pop .lsp-h:first-child{margin-top:0;}
+.list-style-pop .lsp-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.list-style-pop .lsp-emoji-inp{width:100%;margin-top:6px;padding:7px 9px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:15px;outline:none;}
+.list-style-pop .lsp-emoji-inp:focus{border-color:var(--accent);}
+.list-style-pop .lsp-chip{cursor:pointer;border:1px solid var(--border);background:var(--surface2);border-radius:7px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .12s;}
+.list-style-pop .lsp-chip:hover{border-color:var(--accent);transform:translateY(-1px);}
+.list-style-pop .lsp-sw{cursor:pointer;width:26px;height:26px;border-radius:50%;border:2px solid transparent;transition:transform .12s;}
+.list-style-pop .lsp-sw:hover{transform:scale(1.12);}
+.list-style-pop .lsp-sw.sel{border-color:var(--text);box-shadow:0 0 0 2px var(--surface),0 0 0 3px var(--text);}
+.list-style-pop .lsp-done{margin-top:13px;width:100%;padding:7px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;}
 .cl-stab-label{flex:1;font-size:13px;font-weight:500;border:none;background:transparent;color:inherit;outline:none;padding:0;cursor:pointer;user-select:none;white-space:nowrap;}
 .cl-stab.active .cl-stab-label{cursor:text;user-select:text;}
 .cl-stab-label:focus{border-bottom:1px solid var(--accent);}
@@ -1104,6 +1118,35 @@ function sortDoneToBottom(arr){
 const _activeSection = {};
 let _clTabDragSrc = null;
 
+/* ── Per-list icon + colour editor (shared by the sidebar tabs) ── */
+const LIST_COLORS=['#c17b3f','#2a7a4f','#4a90d9','#b06aa0','#e07040','#2a9d6a','#8a6fc0','#3aa0a0'];
+const LIST_ICON_PRESETS=['📋','⭐','🗂️','📌','🔖','💡','🧩','🏷️','🌙','🧠','🔌','🎒','🍳','🥕','🚪','🛁','🌟','📅','🧺','👟','🍱','☕','🥗','💊'];
+function _closeListStyleEditor(){document.querySelectorAll('.list-style-pop').forEach(p=>p.remove());document.removeEventListener('pointerdown',_lspOutside,true);}
+function _lspOutside(e){if(!e.target.closest('.list-style-pop')&&!e.target.closest('.cl-stab-icon'))_closeListStyleEditor();}
+function openListStyleEditor(sec,cfg,anchorEl){
+  _closeListStyleEditor();
+  const pop=document.createElement('div');pop.className='list-style-pop';
+  const chips=LIST_ICON_PRESETS.map(e=>`<div class="lsp-chip" data-emoji="${e}">${e}</div>`).join('');
+  const swatches=LIST_COLORS.map(c=>`<div class="lsp-sw${sec.color===c?' sel':''}" data-color="${c}" style="background:${c}"></div>`).join('')
+    +`<div class="lsp-sw${!sec.color?' sel':''}" data-color="" style="background:var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--text3);">∅</div>`;
+  pop.innerHTML=`<div class="lsp-h">Icon</div><input class="lsp-emoji-inp" maxlength="4" value="${(sec.icon||'').replace(/"/g,'&quot;')}"><div class="lsp-row">${chips}</div><div class="lsp-h">Colour</div><div class="lsp-row">${swatches}</div><button class="lsp-done">Done</button>`;
+  document.body.appendChild(pop);
+  const r=anchorEl.getBoundingClientRect();
+  let left=r.right+8, top=r.top-4;
+  if(left+pop.offsetWidth>window.innerWidth-8) left=Math.max(8,r.left-pop.offsetWidth-8);
+  if(top+pop.offsetHeight>window.innerHeight-8) top=Math.max(8,window.innerHeight-pop.offsetHeight-8);
+  pop.style.left=left+'px';pop.style.top=top+'px';
+  const inp=pop.querySelector('.lsp-emoji-inp');
+  const rerender=()=>{cfg.saveSections();renderChecklist(cfg);};
+  inp.addEventListener('input',()=>{const v=inp.value.trim();if(v){sec.icon=v;rerender();}});
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();_closeListStyleEditor();}});
+  pop.querySelectorAll('.lsp-chip').forEach(ch=>ch.addEventListener('click',()=>{sec.icon=ch.dataset.emoji;inp.value=ch.dataset.emoji;rerender();}));
+  pop.querySelectorAll('.lsp-sw').forEach(sw=>sw.addEventListener('click',()=>{sec.color=sw.dataset.color||undefined;pop.querySelectorAll('.lsp-sw').forEach(x=>x.classList.toggle('sel',(x.dataset.color||'')===(sec.color||'')));rerender();}));
+  pop.querySelector('.lsp-done').addEventListener('click',()=>_closeListStyleEditor());
+  setTimeout(()=>document.addEventListener('pointerdown',_lspOutside,true),0);
+  setTimeout(()=>inp.focus(),30);
+}
+
 function renderChecklist(cfg){
   const {gridId,SECTIONS,data,saveData,saveSections,fillId,pctId,statsId,doneMsg,confettiColors} = cfg;
   const isPT = cfg.tabId === 'pt';
@@ -1180,8 +1223,10 @@ function renderChecklist(cfg){
     const tab=document.createElement('div');
     tab.className='cl-stab'+(isActive?' active':'')+(isDone?' list-done':'');
     tab.dataset.id=sec.id;
-    tab.innerHTML=`<span class="cl-stab-grip">⠿</span><span class="cl-stab-icon">${sec.icon}</span><input class="cl-stab-label" value="${sec.label.replace(/"/g,'&quot;')}" readonly><span class="cl-stab-count">${total?done+'/'+total:'0'}</span><button class="cl-stab-del" title="Delete">✕</button>`;
-    const inp=tab.querySelector('.cl-stab-label'),grip=tab.querySelector('.cl-stab-grip'),del=tab.querySelector('.cl-stab-del');
+    const dotHTML=sec.color?`<span class="cl-stab-dot" style="background:${sec.color}"></span>`:'';
+    tab.innerHTML=`<span class="cl-stab-grip">⠿</span>${dotHTML}<span class="cl-stab-icon" title="Change icon & colour">${sec.icon}</span><input class="cl-stab-label" value="${sec.label.replace(/"/g,'&quot;')}" readonly><span class="cl-stab-count">${total?done+'/'+total:'0'}</span><button class="cl-stab-del" title="Delete">✕</button>`;
+    const inp=tab.querySelector('.cl-stab-label'),grip=tab.querySelector('.cl-stab-grip'),del=tab.querySelector('.cl-stab-del'),iconEl=tab.querySelector('.cl-stab-icon');
+    iconEl.addEventListener('click',e=>{e.stopPropagation();openListStyleEditor(sec,cfg,iconEl);});
     tab.addEventListener('click',e=>{if(e.target===grip||e.target===del)return;if(isActive&&e.target===inp){inp.removeAttribute('readonly');inp.focus();inp.select();return;}_activeSection[gridId]=sec.id;renderChecklist(cfg);});
     inp.addEventListener('dblclick',e=>{inp.removeAttribute('readonly');inp.focus();inp.select();e.stopPropagation();});
     inp.addEventListener('blur',()=>{inp.setAttribute('readonly','');const v=inp.value.trim();if(v)sec.label=v;else inp.value=sec.label;saveSections();});
@@ -1265,6 +1310,7 @@ function renderChecklist(cfg){
     const isListDone=totalAll>0&&doneAll===totalAll;
     const block=document.createElement('div');
     block.className='block '+sec.cls+(isListDone?' list-done':'');
+    if(sec.color) block.style.setProperty('--accent', sec.color);
     const headerRight=isListDone
       ?`<span class="block-done-badge">✓ Done</span><button class="btn-uncheck-all" id="unchk_${gridId}_${sec.id}">↺ Uncheck</button>`
       :`<button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;" id="chkall_${gridId}_${sec.id}">☐ All</button><div class="block-stats">${totalAll?`${doneAll}/${totalAll}`:''}</div><button class="btn-uncheck-all" id="unchk_${gridId}_${sec.id}">↺ Uncheck</button>`;
@@ -1296,6 +1342,7 @@ function renderChecklist(cfg){
   const isListDone=total>0&&done===total;
   const block=document.createElement('div');
   block.className='block '+sec.cls+(isListDone?' list-done':'');
+  if(sec.color) block.style.setProperty('--accent', sec.color);
   const headerRight=isListDone
     ?`<span class="block-done-badge">✓ Done</span><button class="btn-uncheck-all" id="unchk_${gridId}_${sec.id}">↺ Uncheck</button>`
     :`<button class="btn btn-ghost" style="font-size:11px;padding:3px 8px;" id="chkall_${gridId}_${sec.id}">☐ All</button><div class="block-stats">${total?`${done}/${total}`:''}</div><button class="btn-uncheck-all" id="unchk_${gridId}_${sec.id}">↺ Uncheck</button>`;
@@ -1419,6 +1466,28 @@ function migrateLunchboxSplit(sections, data, oldId, leftId, rightId, leftLabel,
   return true;
 }
 
+// ── One-time migration: split lists → two independent, fully-manageable lists ──
+// Each split section is replaced in place by its two columns as standalone lists.
+// Item arrays already live under the column ids, so nothing is moved or lost.
+// Idempotent: once no section has a .split, re-running is a no-op.
+function flattenSplits(sections, data, saveSecs, saveDat){
+  let changed=false, cIdx=0;
+  for(let i=0;i<sections.length;i++){
+    const sec=sections[i];
+    if(!sec||!sec.split) continue;
+    const L=sec.split.left, R=sec.split.right;
+    if(!data[L.id]) data[L.id]=[];
+    if(!data[R.id]) data[R.id]=[];
+    const leftSec ={id:L.id, label:L.label, icon:L.icon, cls:sec.cls||("sec-c"+((cIdx%6)+1)), color:LIST_COLORS[cIdx++%LIST_COLORS.length]};
+    const rightSec={id:R.id, label:R.label, icon:R.icon, cls:("sec-c"+((cIdx%6)+1)),         color:LIST_COLORS[cIdx++%LIST_COLORS.length]};
+    sections.splice(i, 1, leftSec, rightSec); // 1 split → 2 lists, position preserved
+    i++;                                       // skip the freshly-inserted right list
+    changed=true;
+  }
+  if(changed){ saveSecs(); saveDat(data); }
+  return changed;
+}
+
 /* ============================================================
    FT JOB — storage: FT_ROLE_CHECKLIST_V1 / FT_ROLE_SECTIONS_V1
    ============================================================ */
@@ -1427,10 +1496,13 @@ const FT_META_KEY = "FT_ROLE_SECTIONS_V1";
 const FT_EXTRA_CLS   = ["sec-c1","sec-c2","sec-c3","sec-c4","sec-c5","sec-c6"];
 const FT_EXTRA_ICONS = ["📋","⭐","🗂️","📌","🔖","💡","🧩","🏷️"];
 const FT_DEFAULT_SECTIONS=[
-  {id:"ft_generalprep", label:"General Prep",  icon:"📋", cls:"sec-eve",    split:{left:{id:"ft_eve",    label:"Actions", icon:"🌙"},right:{id:"ft_mental",  label:"Mindset",  icon:"🧠"}}},
-  {id:"ft_toupee",      label:"Toupee",         icon:"🧩", cls:"sec-mental"},
-  {id:"ft_bag",         label:"Bag",            icon:"🎒", cls:"sec-tech",   split:{left:{id:"ft_tech",   label:"Tech",    icon:"🔌"},right:{id:"ft_ess",      label:"Misc",     icon:"🎒"}}},
-  {id:"ft_lunchbox",    label:"Lunch Box",      icon:"🍱", cls:"sec-c1",     split:{left:{id:"ft_lunchbox_extras", label:"Hot/Extras", icon:"🍳"},right:{id:"ft_lunchbox_snacks", label:"Snacks & Veg", icon:"🥕"}}},
+  {id:"ft_eve",             label:"Actions",      icon:"🌙", cls:"sec-eve",    color:"#2a7a4f"},
+  {id:"ft_mental",          label:"Mindset",      icon:"🧠", cls:"sec-mental", color:"#4a90d9"},
+  {id:"ft_toupee",          label:"Toupee",       icon:"🧩", cls:"sec-tech",   color:"#8a6fc0"},
+  {id:"ft_tech",            label:"Tech",         icon:"🔌", cls:"sec-ess",    color:"#3aa0a0"},
+  {id:"ft_ess",             label:"Misc",         icon:"🎒", cls:"sec-c1",     color:"#c17b3f"},
+  {id:"ft_lunchbox_extras", label:"Hot/Extras",   icon:"🍳", cls:"sec-c2",     color:"#e07040"},
+  {id:"ft_lunchbox_snacks", label:"Snacks & Veg", icon:"🥕", cls:"sec-c3",     color:"#2a9d6a"},
 ];
 const FT_DEFAULT_ITEMS={
   ft_eve:[
@@ -1503,7 +1575,7 @@ UndoManager.register('ft',
   (snap)=>{ftData=snap.data;ftSECTIONS=snap.sections;renderChecklist(ftCfg());}
 );
 const ftCfg=()=>({gridId:"ftGrid",SECTIONS:ftSECTIONS,data:ftData,saveData:ftSaveData,saveSections:ftSaveSections,fillId:"ftFill",pctId:"ftPct",statsId:"footerStats",doneMsg:"🚀 All done — you're ready for your shift!",confettiColors:["#2a6db5","#5ab0f0","#4caf50","#c17b3f","#9c27b0"],tabId:"ft",extraCls:FT_EXTRA_CLS});
-function ftAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=FT_EXTRA_ICONS[Math.floor(Math.random()*FT_EXTRA_ICONS.length)];const cls=FT_EXTRA_CLS[ftSECTIONS.length%FT_EXTRA_CLS.length];const id="ft_custom_"+Date.now();ftSECTIONS.push({id,label:label.trim(),icon,cls});ftSaveSections();if(!ftData[id])ftData[id]=[];ftSaveData(ftData);_activeSection["ftGrid"]=id;renderChecklist(ftCfg());setTimeout(()=>document.querySelector('#content_ftGrid .add-input')?.focus(),50);}
+function ftAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=FT_EXTRA_ICONS[Math.floor(Math.random()*FT_EXTRA_ICONS.length)];const cls=FT_EXTRA_CLS[ftSECTIONS.length%FT_EXTRA_CLS.length];const id="ft_custom_"+Date.now();const color=LIST_COLORS[ftSECTIONS.length%LIST_COLORS.length];ftSECTIONS.push({id,label:label.trim(),icon,cls,color});ftSaveSections();if(!ftData[id])ftData[id]=[];ftSaveData(ftData);_activeSection["ftGrid"]=id;renderChecklist(ftCfg());setTimeout(()=>document.querySelector('#content_ftGrid .add-input')?.focus(),50);}
 function ftPrint(sel){
   const secs=sel?ftSECTIONS.filter(s=>sel.includes(s.id)):ftSECTIONS;
   let bodyHTML='<div class="grid">';
@@ -2049,7 +2121,7 @@ async function bootstrapChecklists(){
   _otCache = await OT.getAll();   // real Drive data (or the mirror, if there's no Drive)
   // Load every tab's sections/items from the now-authoritative cache.
   ftSECTIONS=ftLoadSections(); ftData=ftLoadData();
-  if(migrateLunchboxSplit(ftSECTIONS, ftData, "ft_lunchbox","ft_lunchbox_extras","ft_lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ftSaveSections(); ftSaveData(ftData); }
+  flattenSplits(ftSECTIONS, ftData, ftSaveSections, ftSaveData);
   homSECTIONS=homLoadSections(); homData=homLoadData();
   ptSECTIONS=ptLoadSections(); ptData=ptLoadData();
   if(migrateLunchboxSplit(ptSECTIONS, ptData, "lunchbox","lunchbox_extras","lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ptSaveSections(); ptSaveData(ptData); }
@@ -2099,6 +2171,7 @@ OT.onReady(async () => {
       // Later hand-over (e.g. a re-sync) — re-hydrate and repaint the active tab.
       _otCache = await OT.getAll();
       ftSECTIONS=ftLoadSections(); ftData=ftLoadData();
+      flattenSplits(ftSECTIONS, ftData, ftSaveSections, ftSaveData);
       homSECTIONS=homLoadSections(); homData=homLoadData();
       ptSECTIONS=ptLoadSections(); ptData=ptLoadData();
       rohSECTIONS=rohLoadSections(); rohData=rohLoadData();
