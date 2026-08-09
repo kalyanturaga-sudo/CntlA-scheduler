@@ -1389,37 +1389,56 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   _showDriveWait();
 
   /* Pull the AUTHORITATIVE store into localStorage (via _origSet so we don't
-     echo back to Drive), then reload ONCE if anything actually differs, so every
-     panel's parse-time init re-reads the real Drive values. After this the FLAG
-     is set, which both prevents a second reload and opens up Drive mirroring. */
-  function _reconcile(){
+     echo back to Drive), then reload at most ONCE if anything differs, so every
+     panel's parse-time init re-reads the real Drive values. Guarded by _resolved
+     (runs once) and a hard reload counter (can never loop). After it runs the
+     FLAG is set, which opens Drive mirroring on the reloaded pass. */
+  var RELOAD_COUNT_KEY = '_OT_TTB_RELOADS';
+  var _resolved = false;
+
+  function _reconcileAuth(){
+    if (_resolved) return;
     Promise.resolve(OT.getAll()).then(function(cache){
+      if (_resolved) return;
+      _resolved = true;
       var changed=false;
-      Object.keys(cache).forEach(function(k){
+      Object.keys(cache||{}).forEach(function(k){
         if (_origGet(k) !== cache[k]) changed=true;
         _origSet(k, cache[k]);
       });
+      var rc = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY)||'0', 10);
       sessionStorage.setItem(FLAG,'1');
       _synced = true;                 // localStorage now mirrors Drive → mirroring allowed
-      if (changed){ location.reload(); return; }  // keep overlay up through the reload
-      _hideDriveWait();               // already matched Drive — reveal in place
-    }).catch(function(){ _hideDriveWait(); });
+      if (changed && rc < 1){         // reload at most once, ever, per session
+        sessionStorage.setItem(RELOAD_COUNT_KEY, String(rc+1));
+        location.reload();            // keep overlay up through the reload
+        return;
+      }
+      _hideDriveWait();               // matched (or reload cap hit) — reveal in place
+    }).catch(function(){ _resolved = true; _hideDriveWait(); });
   }
 
-  if (OT.onSync){
-    /* Fires the moment the authoritative store is confirmed — immediately when
-       the token is valid, or when Drive finally arrives in the mirror-first
-       (token-expired) path. Reconciling on AUTHORITY, not merely "ready", is
-       what closes the race. */
-    OT.onSync(function(){ _reconcile(); });
-  } else {
-    /* Older storage.js without onSync/authority — fall back to ready-based. */
-    OT.onReady(function(){ _reconcile(); });
-  }
+  /* Trigger the reconcile from whichever reliable signal arrives first, so the
+     overlay can never get stuck waiting on a single hook:
+       1. onSync — fires the instant Drive/authority is confirmed (preferred,
+          and the only path that reloads to real Drive data);
+       2. onReady — always fires; if authority is already known (or this
+          storage.js is too old to report it) reconcile immediately, otherwise
+          give onSync a short window then just reveal so we never hang;
+       3. a hard timeout — absolute last resort, reveal no matter what. */
+  if (OT.onSync){ OT.onSync(_reconcileAuth); }
 
-  /* Safety net: never trap the user behind the overlay if authority never
-     resolves (e.g. a storage failure). */
-  setTimeout(function(){ _hideDriveWait(); }, 15000);
+  OT.onReady(function(){
+    var canReportAuth = !!(window.OT && OT.isAuthoritative);
+    if (!canReportAuth || OT.isAuthoritative()){ _reconcileAuth(); return; }
+    // Authority not confirmed yet (mirror-first / sign-in path). onSync above
+    // will reconcile when Drive lands; if it somehow doesn't within a few
+    // seconds, reveal what we have so the user is never trapped. The pre-auth
+    // mirror block already prevents any clobber, so revealing here is safe.
+    setTimeout(function(){ if (!_resolved) _hideDriveWait(); }, 6000);
+  });
+
+  setTimeout(function(){ if (!_resolved){ _resolved = true; _hideDriveWait(); } }, 9000);
 })();
 </script>
 </head>
