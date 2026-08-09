@@ -1313,31 +1313,113 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 (function(){
   var _origSet    = localStorage.setItem.bind(localStorage);
   var _origRemove = localStorage.removeItem.bind(localStorage);
+  var _origGet    = localStorage.getItem.bind(localStorage);
+
+  var FLAG = '_OT_SYNCED_ONCE_TTB';
+  /* True on the reloaded, Drive-synced page (see _reconcile's reload below).
+     On that pass localStorage already equals Drive, so it's safe to render from
+     it and to mirror writes straight through. */
+  var _synced = !!sessionStorage.getItem(FLAG);
+
+  function _authOK(){
+    return (window.OT && OT.isAuthoritative) ? OT.isAuthoritative() : true;
+  }
+  /* Mirror a localStorage write through to Drive only when it's SAFE:
+       - reloaded page (_synced): localStorage already matches Drive, so the
+         parse-time migrate()/restore compute correct results and MUST persist;
+       - very first load: ONLY once the authoritative store is confirmed, so a
+         stale parse-time write can't land in Drive's pending-write buffer and
+         clobber the real file on merge.
+     This is the core of the fix — nothing from the browser reaches Drive until
+     Drive itself has loaded. */
+  function _mirrorOK(){ return _synced || _authOK(); }
 
   localStorage.setItem = function(k, v){
     _origSet(k, v);
-    if (window.OT) OT.set(k, v);
+    if (window.OT && _mirrorOK()) OT.set(k, v);
   };
   localStorage.removeItem = function(k){
     _origRemove(k);
-    if (window.OT) OT.remove(k);
+    if (window.OT && _mirrorOK()) OT.remove(k);
   };
 
-  if (window.OT) {
-    OT.onReady(async function(){
-      var cache = await OT.getAll();
-      var changed = false;
+  /* ── "Fetching from Google Drive…" overlay ── */
+  function _showDriveWait(){
+    if (document.getElementById('driveWaitOverlay')) return;
+    if (!document.getElementById('driveWaitStyles')){
+      var st=document.createElement('style'); st.id='driveWaitStyles';
+      st.textContent=
+        "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+        "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+        "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+        "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+        "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+        "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#2a6db5);"+
+        "animation:dwSpin .8s linear infinite;}"+
+        "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+        "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+        "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+        "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+      (document.head||document.documentElement).appendChild(st);
+    }
+    var ov=document.createElement('div'); ov.id='driveWaitOverlay';
+    ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+      '<div class="dw-msg">Fetching from Google Drive…</div>'+
+      '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+    (document.body||document.documentElement).appendChild(ov);
+    /* Attached to <html> if <body> isn't parsed yet — re-home it into <body>
+       once that exists so page styling/reset applies cleanly. */
+    if (!document.body){
+      document.addEventListener('DOMContentLoaded', function(){
+        if (ov.parentNode !== document.body && document.body) document.body.appendChild(ov);
+      });
+    }
+  }
+  function _hideDriveWait(){
+    var ov=document.getElementById('driveWaitOverlay'); if(ov) ov.remove();
+  }
+
+  /* Reloaded (Drive-synced) page, or no storage engine at all: run the page
+     normally — localStorage is already the source of truth for this pass. */
+  if (_synced || !window.OT) return;
+
+  /* First load: cover the (stale) first paint until the authoritative store is
+     confirmed, so the user never sees or touches browser data that's about to
+     be replaced by Drive. */
+  _showDriveWait();
+
+  /* Pull the AUTHORITATIVE store into localStorage (via _origSet so we don't
+     echo back to Drive), then reload ONCE if anything actually differs, so every
+     panel's parse-time init re-reads the real Drive values. After this the FLAG
+     is set, which both prevents a second reload and opens up Drive mirroring. */
+  function _reconcile(){
+    Promise.resolve(OT.getAll()).then(function(cache){
+      var changed=false;
       Object.keys(cache).forEach(function(k){
-        if (localStorage.getItem(k) !== cache[k]) changed = true;
+        if (_origGet(k) !== cache[k]) changed=true;
         _origSet(k, cache[k]);
       });
-      var FLAG = '_OT_SYNCED_ONCE_TTB';
-      if (changed && !sessionStorage.getItem(FLAG)) {
-        sessionStorage.setItem(FLAG, '1');
-        location.reload();
-      }
-    });
+      sessionStorage.setItem(FLAG,'1');
+      _synced = true;                 // localStorage now mirrors Drive → mirroring allowed
+      if (changed){ location.reload(); return; }  // keep overlay up through the reload
+      _hideDriveWait();               // already matched Drive — reveal in place
+    }).catch(function(){ _hideDriveWait(); });
   }
+
+  if (OT.onSync){
+    /* Fires the moment the authoritative store is confirmed — immediately when
+       the token is valid, or when Drive finally arrives in the mirror-first
+       (token-expired) path. Reconciling on AUTHORITY, not merely "ready", is
+       what closes the race. */
+    OT.onSync(function(){ _reconcile(); });
+  } else {
+    /* Older storage.js without onSync/authority — fall back to ready-based. */
+    OT.onReady(function(){ _reconcile(); });
+  }
+
+  /* Safety net: never trap the user behind the overlay if authority never
+     resolves (e.g. a storage failure). */
+  setTimeout(function(){ _hideDriveWait(); }, 15000);
 })();
 </script>
 </head>
