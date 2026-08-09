@@ -1315,24 +1315,27 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   var _origRemove = localStorage.removeItem.bind(localStorage);
   var _origGet    = localStorage.getItem.bind(localStorage);
 
-  var FLAG = '_OT_SYNCED_ONCE_TTB';
-  /* True on the reloaded, Drive-synced page (see _reconcile's reload below).
-     On that pass localStorage already equals Drive, so it's safe to render from
-     it and to mirror writes straight through. */
-  var _synced = !!sessionStorage.getItem(FLAG);
+  /* ════════════════════════════════════════════════════════════════
+     "Fetch fresh from Drive on EVERY open" mode.
+     On every page load we cover the page with the overlay, wait for the
+     authoritative store (Drive), pull it into localStorage, and — only if a
+     real DATA key differs — reload once so every panel re-reads the fresh Drive
+     values. A per-tab reload CYCLE counter (not a permanent flag) makes each
+     fresh open re-check Drive, while a hard cap means it can never loop. */
+  var CYCLE_KEY  = '_OT_TTB_CYCLE';
+  var RELOAD_CAP = 3;
+  var _cycle = parseInt(sessionStorage.getItem(CYCLE_KEY) || '0', 10);
 
   function _authOK(){
     return (window.OT && OT.isAuthoritative) ? OT.isAuthoritative() : true;
   }
-  /* Mirror a localStorage write through to Drive only when it's SAFE:
-       - reloaded page (_synced): localStorage already matches Drive, so the
-         parse-time migrate()/restore compute correct results and MUST persist;
-       - very first load: ONLY once the authoritative store is confirmed, so a
-         stale parse-time write can't land in Drive's pending-write buffer and
-         clobber the real file on merge.
-     This is the core of the fix — nothing from the browser reaches Drive until
-     Drive itself has loaded. */
-  function _mirrorOK(){ return _synced || _authOK(); }
+  /* Mirror a localStorage write to Drive only when SAFE:
+       - mid reload-cycle (_cycle>0): localStorage was just written from Drive on
+         the previous pass, so parse-time migrate()/restore compute against real
+         data and MUST persist;
+       - otherwise: only once authority is confirmed, so a stale parse-time write
+         can't clobber Drive on merge. */
+  function _mirrorOK(){ return _cycle > 0 || _authOK(); }
 
   localStorage.setItem = function(k, v){
     _origSet(k, v);
@@ -1342,6 +1345,17 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     _origRemove(k);
     if (window.OT && _mirrorOK()) OT.remove(k);
   };
+
+  /* Device / session / auth / system keys must NEVER be pulled from Drive into
+     this browser and must NEVER trigger a reload — they're local, or change per
+     load, so pulling them could clobber this device's token or cause a reload
+     loop. Only real user-data keys drive the reconcile. */
+  function _skipKey(k){
+    return k.indexOf('OT_') === 0 ||          // OT_ACCESS_TOKEN, OT_TOKEN_EXPIRES, …
+           k.indexOf('_OT_') === 0 ||         // our own bridge counters
+           k === 'ONETRACK_LOCAL_MIRROR' ||
+           k === 'ONETRACK_THEME_SNAPSHOT';
+  }
 
   /* ── "Fetching from Google Drive…" overlay ── */
   function _showDriveWait(){
@@ -1367,8 +1381,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       '<div class="dw-msg">Fetching from Google Drive…</div>'+
       '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
     (document.body||document.documentElement).appendChild(ov);
-    /* Attached to <html> if <body> isn't parsed yet — re-home it into <body>
-       once that exists so page styling/reset applies cleanly. */
     if (!document.body){
       document.addEventListener('DOMContentLoaded', function(){
         if (ov.parentNode !== document.body && document.body) document.body.appendChild(ov);
@@ -1379,66 +1391,49 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     var ov=document.getElementById('driveWaitOverlay'); if(ov) ov.remove();
   }
 
-  /* Reloaded (Drive-synced) page, or no storage engine at all: run the page
-     normally — localStorage is already the source of truth for this pass. */
-  if (_synced || !window.OT) return;
+  if (!window.OT) return;   // no storage engine — run the page as-is
 
-  /* First load: cover the (stale) first paint until the authoritative store is
-     confirmed, so the user never sees or touches browser data that's about to
-     be replaced by Drive. */
+  /* Cover the (possibly stale) first paint on EVERY open until Drive confirms. */
   _showDriveWait();
 
-  /* Pull the AUTHORITATIVE store into localStorage (via _origSet so we don't
-     echo back to Drive), then reload at most ONCE if anything differs, so every
-     panel's parse-time init re-reads the real Drive values. Guarded by _resolved
-     (runs once) and a hard reload counter (can never loop). After it runs the
-     FLAG is set, which opens Drive mirroring on the reloaded pass. */
-  var RELOAD_COUNT_KEY = '_OT_TTB_RELOADS';
   var _resolved = false;
-
   function _reconcileAuth(){
     if (_resolved) return;
     Promise.resolve(OT.getAll()).then(function(cache){
       if (_resolved) return;
       _resolved = true;
-      var changed=false;
-      Object.keys(cache||{}).forEach(function(k){
-        if (_origGet(k) !== cache[k]) changed=true;
-        _origSet(k, cache[k]);
+      var changed = false;
+      Object.keys(cache || {}).forEach(function(k){
+        if (_skipKey(k)) return;                 // leave auth/system keys untouched
+        if (_origGet(k) !== cache[k]){
+          _origSet(k, cache[k]);                 // pull the real Drive value in
+          changed = true;
+        }
       });
-      var rc = parseInt(sessionStorage.getItem(RELOAD_COUNT_KEY)||'0', 10);
-      sessionStorage.setItem(FLAG,'1');
-      _synced = true;                 // localStorage now mirrors Drive → mirroring allowed
-      if (changed && rc < 1){         // reload at most once, ever, per session
-        sessionStorage.setItem(RELOAD_COUNT_KEY, String(rc+1));
-        location.reload();            // keep overlay up through the reload
+      if (changed && _cycle < RELOAD_CAP){
+        sessionStorage.setItem(CYCLE_KEY, String(_cycle + 1));
+        location.reload();                       // re-read fresh Drive values; overlay stays up
         return;
       }
-      _hideDriveWait();               // matched (or reload cap hit) — reveal in place
-    }).catch(function(){ _resolved = true; _hideDriveWait(); });
+      sessionStorage.setItem(CYCLE_KEY, '0');    // settled → the NEXT open re-checks Drive afresh
+      _cycle = 0;
+      _hideDriveWait();
+    }).catch(function(){
+      _resolved = true; sessionStorage.setItem(CYCLE_KEY, '0'); _hideDriveWait();
+    });
   }
 
-  /* Trigger the reconcile from whichever reliable signal arrives first, so the
-     overlay can never get stuck waiting on a single hook:
-       1. onSync — fires the instant Drive/authority is confirmed (preferred,
-          and the only path that reloads to real Drive data);
-       2. onReady — always fires; if authority is already known (or this
-          storage.js is too old to report it) reconcile immediately, otherwise
-          give onSync a short window then just reveal so we never hang;
-       3. a hard timeout — absolute last resort, reveal no matter what. */
+  /* Trigger on whichever reliable signal arrives first so the overlay can never
+     stick: onSync (authority, preferred), onReady-with-authority, then timeouts. */
   if (OT.onSync){ OT.onSync(_reconcileAuth); }
 
   OT.onReady(function(){
     var canReportAuth = !!(window.OT && OT.isAuthoritative);
     if (!canReportAuth || OT.isAuthoritative()){ _reconcileAuth(); return; }
-    // Authority not confirmed yet (mirror-first / sign-in path). onSync above
-    // will reconcile when Drive lands; if it somehow doesn't within a few
-    // seconds, reveal what we have so the user is never trapped. The pre-auth
-    // mirror block already prevents any clobber, so revealing here is safe.
     setTimeout(function(){ if (!_resolved) _hideDriveWait(); }, 6000);
   });
 
-  setTimeout(function(){ if (!_resolved){ _resolved = true; _hideDriveWait(); } }, 9000);
+  setTimeout(function(){ if (!_resolved){ _resolved = true; sessionStorage.setItem(CYCLE_KEY,'0'); _hideDriveWait(); } }, 9000);
 })();
 </script>
 </head>
