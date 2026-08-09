@@ -750,10 +750,86 @@ var _otCache = {};
 function _cget(k){ var v=_otCache[k]; return (v===undefined)?null:v; }
 function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
 
-/* Master boot — load cache. Theme/accent/font now applied centrally by storage.js — not handled here. */
-OT.onReady(async () => {
-  _otCache = await OT.getAll();
-  // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
+/* ============================================================
+   DRIVE-WAIT GATE
+   ------------------------------------------------------------
+   This page has SEVEN independent module boots. Each is now
+   registered via _onAuth() instead of OT.onReady, so it runs only
+   once the AUTHORITATIVE store has loaded — Drive when signed in,
+   or the local mirror once we know there's no Drive this session
+   (OT.isAuthoritative(), signalled via OT.onSync). Until then a
+   "Fetching from Google Drive…" overlay is shown and nothing
+   seeds / migrates / renders / saves, so a stale browser-mirror
+   snapshot can never be written back over the real Drive file.
+   ============================================================ */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+/* Only persist a default-seed once the authoritative store has loaded. */
+function _authoritative(){
+  return (typeof OT==="undefined" || !OT.isAuthoritative) ? true : OT.isAuthoritative();
+}
+
+/* ── authority-gated boot queue ── every module registers its boot here ── */
+var _mpAuthCbs = [];
+var _mpBooted  = false;
+function _onAuth(fn){
+  if(_mpBooted){ Promise.resolve().then(fn); }   // already booted (late registrant) — run now
+  else { _mpAuthCbs.push(fn); }
+}
+async function _mpRunBoot(){
+  if(_mpBooted) return;
+  _mpBooted = true;
+  try { _otCache = await OT.getAll(); } catch(e){}   // authoritative cache before any boot runs
+  _hideDriveWait();
+  for (var i=0;i<_mpAuthCbs.length;i++){
+    try { await _mpAuthCbs[i](); } catch(e){ console.error("[meal boot]", e); }
+  }
+  _mpAuthCbs = [];
+}
+
+/* Robust trigger — run the boots on whichever reliable signal arrives first so
+   the overlay can never get stuck: onSync (authority, preferred), onReady with
+   authority already known (or an old storage.js that can't report it), and a
+   hard timeout as an absolute last resort. */
+if (window.OT && OT.onSync){ OT.onSync(function(){ _mpRunBoot(); }); }
+if (window.OT){
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _mpRunBoot(); }
+    /* else: wait for onSync to confirm Drive; overlay stays up. */
+  });
+}
+setTimeout(function(){ if(!_mpBooted) _mpRunBoot(); }, 15000);
+
+_showDriveWait();  // overlay up at parse time, before any module renders
+
+/* Master boot — brand footer. (All data rendering is done by the module boots,
+   which are also _onAuth-gated below.) */
+_onAuth(async () => {
   OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-07-15T12:00:00+10:00'));
 });
 </script>
@@ -871,7 +947,7 @@ OT.onReady(async () => {
     });
   }
 
-  OT.onReady(async () => {
+  _onAuth(async () => {
     if (!Object.keys(_otCache).length) _otCache = await OT.getAll();
 
     try { customLabels = JSON.parse(_cget(LABELS_KEY) || "{}"); } catch (e) { customLabels = {}; }
@@ -1408,7 +1484,7 @@ function meal_tryAgain() {
 window.meal_tryAgain = meal_tryAgain;
 
 /* ── Boot ── */
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   /* One-time: rename old snack keys and clear weekend snack entries in saved data. */
   try {
@@ -1745,7 +1821,7 @@ function seedMaster(){
 
 function loadMaster(){
   var raw = _cget(MASTER_KEY);
-  if(!raw){ var m = seedMaster(); _cset(MASTER_KEY, JSON.stringify(m)); return m; }
+  if(!raw){ var m = seedMaster(); if(_authoritative()) _cset(MASTER_KEY, JSON.stringify(m)); return m; }
   try {
     var m = JSON.parse(raw);
     if(!m.veggies)   m.veggies   = JSON.parse(JSON.stringify(SEED_VEGGIES));
@@ -1799,7 +1875,7 @@ function saveMaster(m){ _cset(MASTER_KEY, JSON.stringify(m)); }
 
 function loadTicks(key, seedNames){
   var raw = _cget(key);
-  if(raw===null || raw===undefined){ _cset(key, JSON.stringify(seedNames)); return seedNames.slice(); }
+  if(raw===null || raw===undefined){ if(_authoritative()) _cset(key, JSON.stringify(seedNames)); return seedNames.slice(); }
   try { var a = JSON.parse(raw); return Array.isArray(a) ? a : seedNames.slice(); }
   catch(e){ return seedNames.slice(); }
 }
@@ -2156,7 +2232,7 @@ function reg(){ UndoManager.register('fridge',
   function(){ return {f:_cget(MP.FRIDGE_KEY)}; },
   function(s){ _cset(MP.FRIDGE_KEY, s.f); render(); }); }
 reg();
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   render();
   reg();   /* rebaseline undo now that real state is loaded */
@@ -2225,7 +2301,7 @@ function reg(){ UndoManager.register('pantry',
   function(){ return {m:_cget(MP.MASTER_KEY), p:_cget(MP.PANTRY_KEY)}; },
   function(s){ _cset(MP.MASTER_KEY,s.m); _cset(MP.PANTRY_KEY,s.p); render(); }); }
 reg();
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   render();
   reg();
@@ -2371,7 +2447,7 @@ function reg(){ UndoManager.register('veg',
   function(){ return {m:_cget(MP.MASTER_KEY), f:_cget(MP.FRIDGE_KEY)}; },
   function(s){ _cset(MP.MASTER_KEY,s.m); _cset(MP.FRIDGE_KEY,s.f); render(); if(window.fridge_render) window.fridge_render(); }); }
 reg();
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   render();
   reg();
@@ -2628,7 +2704,7 @@ function reg(){
   });
 }
 reg();
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   renderAll();
   reg();

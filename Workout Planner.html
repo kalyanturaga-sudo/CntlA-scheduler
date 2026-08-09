@@ -1013,10 +1013,46 @@ const appState = {
   lastEdit: null
 };
 
-// Load data from storage
+/* ── "Fetching from Google Drive…" overlay ── shown until the AUTHORITATIVE
+   store has loaded (Drive when signed in, or the local mirror once we know
+   there's no Drive this session), so the page never renders from — or lets you
+   edit — stale browser data that could then be saved back over the real Drive
+   file in the token-expired startup path. ── */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+// Load data from storage — gated on AUTHORITY (Drive loaded), not merely "ready".
+let _wpBooted = false;
 function loadData() {
-  OT.onReady(async () => {
-    const saved = await OT.get('ONETRACK_WORKOUT_PLANNER');
+  _showDriveWait();
+
+  async function _boot(){
+    if(_wpBooted) return;
+    _wpBooted = true;
+    const saved = window.OT ? await OT.get('ONETRACK_WORKOUT_PLANNER') : null;  // authoritative by now
     if (saved) {
       try {
         const loaded = JSON.parse(saved);
@@ -1038,10 +1074,24 @@ function loadData() {
       startTab = appState.activeTab;
     }
     appState.activeTab = startTab;
+    _hideDriveWait();
     renderTabSidebar();
     if (startTab === 'logbook') renderLogBook();
     else renderTab(startTab);
+  }
+
+  /* Robust trigger — run on whichever reliable signal arrives first so the
+     overlay can never get stuck: onSync (authority, preferred), onReady with
+     authority already known (or an old storage.js that can't report it), and a
+     hard 15s timeout as an absolute last resort. */
+  if (!window.OT){ _boot(); return; }
+  if (OT.onSync){ OT.onSync(function(){ _boot(); }); }
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _boot(); }
+    /* else: wait for onSync to confirm Drive; overlay stays up. */
   });
+  setTimeout(function(){ if(!_wpBooted) _boot(); }, 15000);
 }
 
 // Save data to storage

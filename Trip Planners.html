@@ -939,19 +939,90 @@ var _otCache = {};
 function _cget(k){ var v=_otCache[k]; return (v===undefined)?null:v; }
 function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
 
-/* Master boot — load cache, then let each panel's OT.onReady fire.
-   Theme/accent/font now applied centrally by storage.js — not handled here. */
-OT.onReady(async () => {
-  _otCache = await OT.getAll();
-  // Brand name + logo now stamped centrally by storage.js (_applyBrand) — nothing to do here.
+/* ============================================================
+   DRIVE-WAIT GATE
+   ------------------------------------------------------------
+   This page has THREE independent module boots (tab strip / trip
+   days, and the prep lists). Each is registered via _onAuth()
+   instead of OT.onReady, so it runs only once the AUTHORITATIVE
+   store has loaded — Drive when signed in, or the local mirror
+   once we know there's no Drive this session (OT.isAuthoritative(),
+   signalled via OT.onSync). Until then a "Fetching from Google
+   Drive…" overlay is shown and nothing seeds / migrates / rolls /
+   renders / saves, so a stale browser-mirror snapshot can never be
+   written back over the real Drive file.
+   ============================================================ */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+/* Only persist a default-seed / migration once the authoritative store loaded. */
+function _authoritative(){
+  return (typeof OT==="undefined" || !OT.isAuthoritative) ? true : OT.isAuthoritative();
+}
+
+/* ── authority-gated boot queue ── */
+var _tpAuthCbs = [];
+var _tpBooted  = false;
+function _onAuth(fn){
+  if(_tpBooted){ Promise.resolve().then(fn); }
+  else { _tpAuthCbs.push(fn); }
+}
+async function _tpRunBoot(){
+  if(_tpBooted) return;
+  _tpBooted = true;
+  try { _otCache = await OT.getAll(); } catch(e){}   // authoritative cache before any boot
+  _hideDriveWait();
+  for (var i=0;i<_tpAuthCbs.length;i++){
+    try { await _tpAuthCbs[i](); } catch(e){ console.error("[trip boot]", e); }
+  }
+  _tpAuthCbs = [];
+}
+
+/* Robust trigger — first reliable signal wins so the overlay can never stick:
+   onSync (authority, preferred), onReady with authority already known (or an old
+   storage.js that can't report it), and a hard timeout as a last resort. */
+if (window.OT && OT.onSync){ OT.onSync(function(){ _tpRunBoot(); }); }
+if (window.OT){
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _tpRunBoot(); }
+  });
+}
+setTimeout(function(){ if(!_tpBooted) _tpRunBoot(); }, 15000);
+
+_showDriveWait();  // overlay up at parse time, before the tab strip / panels paint
+
+/* Master boot — footers + tab-strip re-sync, now gated on authority. */
+_onAuth(async () => {
   const lastUpdated = new Date('2026-06-28T09:20:00+10:00');
   OT.renderBrandFooter('otBrandFooter_india', 'v1.0', lastUpdated);
   OT.renderBrandFooter('otBrandFooter_weeks', 'v1.0', lastUpdated);
-  // Re-sync the tab strip now that the REAL saved data has loaded.
-  // (The tab-strip script below runs synchronously at parse time, before
-  // this Drive load finishes, so it initially paints from defaults —
-  // this re-reads the now-populated cache so deleted/reordered/renamed
-  // tabs reflect what's actually saved instead of snapping back.)
+  // Re-sync the tab strip now that the REAL saved data has loaded. (The tab-strip
+  // script below paints from defaults at parse time; this re-reads the now-
+  // authoritative cache so deleted/reordered/renamed tabs reflect what's saved.)
   if (typeof window.__refreshTripTabsFromStorage === 'function') {
     window.__refreshTripTabsFromStorage();
   }
@@ -1181,7 +1252,7 @@ function loadData(){
     const tasks = (PREPOP[d] || []).map(t => ({ text: t, done: false, sub: false }));
     obj.blocks[d] = { title: d, tasks };
   });
-  saveData(obj); return obj;
+  if(_authoritative()) saveData(obj); return obj;
 }
 
 function saveData(d){ _cset(STORAGE_KEY, JSON.stringify(d)); }
@@ -1198,7 +1269,7 @@ function migrateIfNeeded(obj){
       );
       newObj.blocks[k] = { title: k, tasks: norm };
     });
-    saveData(newObj); return newObj;
+    if(_authoritative()) saveData(newObj); return newObj;
   }
   return obj;
 }
@@ -1737,7 +1808,7 @@ function rollUnfinishedTasks(){
    state from it, run rollover, and render. This used to run before
    the real data arrived, so it always rebuilt from defaults and any
    edits were lost on refresh. */
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   state = migrateIfNeeded(loadData());
   rollUnfinishedTasks();
@@ -2263,7 +2334,7 @@ new MutationObserver(muts=>{
 }).observe(document.getElementById('panel-tasmania')||document.body, {childList:true,subtree:true});
 
 // ── INIT ──
-OT.onReady(async () => {
+_onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   renderPrep(PRETRAVEL_KEY, DEFAULT_PRETRAVEL, 'tas-pretravel-body', 'tas-pretravel-fill', 'tas-pretravel-stats');
   renderPrep(DAYBEFORE_KEY, DEFAULT_DAYBEFORE, 'tas-daybefore-body', 'tas-daybefore-fill', 'tas-daybefore-stats');
