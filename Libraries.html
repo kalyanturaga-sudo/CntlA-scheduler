@@ -833,6 +833,11 @@ const DEFAULT_LIBRARIES = [
   { id:16, name:"Hornsby Shire Library",        region:"AU", base:"https://hornsby.overdrive.com" },
   { id:17, name:"Parramatta Library",           region:"AU", base:"https://parralibrary.overdrive.com" },
   { id:18, name:"The Hills Shire Library",      region:"AU", base:"https://thehills.overdrive.com" },
+  { id:19, name:"Beaumont Public Library",                   region:"NA", base:"https://bpls.overdrive.com/bpls-visitor/content" },
+  { id:20, name:"Bryan & College Station Library",           region:"NA", base:"https://bcsdmc.overdrive.com/bcsdmc-visitor/content" },
+  { id:21, name:"Harris County Public Library",               region:"NA", base:"https://hcpl.overdrive.com/hcpl-visitor/content" },
+  { id:22, name:"Montgomery County Memorial Library System", region:"NA", base:"https://countylibrary.overdrive.com/countylibrary-visitor/content" },
+  { id:23, name:"Round Rock Public Library System",           region:"NA", base:"https://roundrock.overdrive.com/roundrock-visitor/content" },
 ];
 
 /* LIBRARIES starts empty and is populated from onetrack-data.json once
@@ -1148,5 +1153,17 @@ _onAuth(async () => {
         brand line now right-aligned and driven by
         OT.renderBrandFooter() in storage.js, consistent with
         Routines / TT&B / Jobs / Checklists
+  v2.2  · 20 Aug 2026
+      - Added 5 Texas OverDrive libraries to DEFAULT_LIBRARIES
+        (ids 19–23): Beaumont Public Library, Bryan & College
+        Station Library, Harris County Public Library, Montgomery
+        County Memorial Library System, Round Rock Public Library
+        System — all "bpls/bcsdmc/hcpl/countylibrary/roundrock
+        -visitor/content" style OverDrive bases, same buildUrl()
+        pattern as existing libraries (no code changes needed)
+      - Note: DEFAULT_LIBRARIES only seeds onetrack-data.json on
+        first-ever run; existing installs need the ONETRACK_LIBRARIES
+        key in onetrack-data.json updated directly to see these
+        without a reseed
 ═══════════════════════════════════════════════════════════════════
 -->
