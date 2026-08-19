@@ -814,30 +814,37 @@ const LIB_STORAGE_KEY = 'ONETRACK_LIBRARIES';
 /* Default seed list — only used the FIRST time ever (when ONETRACK_LIBRARIES
    doesn't exist yet in onetrack-data.json). After that, the JSON file is the
    source of truth and this array is ignored. */
+/* Ordered West → East for NA, then West → East for AU. This array
+   order IS the canonical display order — loadLibraries() re-sorts
+   the live (Drive-saved) list to match it every time the page loads,
+   so reordering rows here is enough to reorder the grid, even for
+   libraries added long ago. When adding a new library, insert its
+   row at the correct geographic position in its region block rather
+   than appending to the end. */
 const DEFAULT_LIBRARIES = [
   { id:1,  name:"Santa Clara County Library",   region:"NA", base:"https://santaclara.overdrive.com" },
   { id:2,  name:"NCDL Pleasanton Library",      region:"NA", base:"https://ncdl.overdrive.com" },
   { id:3,  name:"Kern County Library",          region:"NA", base:"https://kern.overdrive.com" },
+  { id:23, name:"Round Rock Public Library System",           region:"NA", base:"https://roundrock.overdrive.com/roundrock-visitor/content" },
   { id:4,  name:"Flower Mound Public Library",  region:"NA", base:"https://flowermound.overdrive.com" },
   { id:5,  name:"Frisco Public Library",        region:"NA", base:"https://frisco.overdrive.com" },
+  { id:20, name:"Bryan & College Station Library",           region:"NA", base:"https://bcsdmc.overdrive.com/bcsdmc-visitor/content" },
+  { id:22, name:"Montgomery County Memorial Library System", region:"NA", base:"https://countylibrary.overdrive.com/countylibrary-visitor/content" },
+  { id:21, name:"Harris County Public Library",               region:"NA", base:"https://hcpl.overdrive.com/hcpl-visitor/content" },
   { id:6,  name:"Houston Public Library",       region:"NA", base:"https://houstonlibrary.overdrive.com" },
   { id:7,  name:"Johnson County Library",       region:"NA", base:"https://jocolibrary.overdrive.com" },
+  { id:19, name:"Beaumont Public Library",                   region:"NA", base:"https://bpls.overdrive.com/bpls-visitor/content" },
   { id:8,  name:"Forsyth County Library",       region:"NA", base:"https://forsyth.overdrive.com" },
   { id:9,  name:"Broward County Library",       region:"NA", base:"https://broward.overdrive.com" },
+  { id:13, name:"Toronto Public Library",       region:"NA", base:"https://toronto.overdrive.com" },
   { id:10, name:"Loudoun County Library",       region:"NA", base:"https://lcpl.overdrive.com" },
   { id:11, name:"Fairfax County Library",       region:"NA", base:"https://fairfax.overdrive.com" },
   { id:12, name:"NJ-Stella Library",            region:"NA", base:"https://elibrarynj.overdrive.com/elibrarynj-87-171/content" },
-  { id:13, name:"Toronto Public Library",       region:"NA", base:"https://toronto.overdrive.com" },
   { id:14, name:"Blacktown Library",            region:"AU", base:"https://blacktown.overdrive.com" },
-  { id:15, name:"City of Sydney Library",       region:"AU", base:"https://cityofsydney.overdrive.com" },
-  { id:16, name:"Hornsby Shire Library",        region:"AU", base:"https://hornsby.overdrive.com" },
-  { id:17, name:"Parramatta Library",           region:"AU", base:"https://parralibrary.overdrive.com" },
   { id:18, name:"The Hills Shire Library",      region:"AU", base:"https://thehills.overdrive.com" },
-  { id:19, name:"Beaumont Public Library",                   region:"NA", base:"https://bpls.overdrive.com/bpls-visitor/content" },
-  { id:20, name:"Bryan & College Station Library",           region:"NA", base:"https://bcsdmc.overdrive.com/bcsdmc-visitor/content" },
-  { id:21, name:"Harris County Public Library",               region:"NA", base:"https://hcpl.overdrive.com/hcpl-visitor/content" },
-  { id:22, name:"Montgomery County Memorial Library System", region:"NA", base:"https://countylibrary.overdrive.com/countylibrary-visitor/content" },
-  { id:23, name:"Round Rock Public Library System",           region:"NA", base:"https://roundrock.overdrive.com/roundrock-visitor/content" },
+  { id:17, name:"Parramatta Library",           region:"AU", base:"https://parralibrary.overdrive.com" },
+  { id:16, name:"Hornsby Shire Library",        region:"AU", base:"https://hornsby.overdrive.com" },
+  { id:15, name:"City of Sydney Library",       region:"AU", base:"https://cityofsydney.overdrive.com" },
 ];
 
 /* LIBRARIES starts empty and is populated from onetrack-data.json once
@@ -916,6 +923,15 @@ async function loadLibraries() {
     LIBRARIES = DEFAULT_LIBRARIES;
     try { if(_authoritative()) await OT.set(LIB_STORAGE_KEY, JSON.stringify(DEFAULT_LIBRARIES)); } catch (e) {}
   }
+
+  /* Always re-sort to match DEFAULT_LIBRARIES' array order (matched by
+     base URL). DEFAULT_LIBRARIES is maintained West→East for NA, then
+     West→East for AU — this makes that ordering the live display order
+     regardless of when each library was originally saved to Drive, so
+     reordering/inserting rows in DEFAULT_LIBRARIES is always enough. */
+  const orderIndex = new Map(DEFAULT_LIBRARIES.map((l, i) => [l.base, i]));
+  LIBRARIES.sort((a, b) => (orderIndex.has(a.base) ? orderIndex.get(a.base) : 999)
+                          - (orderIndex.has(b.base) ? orderIndex.get(b.base) : 999));
 
   renderLibGrid();
   // Re-apply any group selection state cleanly after a (re)render
@@ -1186,5 +1202,18 @@ _onAuth(async () => {
       - Fixes the 5 libraries added in v2.2 not appearing, since the
         existing installs' onetrack-data.json still had the old 18
         and DEFAULT_LIBRARIES is normally only read on first-ever run
+  v2.4  · 20 Aug 2026
+      - Reordered DEFAULT_LIBRARIES rows geographically: West→East
+        for NA (Santa Clara → NJ-Stella), then West→East for AU
+        (Blacktown → City of Sydney). ids left unchanged, only array
+        position moved
+      - loadLibraries() now always re-sorts the live (Drive-saved)
+        list to match DEFAULT_LIBRARIES' array order (by base URL)
+        after merging, every load — so this file's row order is the
+        permanent source of truth for the grid's display order, not
+        just for brand-new/newly-merged entries
+      - Going forward: insert new library rows at their correct
+        geographic position within the NA or AU block, don't append
+        to the end
 ═══════════════════════════════════════════════════════════════════
 -->
