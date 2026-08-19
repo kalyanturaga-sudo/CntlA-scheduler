@@ -897,6 +897,20 @@ async function loadLibraries() {
   if (raw) {
     try { LIBRARIES = JSON.parse(raw); }
     catch (e) { LIBRARIES = DEFAULT_LIBRARIES; }
+
+    /* Auto-sync: whenever a new library is added to DEFAULT_LIBRARIES
+       in this file (matched by base URL, since ids can't be trusted
+       to stay stable across edits), append it to the saved list and
+       write the merge back to Drive. This is what makes "add a row to
+       DEFAULT_LIBRARIES and deploy" enough — no manual JSON edits or
+       console commands needed for new libraries going forward. */
+    const existingBases = new Set(LIBRARIES.map(l => l.base));
+    const missing = DEFAULT_LIBRARIES.filter(l => !existingBases.has(l.base));
+    if (missing.length) {
+      let nextId = LIBRARIES.reduce((max, l) => Math.max(max, l.id), 0);
+      missing.forEach(l => { nextId += 1; LIBRARIES.push({ ...l, id: nextId }); });
+      try { if (_authoritative()) await OT.set(LIB_STORAGE_KEY, JSON.stringify(LIBRARIES)); } catch (e) {}
+    }
   } else {
     // First time ever — seed onetrack-data.json with the default list
     LIBRARIES = DEFAULT_LIBRARIES;
@@ -1161,9 +1175,16 @@ _onAuth(async () => {
         System — all "bpls/bcsdmc/hcpl/countylibrary/roundrock
         -visitor/content" style OverDrive bases, same buildUrl()
         pattern as existing libraries (no code changes needed)
-      - Note: DEFAULT_LIBRARIES only seeds onetrack-data.json on
-        first-ever run; existing installs need the ONETRACK_LIBRARIES
-        key in onetrack-data.json updated directly to see these
-        without a reseed
+  v2.3  · 20 Aug 2026
+      - loadLibraries() now auto-merges: on every load it diffs
+        DEFAULT_LIBRARIES against the saved ONETRACK_LIBRARIES list
+        (matched by base URL) and appends anything new, then writes
+        the merge back to Drive. Adding a row to DEFAULT_LIBRARIES
+        and deploying is now enough on its own — no manual Drive/
+        onetrack-data.json edits or console commands needed for new
+        libraries to show up
+      - Fixes the 5 libraries added in v2.2 not appearing, since the
+        existing installs' onetrack-data.json still had the old 18
+        and DEFAULT_LIBRARIES is normally only read on first-ever run
 ═══════════════════════════════════════════════════════════════════
 -->
