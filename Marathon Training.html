@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<title data-page="Marathon Training">Marathon Training</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="storage.js"></script>
+<style>
+
+/* ===== GLOBAL LAYOUT CSS (matches app shell) ===== */
+:root {
+  --nav-width: 200px;
+  --tab-width: 150px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.06);
+  --radius: 16px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+
+  /* semantic data-type colours — stay fixed regardless of accent/theme choice
+     in Settings, same way TT&B keeps its section palettes independent of accent */
+  --run-c:      #378ADD; --run-c-text:      #0C447C; --run-c-text-dark:      #B5D4F4;
+  --cross-c:    #1D9E75; --cross-c-text:    #085041; --cross-c-text-dark:    #9FE1CB;
+  --exercise-c: #D85A30; --exercise-c-text: #993C1D; --exercise-c-text-dark: #F0997B;
+  --weight-c:   #7F77DD; --weight-c-text:   #3C3489; --weight-c-text-dark:   #CECBF6;
+}
+[data-theme="dark"] {
+  --shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); font-family: 'DM Sans', sans-serif; }
+.topbar { position:fixed; top:0; left:var(--nav-width); right:0; height:48px; z-index:2000; }
+.panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; display:flex; overflow:hidden; }
+.panel { position:absolute; inset:0; opacity:0; pointer-events:none; overflow-y:auto; transition:opacity 0.15s; }
+.panel.active { opacity:1; pointer-events:all; }
+
+/* ===== MAIN NAV (left sidebar, shared app nav) ===== */
+.nav {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--nav-width);
+  background: #ffffff;
+  border-right: 1px solid rgba(0,0,0,0.08);
+  display: flex; flex-direction: column;
+  padding: 24px 0; z-index: 100;
+  box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+  transition: background 0.3s;
+}
+[data-theme="dark"] .nav { background: #18181d; border-right-color: rgba(255,255,255,0.08); }
+
+.nav a {
+  display: block; padding: 8px 20px;
+  font-size: 13px; color: #5c5a60;
+  text-decoration: none; transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+[data-theme="dark"] .nav a { color: #a3a1a8; }
+.nav a:hover { color: #16151a; background: #f8f7f5; transform: translateX(4px); }
+[data-theme="dark"] .nav a:hover { color: #ededf0; background: #1f1f26; transform: translateX(4px); }
+.nav a.active { color: #1d4fd6; font-weight: 600; border-left-color: #1d4fd6; background: rgba(29,79,214,0.12); }
+[data-theme="dark"] .nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+
+.nav-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px 14px; border-bottom: 1px solid var(--border);
+  margin-bottom: 10px; gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+  font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--accent);
+}
+.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+.logo-check svg{overflow:visible;display:block;}
+.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+.nav.nav-collapsed { width: 0 !important; padding: 0 !important; overflow: hidden !important; border-right: none !important; box-shadow: none !important; }
+body.nav-is-collapsed .topbar { left: 0 !important; }
+body.nav-is-collapsed .panels { left: 0 !important; }
+
+#nav-show-tab {
+  display: none; position: fixed; top: 50%; left: 0; transform: translateY(-50%); z-index: 9999;
+  writing-mode: vertical-lr; background: var(--surface); border: 1px solid var(--border); border-left: none;
+  border-radius: 0 8px 8px 0; padding: 12px 6px; font-size: 11px; font-weight: 600; color: var(--text3); cursor: pointer; letter-spacing: 0.05em;
+}
+body.nav-is-collapsed #nav-show-tab { display: block; }
+
+/* ===== TOPBAR ===== */
+.topbar { background: var(--surface, #fff); border-bottom: 1px solid var(--border, rgba(0,0,0,0.08)); display: flex; align-items: center; padding: 0 16px; gap: 12px; box-shadow: 0 1px 8px rgba(0,0,0,0.05); }
+.topbar-logo { font-family: 'DM Serif Display', serif; font-size: 15px; color: var(--accent, #1d4fd6); white-space: nowrap; flex-shrink: 0; }
+
+/* ===== SIDE TAB BAR (months + full plan) ===== */
+.tab-sidebar { width: var(--tab-width); background: var(--surface2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; padding: 12px 8px; }
+.tab-item { display:flex; align-items:center; gap:6px; padding: 8px 10px; margin: 2px 4px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text2); background: transparent; border: 1px solid transparent; cursor: pointer; transition: background 0.15s, color 0.15s; user-select: none; }
+.tab-item:hover { background: var(--surface); }
+.tab-item.active { color: #fff; background: var(--accent); font-weight: 600; }
+.tab-divider { height: 1px; background: var(--border); margin: 8px 6px; }
+.tab-item.full-plan i { font-size: 13px; }
+
+/* ===== MAIN CONTENT ===== */
+.main { padding: 20px 24px; overflow-y: auto; flex: 1; }
+
+.month-header { display:flex; align-items:center; justify-content:space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.month-title { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--text); }
+
+.summary-strip { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
+.summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 74px; }
+.summary-card .lbl { font-size: 10px; color: var(--text3); }
+.summary-card .val { font-size: 15px; font-weight: 600; color: var(--text); }
+
+.btn { padding: 7px 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; display:flex; align-items:center; gap:6px; font-family: 'DM Sans', sans-serif; transition: border-color 0.15s; }
+.btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.legend { display:flex; gap:14px; margin-bottom: 10px; flex-wrap: wrap; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size: 11px; color: var(--text2); }
+.legend-dot { width:9px; height:9px; border-radius:2px; display:inline-block; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)) 78px; gap: 6px; }
+.cal-dow { font-size: 11px; color: var(--text3); text-align:center; padding-bottom:2px; }
+
+.day-cell { border: 1px solid var(--border); border-radius: 8px; padding: 6px; min-height: 104px; background: var(--surface); }
+.day-cell.empty { background: transparent; border: none; }
+.day-cell.today { border-color: var(--accent); background: var(--accent-soft); }
+.day-num { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+.day-cell.today .day-num { color: var(--accent); font-weight: 600; }
+
+.day-input { width:100%; font-size: 10px; height: 21px; padding: 0 5px; margin-bottom: 2px; border-radius: 4px; background: var(--surface2); font-family: 'DM Sans', sans-serif; }
+.day-input.run { border: 1px solid var(--run-c); color: var(--run-c-text); }
+.day-input.cross { border: 1px solid var(--cross-c); color: var(--cross-c-text); }
+.day-input.exercise { border: 1px solid var(--exercise-c); color: var(--exercise-c-text); }
+.day-input.weight { border: 1px solid var(--weight-c); color: var(--weight-c-text); }
+[data-theme="dark"] .day-input.run { color: var(--run-c-text-dark); }
+[data-theme="dark"] .day-input.cross { color: var(--cross-c-text-dark); }
+[data-theme="dark"] .day-input.exercise { color: var(--exercise-c-text-dark); }
+[data-theme="dark"] .day-input.weight { color: var(--weight-c-text-dark); }
+.day-input:focus { outline: none; background: var(--surface); }
+
+.week-total { background: var(--surface2); border-radius: 8px; padding: 6px; min-height: 104px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; text-align:center; }
+.week-total .wt-lbl { font-size: 9px; }
+.week-total .wt-val { font-size: 12px; font-weight: 600; color: var(--text); }
+
+.foot-note { font-size: 11px; color: var(--text3); margin-top: 14px; }
+
+/* ===== FULL PLAN (read-only rollup) ===== */
+.fp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 900px) { .fp-grid { grid-template-columns: 1fr; } }
+.fp-month { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: var(--surface); }
+.fp-month-head { display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; }
+.fp-month-head .name { font-size: 13px; font-weight: 600; color: var(--text); }
+.fp-month-head .totals { font-size: 10px; color: var(--text3); }
+.fp-mini-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.fp-dow { font-size: 8px; color: var(--text3); text-align:center; }
+.fp-day { background: var(--surface2); border-radius: 4px; min-height: 34px; padding: 2px 3px; font-size: 7px; line-height:1.3; color: var(--text3); }
+.fp-day.has-run { color: var(--run-c-text); }
+[data-theme="dark"] .fp-day.has-run { color: var(--run-c-text-dark); }
+.fp-day.has-weight { color: var(--weight-c-text); }
+[data-theme="dark"] .fp-day.has-weight { color: var(--weight-c-text-dark); }
+.fp-day.empty { background: transparent; }
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:700px){
+  :root{ --nav-width:0px; --tab-width:0px; }
+  .topbar { left:0; }
+  .panels { left:0; }
+  .tab-sidebar { display: none; }
+}
+@media print {
+  .nav, .topbar, .tab-sidebar { display:none !important; }
+}
+</style>
+</head>
+<body>
+
+<div id="nav-show-tab" title="Show sidebar">&#9776;</div>
+
+<!-- MAIN NAV -->
+<nav class="nav" id="onetrack-nav">
+  <div class="nav-header">
+    <div class="nav-title">
+      <span class="logo-check" id="logoCheck">
+        <svg viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" style="width:17px;height:17px;display:block;overflow:visible;">
+          <rect class="logo-box" x="2" y="2" width="16" height="16" rx="4"/>
+          <path class="logo-tick" d="M5 10 L8.5 13.5 L22 3"/>
+        </svg>
+      </span>
+      <span id="otBrandName"></span>
+    </div>
+    <button id="nav-toggle-btn" class="nav-toggle-btn" title="Hide sidebar">&#8249;</button>
+  </div>
+  <div id="onetrack-nav-links"></div>
+</nav>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">&#10022; Marathon Training</div>
+</div>
+
+<!-- PANELS -->
+<div class="panels">
+  <div class="tab-sidebar" id="tabSidebar"></div>
+  <div class="content-wrapper" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+    <div class="main" id="mainContent"></div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   DATA MODEL
+   Race window: Aug 2026 → Apr 2027 (9 months). One entry per
+   calendar date: { run, cross, exercise, weight } — weight only
+   meaningful on Sundays. Everything lives in appState and is
+   persisted to Drive only — never assumed present in the browser.
+══════════════════════════════════════════════════════════ */
+
+function buildMonths() {
+  const months = [];
+  let y = 2026, m = 7; // Aug 2026 (0-indexed)
+  for (let i = 0; i < 9; i++) {
+    months.push({ id: 'm' + i, year: y, month: m });
+    m++; if (m > 11) { m = 0; y++; }
+  }
+  return months;
+}
+
+const MONTH_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+const appState = {
+  activeTab: 'm0',
+  months: buildMonths(),
+  entries: {} // 'YYYY-MM-DD' -> { run, cross, exercise, weight }
+};
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function isoDate(y, m, d) { return y + '-' + pad2(m + 1) + '-' + pad2(d); } // m is 0-based
+function todayIso() { const d = new Date(); return isoDate(d.getFullYear(), d.getMonth(), d.getDate()); }
+function getEntry(iso) { return appState.entries[iso] || { run:'', cross:'', exercise:'', weight:'' }; }
+function setEntry(iso, field, value) {
+  if (!appState.entries[iso]) appState.entries[iso] = { run:'', cross:'', exercise:'', weight:'' };
+  appState.entries[iso][field] = value;
+  saveData();
+}
+function num(v) { const n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+/* Monday-first day-of-week index: 0=Mon..6=Sun */
+function mondayIndex(jsDay) { return (jsDay + 6) % 7; }
+
+/* ══════════════════════════════════════════════════════════
+   "Fetching from Google Drive…" overlay — page never renders
+   from, or lets you edit, data until Drive is the authority.
+══════════════════════════════════════════════════════════ */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive&hellip;</div>'+
+    '<div class="dw-sub">Loading your training log — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
+
+let _mtBooted = false;
+function loadData() {
+  _showDriveWait();
+
+  async function _boot(){
+    if (_mtBooted) return;
+    _mtBooted = true;
+    const saved = window.OT ? await OT.get('ONETRACK_MARATHON_TRAINING') : null;
+    if (saved) {
+      try {
+        const loaded = JSON.parse(saved);
+        if (loaded.entries) appState.entries = loaded.entries;
+        if (loaded.activeTab) appState.activeTab = loaded.activeTab;
+      } catch (e) { console.log('Using default data'); }
+    }
+    _hideDriveWait();
+    renderTabSidebar();
+    renderActive();
+  }
+
+  if (!window.OT){ _boot(); return; }
+  if (OT.onSync){ OT.onSync(function(){ _boot(); }); }
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _boot(); }
+  });
+  setTimeout(function(){ if(!_mtBooted) _boot(); }, 15000);
+}
+
+function saveData() {
+  if (window.OT) OT.set('ONETRACK_MARATHON_TRAINING', JSON.stringify({ entries: appState.entries, activeTab: appState.activeTab }));
+}
+
+/* ══════════════════════════════════════════════════════════
+   SIDEBAR TABS
+══════════════════════════════════════════════════════════ */
+function renderTabSidebar() {
+  const el = document.getElementById('tabSidebar');
+  let html = '';
+  appState.months.forEach(mo => {
+    const active = appState.activeTab === mo.id ? ' active' : '';
+    html += `<div class="tab-item${active}" onclick="switchTab('${mo.id}')">${MONTH_ABBR[mo.month]} ${mo.year}</div>`;
+  });
+  html += `<div class="tab-divider"></div>`;
+  const fpActive = appState.activeTab === 'full' ? ' active' : '';
+  html += `<div class="tab-item full-plan${fpActive}" onclick="switchTab('full')"><i class="ti ti-layout-grid"></i>&nbsp;Full plan</div>`;
+  el.innerHTML = html;
+}
+
+function switchTab(id) {
+  appState.activeTab = id;
+  saveData();
+  renderTabSidebar();
+  renderActive();
+}
+
+function renderActive() {
+  if (appState.activeTab === 'full') renderFullPlan();
+  else renderMonth(appState.activeTab);
+}
+
+/* ══════════════════════════════════════════════════════════
+   MONTH VIEW (editable)
+══════════════════════════════════════════════════════════ */
+function renderMonth(monthId) {
+  const mo = appState.months.find(m => m.id === monthId);
+  if (!mo) return;
+  const el = document.getElementById('mainContent');
+  const y = mo.year, m = mo.month;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const firstDow = mondayIndex(new Date(y, m, 1).getDay());
+  const today = todayIso();
+
+  let monthRun = 0, monthCross = 0, monthExercise = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const e = getEntry(isoDate(y, m, d));
+    monthRun += num(e.run); monthCross += num(e.cross); monthExercise += num(e.exercise);
+  }
+
+  let html = `
+  <div class="month-header">
+    <div class="month-title">${MONTH_FULL[m]} ${y}</div>
+    <div class="summary-strip">
+      <div class="summary-card"><div class="lbl">Month run</div><div class="val">${round1(monthRun)} km</div></div>
+      <div class="summary-card"><div class="lbl">Month cross</div><div class="val">${round1(monthCross)} min</div></div>
+      <div class="summary-card"><div class="lbl">Month exercise</div><div class="val">${round1(monthExercise)} min</div></div>
+      <button class="btn" onclick="downloadIcs('${monthId}')"><i class="ti ti-download"></i>Download .ics</button>
+      <button class="btn" onclick="printSmart('${monthId}')"><i class="ti ti-printer"></i>Print</button>
+    </div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-dot" style="background:var(--run-c);"></span>Run</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--cross-c);"></span>Cross-train</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--exercise-c);"></span>Exercise</div>
+    <div class="legend-item"><span class="legend-dot" style="background:var(--weight-c);"></span>Weight (Sun)</div>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-dow">Mo</div><div class="cal-dow">Tu</div><div class="cal-dow">We</div>
+    <div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div><div class="cal-dow">Su</div>
+    <div class="cal-dow">Week</div>`;
+
+  // Build week rows of exactly 7 cells (padding leading/trailing with
+  // nulls) so the 8th "week total" column always lands on the right row.
+  const weekRows = [];
+  let week = [];
+  for (let i = 0; i < firstDow; i++) week.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    week.push(d);
+    if (week.length === 7) { weekRows.push(week); week = []; }
+  }
+  if (week.length) { while (week.length < 7) week.push(null); weekRows.push(week); }
+
+  weekRows.forEach(week => {
+    let weekRun = 0, weekMinutes = 0;
+    week.forEach((d, dow) => {
+      if (d === null) { html += `<div class="day-cell empty"></div>`; return; }
+      const iso = isoDate(y, m, d);
+      const e = getEntry(iso);
+      const isSun = dow === 6;
+      const isToday = iso === today;
+      weekRun += num(e.run); weekMinutes += num(e.cross) + num(e.exercise);
+
+      html += `<div class="day-cell${isToday ? ' today' : ''}">
+        <div class="day-num">${d}</div>
+        <input class="day-input run" placeholder="Run km" value="${esc(e.run)}" oninput="setEntry('${iso}','run',this.value); refreshTotals('${monthId}')">
+        <input class="day-input cross" placeholder="Cross min" value="${esc(e.cross)}" oninput="setEntry('${iso}','cross',this.value); refreshTotals('${monthId}')">
+        <input class="day-input exercise" placeholder="Exer min" value="${esc(e.exercise)}" oninput="setEntry('${iso}','exercise',this.value); refreshTotals('${monthId}')">
+        ${isSun ? `<input class="day-input weight" placeholder="Weight kg" value="${esc(e.weight)}" oninput="setEntry('${iso}','weight',this.value)">` : ''}
+      </div>`;
+    });
+    html += `<div class="week-total">
+      <div class="wt-lbl" style="color:var(--run-c-text);">Run</div>
+      <div class="wt-val">${round1(weekRun)} km</div>
+      <div class="wt-lbl" style="color:var(--cross-c-text);">Cross+Exer</div>
+      <div class="wt-val">${round1(weekMinutes)} min</div>
+    </div>`;
+  });
+
+  html += `</div>
+  <p class="foot-note">No data is stored in this browser — every read and write goes to Google Drive, shown via the fetching overlay until sync completes.</p>`;
+
+  el.innerHTML = html;
+}
+
+function refreshTotals(monthId) {
+  // cheap full re-render keeps weekly/monthly sums always correct without
+  // hand-rolled incremental math; calendar is small so this is instant.
+  renderMonth(monthId);
+}
+
+function round1(n) { return Math.round(n * 10) / 10; }
+function esc(v) { return (v == null ? '' : String(v)).replace(/"/g, '&quot;'); }
+
+/* ══════════════════════════════════════════════════════════
+   FULL PLAN — read-only rollup of every month, print only
+══════════════════════════════════════════════════════════ */
+function renderFullPlan() {
+  const el = document.getElementById('mainContent');
+  let html = `
+  <div class="month-header">
+    <div class="month-title">Full plan &mdash; ${MONTH_ABBR[appState.months[0].month]} ${appState.months[0].year} to ${MONTH_ABBR[appState.months[appState.months.length-1].month]} ${appState.months[appState.months.length-1].year}</div>
+    <button class="btn" onclick="printFullPlan()"><i class="ti ti-printer"></i>Print</button>
+  </div>
+  <div class="fp-grid">`;
+
+  appState.months.forEach(mo => {
+    html += renderFpMonth(mo);
+  });
+
+  html += `</div>
+  <p class="foot-note">Read-only rollup of every logged day across the plan. Nothing here is editable &mdash; use the month tabs on the left to enter data. The only action available here is print.</p>`;
+
+  el.innerHTML = html;
+}
+
+function renderFpMonth(mo) {
+  const y = mo.year, m = mo.month;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const firstDow = mondayIndex(new Date(y, m, 1).getDay());
+  let monthRun = 0, monthMin = 0;
+
+  let cells = '';
+  for (let i = 0; i < firstDow; i++) cells += `<div class="fp-day empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const e = getEntry(isoDate(y, m, d));
+    monthRun += num(e.run); monthMin += num(e.cross) + num(e.exercise);
+    const hasRun = num(e.run) > 0;
+    const hasWeight = e.weight;
+    let inner = String(d);
+    if (hasRun) inner += `<br>${esc(e.run)}km`;
+    else if (hasWeight) inner += `<br>${esc(e.weight)}kg`;
+    cells += `<div class="fp-day${hasRun ? ' has-run' : ''}${(!hasRun && hasWeight) ? ' has-weight' : ''}">${inner}</div>`;
+  }
+
+  return `<div class="fp-month">
+    <div class="fp-month-head">
+      <span class="name">${MONTH_FULL[m]} ${y}</span>
+      <span class="totals">${round1(monthRun)} km &middot; ${round1(monthMin)} min</span>
+    </div>
+    <div class="fp-mini-grid">
+      <div class="fp-dow">M</div><div class="fp-dow">T</div><div class="fp-dow">W</div>
+      <div class="fp-dow">T</div><div class="fp-dow">F</div><div class="fp-dow">S</div><div class="fp-dow">S</div>
+      ${cells}
+    </div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════
+   .ICS DOWNLOAD — one event per logged day in the given month
+══════════════════════════════════════════════════════════ */
+function downloadIcs(monthId) {
+  const mo = appState.months.find(m => m.id === monthId);
+  if (!mo) return;
+  const y = mo.year, m = mo.month;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+
+  let events = '';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = isoDate(y, m, d);
+    const e = getEntry(iso);
+    if (!num(e.run) && !num(e.cross) && !num(e.exercise) && !e.weight) continue;
+    const parts = [];
+    if (num(e.run)) parts.push(`Run ${e.run}km`);
+    if (num(e.cross)) parts.push(`Cross-train ${e.cross}min`);
+    if (num(e.exercise)) parts.push(`Exercise ${e.exercise}min`);
+    if (e.weight) parts.push(`Weight ${e.weight}kg`);
+    const summary = parts.join(' / ');
+    const dateStamp = iso.replace(/-/g, '');
+    events += `BEGIN:VEVENT
+UID:marathon-${iso}@onetrack
+DTSTART;VALUE=DATE:${dateStamp}
+DTEND;VALUE=DATE:${dateStamp}
+SUMMARY:${summary}
+DESCRIPTION:${parts.join('\\n')}
+END:VEVENT
+`;
+  }
+
+  const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Marathon Training//EN
+CALSCALE:GREGORIAN
+${events}END:VCALENDAR`;
+
+  const blob = new Blob([ics], { type: 'text/calendar' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Marathon Training - ${MONTH_ABBR[m]} ${y}.ics`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ══════════════════════════════════════════════════════════
+   PRINT — smart dispatcher reads ONETRACK_PRINT_STYLE from
+   Settings (colour vs B&W), same pattern as TT&B.
+══════════════════════════════════════════════════════════ */
+function printSmart(monthId) {
+  const style = localStorage.getItem('ONETRACK_PRINT_STYLE') || 'bw';
+  if (style === 'color') printMonthColor(monthId); else printMonthBW(monthId);
+}
+
+function _monthPrintData(monthId) {
+  const mo = appState.months.find(m => m.id === monthId);
+  const y = mo.year, m = mo.month;
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const firstDow = mondayIndex(new Date(y, m, 1).getDay());
+  const rows = [];
+  let week = [];
+  for (let i = 0; i < firstDow; i++) week.push(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = isoDate(y, m, d);
+    week.push({ d, e: getEntry(iso) });
+    if (week.length === 7) { rows.push(week); week = []; }
+  }
+  if (week.length) { while (week.length < 7) week.push(null); rows.push(week); }
+  return { mo, rows };
+}
+
+function printMonthBW(monthId) {
+  const { mo, rows } = _monthPrintData(monthId);
+  let bodyRows = '';
+  rows.forEach(week => {
+    bodyRows += '<tr>';
+    week.forEach(cell => {
+      if (!cell) { bodyRows += '<td style="border:1px solid #ccc;padding:6px;"></td>'; return; }
+      const e = cell.e;
+      const lines = [`<strong>${cell.d}</strong>`];
+      if (num(e.run)) lines.push(`Run: ${e.run}km`);
+      if (num(e.cross)) lines.push(`Cross: ${e.cross}min`);
+      if (num(e.exercise)) lines.push(`Exercise: ${e.exercise}min`);
+      if (e.weight) lines.push(`Weight: ${e.weight}kg`);
+      bodyRows += `<td style="border:1px solid #ccc;padding:6px;vertical-align:top;font-size:11px;">${lines.join('<br>')}</td>`;
+    });
+    bodyRows += '</tr>';
+  });
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Marathon Training &mdash; ${MONTH_FULL[mo.month]} ${mo.year}</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Georgia,serif;color:#111;background:#fff;padding:20px 24px;}
+  table{width:100%;border-collapse:collapse;}
+  @page{size:A4 landscape;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>
+  <div style="border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:14px;">
+    <div style="font-size:20px;font-weight:700;">Marathon Training &mdash; ${MONTH_FULL[mo.month]} ${mo.year}</div>
+  </div>
+  <table>${bodyRows}</table>
+  </body></html>`);
+  w.document.close(); w.onload = () => { w.focus(); w.print(); };
+}
+
+function printMonthColor(monthId) {
+  const { mo, rows } = _monthPrintData(monthId);
+  const PAL = { run:'#0C447C', runBg:'#E6F1FB', cross:'#085041', crossBg:'#E1F5EE', ex:'#993C1D', exBg:'#FAECE7', wt:'#3C3489', wtBg:'#EEEDFE' };
+  let bodyRows = '';
+  rows.forEach(week => {
+    bodyRows += '<tr>';
+    week.forEach(cell => {
+      if (!cell) { bodyRows += '<td style="border:1px solid #ddd;padding:6px;"></td>'; return; }
+      const e = cell.e;
+      let lines = `<div style="font-weight:700;margin-bottom:3px;">${cell.d}</div>`;
+      if (num(e.run)) lines += `<div style="color:${PAL.run};background:${PAL.runBg};border-radius:3px;padding:1px 4px;margin-bottom:2px;">Run ${e.run}km</div>`;
+      if (num(e.cross)) lines += `<div style="color:${PAL.cross};background:${PAL.crossBg};border-radius:3px;padding:1px 4px;margin-bottom:2px;">Cross ${e.cross}min</div>`;
+      if (num(e.exercise)) lines += `<div style="color:${PAL.ex};background:${PAL.exBg};border-radius:3px;padding:1px 4px;margin-bottom:2px;">Exercise ${e.exercise}min</div>`;
+      if (e.weight) lines += `<div style="color:${PAL.wt};background:${PAL.wtBg};border-radius:3px;padding:1px 4px;">Weight ${e.weight}kg</div>`;
+      bodyRows += `<td style="border:1px solid #ddd;padding:6px;vertical-align:top;font-size:11px;">${lines}</td>`;
+    });
+    bodyRows += '</tr>';
+  });
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Marathon Training &mdash; ${MONTH_FULL[mo.month]} ${mo.year}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#1a1714;background:#fff;padding:20px 24px;}
+  table{width:100%;border-collapse:collapse;}
+  @page{size:A4 landscape;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>
+  <div style="border-bottom:2px solid #e0d4c4;padding-bottom:10px;margin-bottom:16px;">
+    <div style="font-family:'DM Serif Display',Georgia,serif;font-size:24px;color:#3a2e20;">Marathon Training &mdash; ${MONTH_FULL[mo.month]} ${mo.year}</div>
+  </div>
+  <table>${bodyRows}</table>
+  </body></html>`);
+  w.document.close(); w.onload = () => { w.focus(); w.print(); };
+}
+
+function printFullPlan() {
+  const style = localStorage.getItem('ONETRACK_PRINT_STYLE') || 'bw';
+  const color = style === 'color';
+  let sections = '';
+  appState.months.forEach(mo => {
+    const { rows } = _monthPrintData(mo.id);
+    let bodyRows = '';
+    rows.forEach(week => {
+      bodyRows += '<tr>';
+      week.forEach(cell => {
+        if (!cell) { bodyRows += `<td style="border:1px solid ${color ? '#ddd' : '#ccc'};padding:4px;"></td>`; return; }
+        const e = cell.e;
+        const bits = [`<strong>${cell.d}</strong>`];
+        if (num(e.run)) bits.push(`${e.run}km`);
+        if (e.weight) bits.push(`${e.weight}kg`);
+        bodyRows += `<td style="border:1px solid ${color ? '#ddd' : '#ccc'};padding:4px;font-size:9px;vertical-align:top;${color ? 'color:#0C447C;' : ''}">${bits.join(' / ')}</td>`;
+      });
+      bodyRows += '</tr>';
+    });
+    sections += `<div style="break-inside:avoid;margin-bottom:14px;">
+      <div style="font-weight:700;font-size:13px;margin-bottom:4px;${color ? 'color:#3a2e20;' : ''}">${MONTH_FULL[mo.month]} ${mo.year}</div>
+      <table style="width:100%;border-collapse:collapse;">${bodyRows}</table>
+    </div>`;
+  });
+  const w = window.open('', '_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Marathon Training &mdash; Full plan</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Georgia,serif;color:#111;background:#fff;padding:20px 24px;}
+  @page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>
+  <div style="border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:16px;">
+    <div style="font-size:20px;font-weight:700;">Marathon Training &mdash; Full plan</div>
+  </div>
+  ${sections}
+  </body></html>`);
+  w.document.close(); w.onload = () => { w.focus(); w.print(); };
+}
+
+// Init
+loadData();
+</script>
+
+</body>
+</html>
