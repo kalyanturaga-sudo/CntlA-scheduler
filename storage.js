@@ -138,6 +138,7 @@
     { id: 'trip',       file: 'Trip Planners.html',  label: 'Trip Planners' },
     { id: 'meal',       file: 'Meal Planner.html',   label: 'Meal Planner' },
     { id: 'workout',    file: 'Workout Planner.html',label: 'Workout Planner' },
+    { id: 'marathon',   file: 'Marathon Training.html',label: 'Marathon Training' },
     { id: 'libraries',  file: 'Libraries.html',      label: 'Libraries' },
   ];
   /* Settings is intentionally NOT in NAV_PAGES — it's pinned at the
