@@ -477,6 +477,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-icon-btn[data-act="indent"]:hover,.tb-icon-btn[data-act="outdent"]:hover{color:var(--accent);background:var(--surface2);}
 .tb-icon-btn[disabled]{opacity:.3;cursor:not-allowed;}
 .tb-icon-btn[disabled]:hover{color:var(--text3);background:none;}
+.tb-row.tb-row-selected{background:var(--accent-soft);}
+.tb-row.tb-subrow.tb-row-selected{background:var(--accent-soft);}
 
 .tb-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
 .tb-fort-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -2459,7 +2461,9 @@ function tbSmartPrint(){
 /* ══════════════════════════════════════════════════════════
    TASK BANK — EDITOR (the only tab that creates/schedules/orders)
 ══════════════════════════════════════════════════════════ */
-let _tbCollapsed = new Set(); // ids currently hidden; resets to all-expanded on every tab load
+let _tbCollapsed = new Set(); // ids currently hidden
+let _tbFirstRender = true; // true once per tab visit — used to default every task to collapsed on entry, without re-collapsing tasks you've since expanded or just created sub-tasks under
+let _tbSelected = null; // null | {type:"task", id} | {type:"sub", parentId, subId}
 
 function _tbSetBucketDay(t, day){
   t.bucket="day"; t.days=t.days||[];
@@ -2487,32 +2491,38 @@ function _tbCircleRow(t){
 function renderTaskBank(){
   const tasks=loadTaskBank();
   const bankRoot=document.getElementById("tbBankContent");
+  if(_tbFirstRender){
+    tasks.forEach(t=>{ if(t.subs && t.subs.length) _tbCollapsed.add(t.id); });
+    _tbFirstRender=false;
+  }
   let maxLen=0;
   tasks.forEach(t=>{
     maxLen=Math.max(maxLen,(t.name||"").length);
     (t.subs||[]).forEach(s=>maxLen=Math.max(maxLen,(s.name||"").length));
   });
   if(bankRoot) bankRoot.style.setProperty("--tb-name-w", (maxLen?maxLen+5:20)+"ch");
-  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="tbAddTaskBtn">＋ Add task</button></div>';
+  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="tbAddTaskBtn" title="Adds to top of list, or right beneath the selected task/sub-task">＋ Add task</button></div>';
   html+='<div class="tb-table" id="tbTable">';
   tasks.forEach((t,idx)=>{
     const hasSubs = t.subs && t.subs.length>0;
     const canIndent = idx>0 && !hasSubs;
     const collapsed = hasSubs && _tbCollapsed.has(t.id);
-    html+=`<div class="tb-row" draggable="true" data-idx="${idx}" data-id="${t.id}">`
+    const isSelTask = _tbSelected && _tbSelected.type==="task" && _tbSelected.id===t.id;
+    html+=`<div class="tb-row${isSelTask?" tb-row-selected":""}" draggable="true" data-idx="${idx}" data-id="${t.id}">`
         +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
         +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-collapse":""}">${hasSubs?(collapsed?"▶":"▼"):""}</span>`
-        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
+        +`<span class="tb-name" data-act="rename" title="Click to select, double-click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
         +_tbCircleRow(t)
         +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
         +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
         +`</div>`;
     if(!collapsed){
       (t.subs||[]).forEach((s,sidx)=>{
-        html+=`<div class="tb-row tb-subrow" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
+        const isSelSub = _tbSelected && _tbSelected.type==="sub" && _tbSelected.subId===s.id;
+        html+=`<div class="tb-row tb-subrow${isSelSub?" tb-row-selected":""}" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
             +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
             +`<span class="tb-chevron tb-chevron-empty"></span>`
-            +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
+            +`<span class="tb-name" data-act="rename-sub" title="Click to select, double-click to rename">${_esc(s.name)}</span>`
             +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
             +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
             +`</div>`;
@@ -2531,8 +2541,26 @@ function renderTaskBank(){
     if(e.target.closest("#tbAddTaskBtn")){
       const name=prompt("New task name:"); if(!name||!name.trim()) return;
       const tasks=loadTaskBank();
-      tasks.push({id:_tbId(), name:name.trim(), bucket:"day", days:[], subs:[]});
-      saveTaskBank(tasks); renderTaskBank(); showToast("✓ Task added");
+      const newId=_tbId();
+      if(_tbSelected && _tbSelected.type==="sub"){
+        const p=tasks.find(x=>x.id===_tbSelected.parentId);
+        if(p){
+          p.subs=p.subs||[];
+          const sIdx=p.subs.findIndex(s=>s.id===_tbSelected.subId);
+          const newSub={id:newId, name:name.trim()};
+          if(sIdx>-1) p.subs.splice(sIdx+1,0,newSub); else p.subs.push(newSub);
+          saveTaskBank(tasks); _tbSelected={type:"sub", parentId:p.id, subId:newId}; renderTaskBank(); showToast("✓ Sub-task added");
+          return;
+        }
+      }
+      const newTask={id:newId, name:name.trim(), bucket:"day", days:[], subs:[]};
+      if(_tbSelected && _tbSelected.type==="task"){
+        const idx=tasks.findIndex(x=>x.id===_tbSelected.id);
+        if(idx>-1){ tasks.splice(idx+1,0,newTask); } else { tasks.unshift(newTask); }
+      } else {
+        tasks.unshift(newTask);
+      }
+      saveTaskBank(tasks); _tbSelected={type:"task", id:newId}; renderTaskBank(); showToast("✓ Task added");
       return;
     }
     const circleBtn=e.target.closest(".tb-circle");
@@ -2551,22 +2579,6 @@ function renderTaskBank(){
       const row=chevron.closest(".tb-row"); const id=row.dataset.id;
       if(_tbCollapsed.has(id)) _tbCollapsed.delete(id); else _tbCollapsed.add(id);
       renderTaskBank();
-      return;
-    }
-    const renameBtn=e.target.closest("[data-act='rename']");
-    if(renameBtn){
-      const row=renameBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
-      const name=prompt("Rename task:", t.name); if(name===null||!name.trim()) return;
-      t.name=name.trim(); saveTaskBank(tasks); renderTaskBank();
-      return;
-    }
-    const renameSub=e.target.closest("[data-act='rename-sub']");
-    if(renameSub){
-      const row=renameSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
-      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
-      const name=prompt("Rename sub-task:", t.subs[sidx].name); if(name===null||!name.trim()) return;
-      t.subs[sidx].name=name.trim(); saveTaskBank(tasks); renderTaskBank();
       return;
     }
     const delBtn=e.target.closest("[data-act='delete']");
@@ -2610,6 +2622,43 @@ function renderTaskBank(){
       const sub=t.subs.splice(sidx,1)[0];
       tasks.splice(pidx+1,0,{id:sub.id, name:sub.name, bucket:t.bucket, days:(t.days||[]).slice(), subs:[]});
       saveTaskBank(tasks); renderTaskBank(); showToast("↰ Made a top-level task");
+      return;
+    }
+    const subRow=e.target.closest(".tb-subrow");
+    if(subRow){
+      const pid=subRow.dataset.parent, sidx=+subRow.dataset.subidx;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); const sub=t&&t.subs&&t.subs[sidx];
+      if(!sub) return;
+      if(_tbSelected && _tbSelected.type==="sub" && _tbSelected.subId===sub.id) _tbSelected=null;
+      else _tbSelected={type:"sub", parentId:pid, subId:sub.id};
+      renderTaskBank();
+      return;
+    }
+    const topRow=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(topRow){
+      const id=topRow.dataset.id;
+      if(_tbSelected && _tbSelected.type==="task" && _tbSelected.id===id) _tbSelected=null;
+      else _tbSelected={type:"task", id};
+      renderTaskBank();
+      return;
+    }
+  });
+
+  root.addEventListener("dblclick", e=>{
+    const renameBtn=e.target.closest("[data-act='rename']");
+    if(renameBtn){
+      const row=renameBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const name=prompt("Rename task:", t.name); if(name===null||!name.trim()) return;
+      t.name=name.trim(); saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const renameSub=e.target.closest("[data-act='rename-sub']");
+    if(renameSub){
+      const row=renameSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
+      const name=prompt("Rename sub-task:", t.subs[sidx].name); if(name===null||!name.trim()) return;
+      t.subs[sidx].name=name.trim(); saveTaskBank(tasks); renderTaskBank();
       return;
     }
   });
@@ -2707,7 +2756,7 @@ function setMode(mode){
   else if(mode==="weekly"){ renderTBWeekly(); }
   else if(mode==="fortnightly"){ renderTBFort(); }
   else if(mode==="monthly"){ renderTBMonth(); }
-  else if(mode==="taskbank"){ _tbCollapsed.clear(); renderTaskBank(); }
+  else if(mode==="taskbank"){ _tbCollapsed.clear(); _tbFirstRender=true; _tbSelected=null; renderTaskBank(); }
 }
 
 /* Current renamable label for the Routines tab (falls back gracefully). */
