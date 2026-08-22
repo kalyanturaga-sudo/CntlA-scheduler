@@ -678,8 +678,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <div class="mode-tab-bar" id="modeTabBar">
     <button class="mode-tab active" data-mode="daily">☀️ Daily</button>
     <button class="mode-tab" data-mode="weekly">📅 Weekly</button>
-    <button class="mode-tab" data-mode="fortnightly">🗓 Fortnightly</button>
-    <button class="mode-tab" data-mode="monthly">📆 Monthly</button>
     <button class="mode-tab" data-mode="taskbank">🗂 Task bank</button>
   </div>
 
@@ -2123,7 +2121,7 @@ function printRoutinesColor(selectedIds, override){
   }
 
   document.getElementById("btnPrint").onclick=()=>{
-    if(activeMode==="weekly"||activeMode==="fortnightly"||activeMode==="monthly"){ tbSmartPrint(); return; }
+    if(activeMode==="weekly"){ tbSmartPrint(); return; }
     buildList();
     modal.classList.add("open");
   };
@@ -2314,41 +2312,50 @@ function _wireTBChecks(containerId, renderFn){
   });
 }
 
-/* ── Weekly: 3×3 grid (9 boxes), today leads, Whenever pinned in box 8.
-   Box 9 is Whenever's overflow — if Whenever grows past WHENEVER_CAP items,
-   the rest spill into box 9 (same done-state, just a visual split). When
-   there's nothing to overflow, box 9 renders as a blank dashed reserved box. ── */
-const TB_WHENEVER_CAP = 6;
+/* ── Weekly: 3×4 grid (12 cells, 11 used). Row1-3 col1: today-leads 7-day
+   rotation (unchanged). Row3 col2/3: F1 / F2 (fixed). Row4 col1: Monthly
+   (fixed). Row4 col2: reserved/blank. Row4 col3: Whenever (fixed).
+   Whenever is now an independent checkbox (t.whenever) — a task can be
+   scheduled on a day AND flagged Whenever at the same time. A task with
+   bucket "day" and no days picked still falls into Whenever by default. ── */
+function _tbWheneverList(tasks){
+  return tasks.filter(t=> t.whenever || (t.bucket==="day" && (!t.days||!t.days.length)));
+}
 function renderTBWeekly(){
-  const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+  const tasks=loadTaskBank();
+  const dayTasks=tasks.filter(t=>t.bucket==="day");
   const done=loadTBDone(TB_DONE_WK_KEY);
+  const doneF=loadTBDone(TB_DONE_F1_KEY);
+  const doneM=loadTBDone(TB_DONE_MO_KEY);
   const days=_weeklyBoxOrder();
-  const wheneverAll=tasks.filter(t=>!t.days||!t.days.length);
-  const wheneverMain=wheneverAll.slice(0,TB_WHENEVER_CAP);
-  const wheneverOverflow=wheneverAll.slice(TB_WHENEVER_CAP);
+  const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2"), mo=tasks.filter(t=>t.bucket==="month");
+  const wh=_tbWheneverList(tasks);
   let html='<div class="tb-grid">';
   days.forEach(day=>{
-    const items=tasks.filter(t=>t.days&&t.days.includes(day));
+    const items=dayTasks.filter(t=>t.days&&t.days.includes(day));
     html+=`<div class="tb-box"><div class="tb-box-title">${day}</div><div class="tb-box-body">`;
     html += items.length ? items.map(t=>_tbRenderCheckItem(t,day,done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
     html+='</div></div>';
   });
-  html+='<div class="tb-box"><div class="tb-box-title">Whenever</div><div class="tb-box-body">';
-  html += wheneverMain.length ? wheneverMain.map(t=>_tbRenderCheckItem(t,"Whenever",done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
-  html+='</div></div>';
-  if(wheneverOverflow.length){
-    html+='<div class="tb-box"><div class="tb-box-title">Whenever <span class="tb-box-title-sub">(cont.)</span></div><div class="tb-box-body">';
-    html += wheneverOverflow.map(t=>_tbRenderCheckItem(t,"Whenever",done,TB_DONE_WK_KEY)).join("");
+  [["F1",f1,doneF,TB_DONE_F1_KEY],["F2",f2,doneF,TB_DONE_F1_KEY]].forEach(([label,list,d,k])=>{
+    html+=`<div class="tb-box"><div class="tb-box-title">${label}</div><div class="tb-box-body">`;
+    html += list.length ? list.map(t=>_tbRenderCheckItem(t,null,d,k)).join("") : '<div class="tb-empty">No tasks yet</div>';
     html+='</div></div>';
-  } else {
-    html+='<div class="tb-box tb-box-reserved"></div>';
-  }
+  });
+  html+='<div class="tb-box"><div class="tb-box-title">Monthly</div><div class="tb-box-body">';
+  html += mo.length ? mo.map(t=>_tbRenderCheckItem(t,null,doneM,TB_DONE_MO_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
+  html+='</div></div>';
+  html+='<div class="tb-box tb-box-reserved"></div>';
+  html+='<div class="tb-box"><div class="tb-box-title">Whenever</div><div class="tb-box-body">';
+  html += wh.length ? wh.map(t=>_tbRenderCheckItem(t,"Whenever",done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
+  html+='</div></div>';
   html+='</div>';
   document.getElementById("tbWeeklyContent").innerHTML=html;
   updateTBProgress();
 }
 
-/* ── Fortnightly: F1 / F2, two columns, whatever order Task bank has them in ── */
+/* ── Dead code, kept but unreachable: old separate Fortnightly / Monthly
+   tab renderers, from before those tabs were merged into Weekly. ── */
 function renderTBFort(){
   const tasks=loadTaskBank();
   const done=loadTBDone(TB_DONE_F1_KEY);
@@ -2360,40 +2367,33 @@ function renderTBFort(){
     html+='</div></div>';
   });
   html+='</div>';
-  document.getElementById("tbFortContent").innerHTML=html;
-  updateTBProgress();
+  const el=document.getElementById("tbFortContent"); if(el) el.innerHTML=html;
 }
-
-/* ── Monthly: single flat list ── */
 function renderTBMonth(){
   const tasks=loadTaskBank().filter(t=>t.bucket==="month");
   const done=loadTBDone(TB_DONE_MO_KEY);
   let html='<div class="tb-box tb-box-solo"><div class="tb-box-body">';
   html += tasks.length ? tasks.map(t=>_tbRenderCheckItem(t,null,done,TB_DONE_MO_KEY)).join("") : '<div class="tb-empty">No tasks yet. Assign the Mo circle in Task bank to add some.</div>';
   html+='</div></div>';
-  document.getElementById("tbMonthContent").innerHTML=html;
-  updateTBProgress();
+  const el=document.getElementById("tbMonthContent"); if(el) el.innerHTML=html;
 }
 
 /* ── shared progress bar for the 3 display tabs ── */
 function updateTBProgress(){
   let flags=[];
   if(activeMode==="weekly"){
-    const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+    const tasks=loadTaskBank();
+    const dayTasks=tasks.filter(t=>t.bucket==="day");
     const done=loadTBDone(TB_DONE_WK_KEY);
+    const doneF=loadTBDone(TB_DONE_F1_KEY);
+    const doneM=loadTBDone(TB_DONE_MO_KEY);
     _weeklyBoxOrder().forEach(day=>{
-      const list=tasks.filter(t=>t.days&&t.days.includes(day));
+      const list=dayTasks.filter(t=>t.days&&t.days.includes(day));
       list.forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,day)]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,day)])); });
     });
-    tasks.filter(t=>!t.days||!t.days.length).forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,"Whenever")]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,"Whenever")])); });
-  } else if(activeMode==="fortnightly"){
-    const tasks=loadTaskBank().filter(t=>t.bucket==="f1"||t.bucket==="f2");
-    const done=loadTBDone(TB_DONE_F1_KEY);
-    tasks.forEach(t=>{ flags.push(!!done[t.id]); (t.subs||[]).forEach(s=>flags.push(!!done[s.id])); });
-  } else if(activeMode==="monthly"){
-    const tasks=loadTaskBank().filter(t=>t.bucket==="month");
-    const done=loadTBDone(TB_DONE_MO_KEY);
-    tasks.forEach(t=>{ flags.push(!!done[t.id]); (t.subs||[]).forEach(s=>flags.push(!!done[s.id])); });
+    _tbWheneverList(tasks).forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,"Whenever")]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,"Whenever")])); });
+    tasks.filter(t=>t.bucket==="f1"||t.bucket==="f2").forEach(t=>{ flags.push(!!doneF[t.id]); (t.subs||[]).forEach(s=>flags.push(!!doneF[s.id])); });
+    tasks.filter(t=>t.bucket==="month").forEach(t=>{ flags.push(!!doneM[t.id]); (t.subs||[]).forEach(s=>flags.push(!!doneM[s.id])); });
   } else return;
   const total=flags.length, doneCount=flags.filter(Boolean).length;
   const pct= total? Math.round(doneCount/total*100):0;
@@ -2406,47 +2406,43 @@ function updateTBProgress(){
    already expect, so those two existing renderers are reused as-is ── */
 function _tbBuildPrintOverride(){
   if(activeMode==="weekly"){
-    const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+    const tasks=loadTaskBank();
+    const dayTasks=tasks.filter(t=>t.bucket==="day");
     const done=loadTBDone(TB_DONE_WK_KEY);
-    const order=_weeklyBoxOrder().concat(["Whenever"]);
-    const routines=order.map((day,i)=>({id:"d"+i, icon:"📅", label:day}));
-    const data={};
-    order.forEach((day,i)=>{
-      const list = day==="Whenever" ? tasks.filter(t=>!t.days||!t.days.length) : tasks.filter(t=>t.days&&t.days.includes(day));
+    const doneF=loadTBDone(TB_DONE_F1_KEY);
+    const doneM=loadTBDone(TB_DONE_MO_KEY);
+    const days=_weeklyBoxOrder();
+    const routines=[]; const data={};
+    days.forEach((day,i)=>{
+      const list=dayTasks.filter(t=>t.days&&t.days.includes(day));
       const items=[];
       list.forEach(t=>{
         items.push({text:t.name, done:!!done[_tbDoneId(t.id,day)]});
         (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[_tbDoneId(s.id,day)], sub:true}));
       });
-      data["d"+i]={items};
+      routines.push({id:"d"+i, icon:"📅", label:day}); data["d"+i]={items};
     });
-    return {routines, data, title:"Weekly"};
-  }
-  if(activeMode==="fortnightly"){
-    const tasks=loadTaskBank();
-    const done=loadTBDone(TB_DONE_F1_KEY);
-    const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2");
-    const routines=[{id:"f1",icon:"🗓",label:"F1"},{id:"f2",icon:"🗓",label:"F2"}];
-    const data={};
-    [["f1",f1],["f2",f2]].forEach(pair=>{
+    [["f1","F1",tasks.filter(t=>t.bucket==="f1"),doneF],["f2","F2",tasks.filter(t=>t.bucket==="f2"),doneF]].forEach(([id,label,list,d])=>{
       const items=[];
-      pair[1].forEach(t=>{
-        items.push({text:t.name, done:!!done[t.id]});
-        (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[s.id], sub:true}));
+      list.forEach(t=>{
+        items.push({text:t.name, done:!!d[t.id]});
+        (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!d[s.id], sub:true}));
       });
-      data[pair[0]]={items};
+      routines.push({id, icon:"🗓", label}); data[id]={items};
     });
-    return {routines, data, title:"Fortnightly"};
-  }
-  if(activeMode==="monthly"){
-    const tasks=loadTaskBank().filter(t=>t.bucket==="month");
-    const done=loadTBDone(TB_DONE_MO_KEY);
-    const items=[];
-    tasks.forEach(t=>{
-      items.push({text:t.name, done:!!done[t.id]});
-      (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[s.id], sub:true}));
+    const moItems=[];
+    tasks.filter(t=>t.bucket==="month").forEach(t=>{
+      moItems.push({text:t.name, done:!!doneM[t.id]});
+      (t.subs||[]).forEach(s=>moItems.push({text:s.name, done:!!doneM[s.id], sub:true}));
     });
-    return {routines:[{id:"mo",icon:"📆",label:"Monthly"}], data:{mo:{items}}, title:"Monthly"};
+    routines.push({id:"mo", icon:"📆", label:"Monthly"}); data.mo={items:moItems};
+    const whItems=[];
+    _tbWheneverList(tasks).forEach(t=>{
+      whItems.push({text:t.name, done:!!done[_tbDoneId(t.id,"Whenever")]});
+      (t.subs||[]).forEach(s=>whItems.push({text:s.name, done:!!done[_tbDoneId(s.id,"Whenever")], sub:true}));
+    });
+    routines.push({id:"wh", icon:"❓", label:"Whenever"}); data.wh={items:whItems};
+    return {routines, data, title:"Weekly"};
   }
   return null;
 }
@@ -2470,7 +2466,7 @@ function _tbSetBucketDay(t, day){
   const i=t.days.indexOf(day);
   if(i>-1) t.days.splice(i,1); else t.days.push(day);
 }
-function _tbSetWhenever(t){ t.bucket="day"; t.days=[]; }
+function _tbToggleWhenever(t){ t.whenever = !t.whenever; }
 function _tbSetOther(t,bucket){ t.bucket=bucket; t.days=[]; }
 
 function _tbCircleRow(t){
@@ -2479,8 +2475,7 @@ function _tbCircleRow(t){
     const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
     h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
   });
-  const wOn = t.bucket==="day" && (!t.days || !t.days.length);
-  h+=`<button class="tb-circle${wOn?" on":""}" data-act="whenever" title="Whenever">?</button>`;
+  h+=`<button class="tb-circle${t.whenever?" on":""}" data-act="whenever" title="Whenever — independent of day/F1/F2/Monthly, can be checked alongside anything else">?</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f1"?" on":""}" data-act="bucket" data-bucket="f1" title="Fortnightly — List 1">F1</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f2"?" on":""}" data-act="bucket" data-bucket="f2" title="Fortnightly — List 2">F2</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="month"?" on":""}" data-act="bucket" data-bucket="month" title="Monthly">Mo</button>`;
@@ -2569,7 +2564,7 @@ function renderTaskBank(){
       const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
       const act=circleBtn.dataset.act;
       if(act==="day") _tbSetBucketDay(t, circleBtn.dataset.day);
-      else if(act==="whenever") _tbSetWhenever(t);
+      else if(act==="whenever") _tbToggleWhenever(t);
       else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
       saveTaskBank(tasks); renderTaskBank();
       return;
@@ -2716,14 +2711,12 @@ _wireTBChecks("tbMonthContent", renderTBMonth);
    MODE MANAGEMENT
 ══════════════════════════════════════════════════════════ */
 const MODE_KEY = "ONETRACK_ROUTINES_MODE";
-const MODES = ["daily","weekly","fortnightly","monthly","taskbank"];
+const MODES = ["daily","weekly","taskbank"];
 let activeMode = "daily";
 
 const MODE_META = {
   daily:       { label:"☀️ Daily",        progress:"✦ Daily progress",       title:"🔁 Routines" },
   weekly:      { label:"📅 Weekly",        progress:"✦ Weekly progress",      title:"📅 Weekly" },
-  fortnightly: { label:"🗓 Fortnightly",   progress:"✦ Fortnightly progress", title:"🗓 Fortnightly" },
-  monthly:     { label:"📆 Monthly",       progress:"✦ Monthly progress",     title:"📆 Monthly" },
   taskbank:    { label:"🗂 Task bank",     progress:"✦ Task bank",            title:"🗂 Task bank" },
 };
 
@@ -2736,13 +2729,13 @@ function setMode(mode){
   document.getElementById("pageTitle").textContent =
     (mode==="daily") ? ("🔁 " + _routinesLabel()) : MODE_META[mode].title;
   document.getElementById("progressLabel").textContent = MODE_META[mode].progress;
-  // Show/hide bodies — old Weekly/Simple containers are deprecated (kept, but never shown again)
+  // Show/hide bodies — old Weekly/Simple/Fortnightly/Monthly containers are deprecated (kept, but never shown again)
   document.getElementById("bodyDaily").style.display      = mode==="daily"       ? "" : "none";
   document.getElementById("bodyWeekly").style.display     = "none";
   document.getElementById("bodySimple").style.display     = "none";
   document.getElementById("bodyWeeklyGrid").style.display = mode==="weekly"      ? "" : "none";
-  document.getElementById("bodyFortGrid").style.display   = mode==="fortnightly" ? "" : "none";
-  document.getElementById("bodyMonthGrid").style.display  = mode==="monthly"     ? "" : "none";
+  document.getElementById("bodyFortGrid").style.display   = "none";
+  document.getElementById("bodyMonthGrid").style.display  = "none";
   document.getElementById("bodyTaskBank").style.display   = mode==="taskbank"    ? "" : "none";
   // Print/Reset buttons — hidden on Task bank (it's an editor, not a checklist)
   document.getElementById("btnPrint").style.display    = mode==="taskbank" ? "none" : "";
@@ -2754,8 +2747,6 @@ function setMode(mode){
   // Render
   if(mode==="daily"){ render(); }
   else if(mode==="weekly"){ renderTBWeekly(); }
-  else if(mode==="fortnightly"){ renderTBFort(); }
-  else if(mode==="monthly"){ renderTBMonth(); }
   else if(mode==="taskbank"){ _tbCollapsed.clear(); _tbFirstRender=true; _tbSelected=null; renderTaskBank(); }
 }
 
@@ -2795,14 +2786,9 @@ document.getElementById("btnResetAll").addEventListener("click", ()=>{
     Object.keys(d).forEach(id=>{ if(d[id]&&d[id].items) d[id].items.forEach(it=>{ if(!it.isHeader) it.done=false; }); });
     saveData(d); render(); showToast("↺ All routines reset");
   } else if(activeMode==="weekly"){
-    if(!confirm("Uncheck all tasks for the week?")) return;
-    saveTBDone(TB_DONE_WK_KEY, {}); renderTBWeekly(); showToast("↺ Week reset");
-  } else if(activeMode==="fortnightly"){
-    if(!confirm("Uncheck every task in F1 and F2?")) return;
-    saveTBDone(TB_DONE_F1_KEY, {}); renderTBFort(); showToast("↺ Reset");
-  } else if(activeMode==="monthly"){
-    if(!confirm("Uncheck all monthly tasks?")) return;
-    saveTBDone(TB_DONE_MO_KEY, {}); renderTBMonth(); showToast("↺ Reset");
+    if(!confirm("Uncheck every task on the Weekly board (days, F1, F2, Monthly, Whenever)?")) return;
+    saveTBDone(TB_DONE_WK_KEY, {}); saveTBDone(TB_DONE_F1_KEY, {}); saveTBDone(TB_DONE_MO_KEY, {});
+    renderTBWeekly(); showToast("↺ Weekly board reset");
   }
 });
 
