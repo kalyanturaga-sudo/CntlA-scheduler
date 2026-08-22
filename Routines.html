@@ -461,6 +461,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-row:last-child{border-bottom:none;}
 .tb-row.tb-subrow{background:var(--surface2);padding-left:34px;}
 .tb-grip{cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0;user-select:none;}
+.tb-chevron{width:14px;flex-shrink:0;text-align:center;cursor:pointer;color:var(--text2);font-size:10px;user-select:none;}
+.tb-chevron-empty{cursor:default;}
 .tb-name{flex:none;width:var(--tb-name-w,160px);min-width:0;font-size:13px;color:var(--text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tb-name:hover{color:var(--accent);}
 .tb-count{color:var(--text3);font-size:11px;}
@@ -2457,6 +2459,7 @@ function tbSmartPrint(){
 /* ══════════════════════════════════════════════════════════
    TASK BANK — EDITOR (the only tab that creates/schedules/orders)
 ══════════════════════════════════════════════════════════ */
+let _tbCollapsed = new Set(); // ids currently hidden; resets to all-expanded on every tab load
 
 function _tbSetBucketDay(t, day){
   t.bucket="day"; t.days=t.days||[];
@@ -2495,21 +2498,26 @@ function renderTaskBank(){
   tasks.forEach((t,idx)=>{
     const hasSubs = t.subs && t.subs.length>0;
     const canIndent = idx>0 && !hasSubs;
+    const collapsed = hasSubs && _tbCollapsed.has(t.id);
     html+=`<div class="tb-row" draggable="true" data-idx="${idx}" data-id="${t.id}">`
         +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
-        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}</span>`
+        +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-collapse":""}">${hasSubs?(collapsed?"▶":"▼"):""}</span>`
+        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
         +_tbCircleRow(t)
         +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
         +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
         +`</div>`;
-    (t.subs||[]).forEach((s,sidx)=>{
-      html+=`<div class="tb-row tb-subrow" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
-          +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
-          +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
-          +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
-          +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
-          +`</div>`;
-    });
+    if(!collapsed){
+      (t.subs||[]).forEach((s,sidx)=>{
+        html+=`<div class="tb-row tb-subrow" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
+            +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
+            +`<span class="tb-chevron tb-chevron-empty"></span>`
+            +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
+            +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
+            +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
+            +`</div>`;
+      });
+    }
   });
   html+='</div>';
   document.getElementById("tbBankContent").innerHTML = html || '<div class="tb-empty">No tasks yet — start with “Add task” above.</div>';
@@ -2536,6 +2544,13 @@ function renderTaskBank(){
       else if(act==="whenever") _tbSetWhenever(t);
       else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
       saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const chevron=e.target.closest("[data-act='toggle-collapse']");
+    if(chevron){
+      const row=chevron.closest(".tb-row"); const id=row.dataset.id;
+      if(_tbCollapsed.has(id)) _tbCollapsed.delete(id); else _tbCollapsed.add(id);
+      renderTaskBank();
       return;
     }
     const renameBtn=e.target.closest("[data-act='rename']");
@@ -2692,7 +2707,7 @@ function setMode(mode){
   else if(mode==="weekly"){ renderTBWeekly(); }
   else if(mode==="fortnightly"){ renderTBFort(); }
   else if(mode==="monthly"){ renderTBMonth(); }
-  else if(mode==="taskbank"){ renderTaskBank(); }
+  else if(mode==="taskbank"){ _tbCollapsed.clear(); renderTaskBank(); }
 }
 
 /* Current renamable label for the Routines tab (falls back gracefully). */
