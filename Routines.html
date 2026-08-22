@@ -453,6 +453,45 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .mode-tab{padding:10px 16px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--text2);border:none;background:none;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;white-space:nowrap;flex-shrink:0;}
 .mode-tab:hover{color:var(--text);}
 .mode-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+
+/* ====== TASK BANK (new — Weekly / Fortnightly / Monthly display + Task bank editor) ====== */
+.tb-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}
+.tb-table{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
+.tb-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--border);}
+.tb-row:last-child{border-bottom:none;}
+.tb-row.tb-subrow{background:var(--surface2);padding-left:34px;}
+.tb-grip{cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0;user-select:none;}
+.tb-chevron{width:16px;flex-shrink:0;text-align:center;cursor:pointer;color:var(--text2);font-size:11px;user-select:none;}
+.tb-chevron-empty{cursor:default;}
+.tb-name{flex:1;min-width:0;font-size:13px;color:var(--text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tb-name:hover{color:var(--accent);}
+.tb-count{color:var(--text3);font-size:11px;}
+.tb-circles{display:flex;gap:3px;flex-shrink:0;}
+.tb-circle{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text3);font-size:9.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.tb-circle:hover{border-color:var(--accent);}
+.tb-circle.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.tb-circle-wide{width:24px;border-radius:11px;}
+.tb-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:4px 6px;border-radius:6px;flex-shrink:0;}
+.tb-icon-btn:hover{color:#c0392b;background:var(--surface2);}
+.tb-sub-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;}
+.tb-sub-actions .tb-icon-btn{font-size:11px;color:var(--text2);}
+.tb-addsub{padding:6px 10px 10px 58px;font-size:12px;color:var(--accent);cursor:pointer;background:var(--surface2);border-bottom:1px solid var(--border);}
+.tb-addsub:hover{text-decoration:underline;}
+
+.tb-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tb-fort-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media(max-width:760px){.tb-grid,.tb-fort-grid{grid-template-columns:1fr;}}
+.tb-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;min-height:90px;}
+.tb-box-solo{max-width:520px;}
+.tb-box-title{font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent);margin-bottom:10px;}
+.tb-box-body{display:flex;flex-direction:column;}
+.tb-empty{font-size:12px;color:var(--text3);font-style:italic;}
+.tb-item{display:flex;align-items:center;padding:5px 0;cursor:pointer;user-select:none;}
+.tb-item.tb-sub{padding-left:22px;}
+.tb-checkbox{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;margin-right:9px;font-size:11px;color:#fff;background:var(--surface);}
+.tb-item.tb-done .tb-checkbox{background:var(--accent);border-color:var(--accent);}
+.tb-item-label{font-size:13px;color:var(--text);}
+.tb-item.tb-done .tb-item-label{color:var(--text3);text-decoration:line-through;}
 /* slot-wknd for weekend warm amber */
 .slot-wknd{background:linear-gradient(160deg,#fff5e0,#fffaef 80%);}
 [data-theme="dark"] .slot-wknd{background:linear-gradient(160deg,#201a0a,#1a1605 80%);}
@@ -636,6 +675,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <button class="mode-tab" data-mode="weekly">📅 Weekly</button>
     <button class="mode-tab" data-mode="fortnightly">🗓 Fortnightly</button>
     <button class="mode-tab" data-mode="monthly">📆 Monthly</button>
+    <button class="mode-tab" data-mode="taskbank">🗂 Task bank</button>
   </div>
 
   <!-- OVERALL PROGRESS -->
@@ -689,6 +729,26 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <button class="btn-add-routine" id="btnAddSimpleSection">＋ New Section</button>
     </div>
     <div class="r-content" id="rContentSimple"></div>
+  </div>
+
+  <!-- BODY — Weekly (new, Task-bank driven: 8 fixed boxes, today leads, Whenever pinned last) -->
+  <div id="bodyWeeklyGrid" style="display:none;">
+    <div class="r-content" id="tbWeeklyContent"></div>
+  </div>
+
+  <!-- BODY — Fortnightly (new, Task-bank driven: F1 / F2 columns) -->
+  <div id="bodyFortGrid" style="display:none;">
+    <div class="r-content" id="tbFortContent"></div>
+  </div>
+
+  <!-- BODY — Monthly (new, Task-bank driven: flat list) -->
+  <div id="bodyMonthGrid" style="display:none;">
+    <div class="r-content" id="tbMonthContent"></div>
+  </div>
+
+  <!-- BODY — Task bank (editor: the only place tasks are created/scheduled/ordered) -->
+  <div id="bodyTaskBank" style="display:none;">
+    <div class="r-content" id="tbBankContent"></div>
   </div>
 </div>
 
@@ -1077,15 +1137,12 @@ async function bootstrapDaily(){
   _daoBooted = true;
   _otCache = await OT.getAll();          // real Drive data (or the mirror, if there's no Drive)
   seedRoutinesOnce();                    // one-time seed — only ever runs on genuinely empty authoritative data
+  seedTaskBankOnce();                    // one-time seed for Task bank (Weekly/Fortnightly/Monthly source data)
   initData();
   autoReset();                           // reset yesterday's ticks now that real data is present
   // Restore active mode tab
   const savedMode = _cget(MODE_KEY);
   if(savedMode && MODES.includes(savedMode)) activeMode = savedMode;
-  // Restore simple active sections
-  MODES.filter(m=>m!=="daily").forEach(m=>{
-    const saved=loadSimpleActive(m); if(saved) _simpleActiveId[m]=saved;
-  });
   _hideDriveWait();
   setMode(activeMode);                   // first real paint — from authoritative data only
 }
@@ -2061,6 +2118,7 @@ function printRoutinesColor(selectedIds, override){
   }
 
   document.getElementById("btnPrint").onclick=()=>{
+    if(activeMode==="weekly"||activeMode==="fortnightly"||activeMode==="monthly"){ tbSmartPrint(); return; }
     buildList();
     modal.classList.add("open");
   };
@@ -2138,21 +2196,434 @@ document.getElementById("pageDate").textContent=new Date().toLocaleDateString("e
   });
 })();
 
+/* ══════════════════════════════════════════════════════════
+   TASK BANK
+   Single source of truth for Weekly / Fortnightly / Monthly.
+   Task bank = create / name / schedule / order.
+   Weekly, Fortnightly, Monthly = pure display + checkbox, fed
+   from here. No editing lives in those three tabs.
+══════════════════════════════════════════════════════════ */
+const TB_KEY         = "ONETRACK_TASKBANK_V1";          // array of tasks
+const TB_SEED_KEY    = "ONETRACK_TASKBANK_SEEDED_V1";   // "1" once seeded, never reseed
+const TB_DONE_WK_KEY = "ONETRACK_TASKBANK_DONE_WEEKLY_V1";
+const TB_DONE_F1_KEY = "ONETRACK_TASKBANK_DONE_FORT_V1";   // shared by F1 + F2 (ids are unique)
+const TB_DONE_MO_KEY = "ONETRACK_TASKBANK_DONE_MONTH_V1";
+
+const TB_DAY_LABELS = ["M","T","W","T","F","S","S"];
+const TB_DAY_VALUES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+function _tbId(){ return "tb"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function _esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+function loadTaskBank(){ try{ const v=_cget(TB_KEY); return v?JSON.parse(v):[]; }catch(e){ return []; } }
+function saveTaskBank(t){ _cset(TB_KEY, JSON.stringify(t)); }
+function loadTBDone(key){ try{ const v=_cget(key); return v?JSON.parse(v):{}; }catch(e){ return {}; } }
+function saveTBDone(key,d){ _cset(key, JSON.stringify(d)); }
+function _tbDoneId(taskId, ctx){ return ctx ? (taskId+"::"+ctx) : taskId; }
+
+function _todayAbbr(){ return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date().getDay()]; }
+function _weeklyBoxOrder(){
+  const all=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  const idx=all.indexOf(_todayAbbr());
+  return all.slice(idx).concat(all.slice(0,idx));
+}
+
+/* ── one-time seed, from the uploaded weekly planner + fortnightly screenshot.
+   Monthly starts empty on purpose. Never runs again once TB_SEED_KEY is set. ── */
+function seedTaskBankOnce(){
+  if(_cget(TB_SEED_KEY)==="1") return;
+  const T=(name,bucket,days,subs)=>({ id:_tbId(), name, bucket, days:days||[], subs:(subs||[]).map(n=>({id:_tbId(),name:n})) });
+  const seed = [
+    T("Bank accounts","day",["Sat"],["Commbank","BoA","ICICI","SBI"]),
+    T("Cut veggies","day",["Sat"]),
+    T("SBI retention statement","day",["Sat"]),
+    T("Check all emails: KT/TJ/MD/UG/ET/RT","day",["Sun"]),
+    T("Nails/nose hair/hair cut/shaving","day",["Sun"]),
+    T("Credit cards","day",["Sun"],["ICICI","Apple","MyCards","BoA"]),
+    T("Check rents","day",["Sun"]),
+    T("Clean clothes room","day",["Sun"]),
+    T("Clean Esha's room","day",["Sun"]),
+    T("Follow up on Esha and Rohan education exams activities","day",["Sun"]),
+    T("Car","day",["Mon"],["Interior cleaning/tidy up wires/toll pass","Vacuum","Tyre pressure check","Wash/tyre clean","Wax polish"]),
+    T("Bathrooms","day",["Mon"]),
+    T("Garage","day",["Mon"]),
+    T("Synology clean up","day",["Tue"]),
+    T("Phone photos clean up","day",["Tue"]),
+    T("Children news letters","day",["Tue"]),
+    T("Check electricity and internet bills","day",["Wed"]),
+    T("Backlog groomings","day",["Wed"]),
+    T("Search library books","day",["Wed"]),
+    T("Order online groceries and plan for next week","day",["Thu"]),
+    T("Plan meals for next week","day",["Thu"]),
+    T("Clean bathrooms","day",["Thu"]),
+    T("Weekly plan for family","day",["Fri"],["Drop/pick up plans","Meal plan","Exercise plan"]),
+    T("Fridge cleaning","day",["Fri"]),
+    T("Call India, RKT, MBT, MRT","day",["Fri"]),
+    T("Call","f1",[]),
+    T("Check first aid kit","f1",[]),
+    T("Dentist / GP follow-ups if needed","f1",[]),
+    T("Check tyre pressure","f1",[]),
+    T("Check car fluids","f1",[]),
+    T("Car wash","f1",[]),
+    T("Post office / errands list","f1",[]),
+    T("Call","f2",[],["Konda"]),
+    T("Wipe windows inside","f2",[]),
+    T("Clean oven / microwave","f2",[]),
+    T("Change bed sheets","f2",[]),
+    T("Review subscriptions","f2",[]),
+    T("Check insurance policies","f2",[]),
+    T("Back up devices","f2",[]),
+    T("Organise digital files","f2",[])
+  ];
+  saveTaskBank(seed);
+  _cset(TB_SEED_KEY,"1");
+}
+
+/* ── shared checklist-item renderer, used by Weekly / Fortnightly / Monthly ── */
+function _tbRenderCheckItem(t, ctx, doneMap, doneKey){
+  const pid=_tbDoneId(t.id,ctx);
+  const checked=!!doneMap[pid];
+  let h=`<div class="tb-item${checked?" tb-done":""}" data-id="${pid}" data-donekey="${doneKey}">`
+      +`<span class="tb-checkbox">${checked?"✓":""}</span>`
+      +`<span class="tb-item-label">${_esc(t.name)}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
+  (t.subs||[]).forEach(s=>{
+    const sid=_tbDoneId(s.id,ctx);
+    const sc=!!doneMap[sid];
+    h+=`<div class="tb-item tb-sub${sc?" tb-done":""}" data-id="${sid}" data-donekey="${doneKey}">`
+      +`<span class="tb-checkbox">${sc?"✓":""}</span>`
+      +`<span class="tb-item-label">${_esc(s.name)}</span></div>`;
+  });
+  return h;
+}
+
+function _wireTBChecks(containerId, renderFn){
+  const el=document.getElementById(containerId);
+  if(!el) return;
+  el.addEventListener("click", e=>{
+    const row=e.target.closest(".tb-item"); if(!row) return;
+    const doneKey=row.dataset.donekey, id=row.dataset.id;
+    const d=loadTBDone(doneKey);
+    d[id]=!d[id];
+    saveTBDone(doneKey,d);
+    renderFn();
+  });
+}
+
+/* ── Weekly: 8 fixed boxes, today leads, Whenever pinned last (never moves) ── */
+function renderTBWeekly(){
+  const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+  const done=loadTBDone(TB_DONE_WK_KEY);
+  const order=_weeklyBoxOrder().concat(["Whenever"]);
+  let html='<div class="tb-grid">';
+  order.forEach(day=>{
+    const items = day==="Whenever" ? tasks.filter(t=>!t.days||!t.days.length) : tasks.filter(t=>t.days&&t.days.includes(day));
+    html+=`<div class="tb-box"><div class="tb-box-title">${day}</div><div class="tb-box-body">`;
+    html += items.length ? items.map(t=>_tbRenderCheckItem(t,day,done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  document.getElementById("tbWeeklyContent").innerHTML=html;
+  updateTBProgress();
+}
+
+/* ── Fortnightly: F1 / F2, two columns, whatever order Task bank has them in ── */
+function renderTBFort(){
+  const tasks=loadTaskBank();
+  const done=loadTBDone(TB_DONE_F1_KEY);
+  const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2");
+  let html='<div class="tb-fort-grid">';
+  [["F1",f1],["F2",f2]].forEach(pair=>{
+    html+=`<div class="tb-box"><div class="tb-box-title">${pair[0]}</div><div class="tb-box-body">`;
+    html += pair[1].length ? pair[1].map(t=>_tbRenderCheckItem(t,null,done,TB_DONE_F1_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
+    html+='</div></div>';
+  });
+  html+='</div>';
+  document.getElementById("tbFortContent").innerHTML=html;
+  updateTBProgress();
+}
+
+/* ── Monthly: single flat list ── */
+function renderTBMonth(){
+  const tasks=loadTaskBank().filter(t=>t.bucket==="month");
+  const done=loadTBDone(TB_DONE_MO_KEY);
+  let html='<div class="tb-box tb-box-solo"><div class="tb-box-body">';
+  html += tasks.length ? tasks.map(t=>_tbRenderCheckItem(t,null,done,TB_DONE_MO_KEY)).join("") : '<div class="tb-empty">No tasks yet. Assign the Mo circle in Task bank to add some.</div>';
+  html+='</div></div>';
+  document.getElementById("tbMonthContent").innerHTML=html;
+  updateTBProgress();
+}
+
+/* ── shared progress bar for the 3 display tabs ── */
+function updateTBProgress(){
+  let flags=[];
+  if(activeMode==="weekly"){
+    const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+    const done=loadTBDone(TB_DONE_WK_KEY);
+    _weeklyBoxOrder().concat(["Whenever"]).forEach(day=>{
+      const list = day==="Whenever" ? tasks.filter(t=>!t.days||!t.days.length) : tasks.filter(t=>t.days&&t.days.includes(day));
+      list.forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,day)]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,day)])); });
+    });
+  } else if(activeMode==="fortnightly"){
+    const tasks=loadTaskBank().filter(t=>t.bucket==="f1"||t.bucket==="f2");
+    const done=loadTBDone(TB_DONE_F1_KEY);
+    tasks.forEach(t=>{ flags.push(!!done[t.id]); (t.subs||[]).forEach(s=>flags.push(!!done[s.id])); });
+  } else if(activeMode==="monthly"){
+    const tasks=loadTaskBank().filter(t=>t.bucket==="month");
+    const done=loadTBDone(TB_DONE_MO_KEY);
+    tasks.forEach(t=>{ flags.push(!!done[t.id]); (t.subs||[]).forEach(s=>flags.push(!!done[s.id])); });
+  } else return;
+  const total=flags.length, doneCount=flags.filter(Boolean).length;
+  const pct= total? Math.round(doneCount/total*100):0;
+  const fill=document.getElementById("overallFill"), pctEl=document.getElementById("overallPct");
+  if(fill) fill.style.width=pct+"%";
+  if(pctEl) pctEl.textContent=pct+"%";
+}
+
+/* ── print: builds the same {routines,data,title} shape printRoutinesBW/Color
+   already expect, so those two existing renderers are reused as-is ── */
+function _tbBuildPrintOverride(){
+  if(activeMode==="weekly"){
+    const tasks=loadTaskBank().filter(t=>t.bucket==="day");
+    const done=loadTBDone(TB_DONE_WK_KEY);
+    const order=_weeklyBoxOrder().concat(["Whenever"]);
+    const routines=order.map((day,i)=>({id:"d"+i, icon:"📅", label:day}));
+    const data={};
+    order.forEach((day,i)=>{
+      const list = day==="Whenever" ? tasks.filter(t=>!t.days||!t.days.length) : tasks.filter(t=>t.days&&t.days.includes(day));
+      const items=[];
+      list.forEach(t=>{
+        items.push({text:t.name, done:!!done[_tbDoneId(t.id,day)]});
+        (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[_tbDoneId(s.id,day)], sub:true}));
+      });
+      data["d"+i]={items};
+    });
+    return {routines, data, title:"Weekly"};
+  }
+  if(activeMode==="fortnightly"){
+    const tasks=loadTaskBank();
+    const done=loadTBDone(TB_DONE_F1_KEY);
+    const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2");
+    const routines=[{id:"f1",icon:"🗓",label:"F1"},{id:"f2",icon:"🗓",label:"F2"}];
+    const data={};
+    [["f1",f1],["f2",f2]].forEach(pair=>{
+      const items=[];
+      pair[1].forEach(t=>{
+        items.push({text:t.name, done:!!done[t.id]});
+        (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[s.id], sub:true}));
+      });
+      data[pair[0]]={items};
+    });
+    return {routines, data, title:"Fortnightly"};
+  }
+  if(activeMode==="monthly"){
+    const tasks=loadTaskBank().filter(t=>t.bucket==="month");
+    const done=loadTBDone(TB_DONE_MO_KEY);
+    const items=[];
+    tasks.forEach(t=>{
+      items.push({text:t.name, done:!!done[t.id]});
+      (t.subs||[]).forEach(s=>items.push({text:s.name, done:!!done[s.id], sub:true}));
+    });
+    return {routines:[{id:"mo",icon:"📆",label:"Monthly"}], data:{mo:{items}}, title:"Monthly"};
+  }
+  return null;
+}
+function tbSmartPrint(){
+  const override=_tbBuildPrintOverride();
+  if(!override) return;
+  const style=_cget("ONETRACK_PRINT_STYLE")||"bw";
+  if(style==="color") printRoutinesColor(null, override);
+  else printRoutinesBW(null, override);
+}
+
+/* ══════════════════════════════════════════════════════════
+   TASK BANK — EDITOR (the only tab that creates/schedules/orders)
+══════════════════════════════════════════════════════════ */
+let _tbExpanded = new Set(); // resets every tab load, on purpose — no persistence
+
+function _tbSetBucketDay(t, day){
+  t.bucket="day"; t.days=t.days||[];
+  const i=t.days.indexOf(day);
+  if(i>-1) t.days.splice(i,1); else t.days.push(day);
+}
+function _tbSetWhenever(t){ t.bucket="day"; t.days=[]; }
+function _tbSetOther(t,bucket){ t.bucket=bucket; t.days=[]; }
+
+function _tbCircleRow(t){
+  let h='<div class="tb-circles">';
+  TB_DAY_LABELS.forEach((lbl,i)=>{
+    const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
+    h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
+  });
+  const wOn = t.bucket==="day" && (!t.days || !t.days.length);
+  h+=`<button class="tb-circle${wOn?" on":""}" data-act="whenever" title="Whenever">?</button>`;
+  h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f1"?" on":""}" data-act="bucket" data-bucket="f1" title="Fortnightly — List 1">F1</button>`;
+  h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f2"?" on":""}" data-act="bucket" data-bucket="f2" title="Fortnightly — List 2">F2</button>`;
+  h+=`<button class="tb-circle tb-circle-wide${t.bucket==="month"?" on":""}" data-act="bucket" data-bucket="month" title="Monthly">Mo</button>`;
+  h+='</div>';
+  return h;
+}
+
+function renderTaskBank(){
+  const tasks=loadTaskBank();
+  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="tbAddTaskBtn">＋ Add task</button></div>';
+  html+='<div class="tb-table" id="tbTable">';
+  tasks.forEach((t,idx)=>{
+    const expanded=_tbExpanded.has(t.id);
+    const hasSubs = t.subs && t.subs.length>0;
+    html+=`<div class="tb-row" draggable="true" data-idx="${idx}" data-id="${t.id}">`
+        +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
+        +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-expand":""}">${hasSubs?(expanded?"▼":"▶"):""}</span>`
+        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
+        +_tbCircleRow(t)
+        +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
+        +`</div>`;
+    if(expanded){
+      (t.subs||[]).forEach((s,sidx)=>{
+        html+=`<div class="tb-row tb-subrow" data-parent="${t.id}" data-subidx="${sidx}">`
+            +`<span class="tb-grip" style="visibility:hidden;">⠿</span>`
+            +`<span class="tb-chevron tb-chevron-empty"></span>`
+            +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
+            +`<span class="tb-sub-actions">`
+            +`<button class="tb-icon-btn" data-act="promote" title="Promote to a top-level task">↑ Promote</button>`
+            +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
+            +`</span></div>`;
+      });
+      html+=`<div class="tb-addsub" data-parent="${t.id}" data-act="add-sub">＋ Add sub-task</div>`;
+    }
+  });
+  html+='</div>';
+  document.getElementById("tbBankContent").innerHTML = html || '<div class="tb-empty">No tasks yet — start with “Add task” above.</div>';
+}
+
+(function wireTaskBank(){
+  const root=document.getElementById("tbBankContent");
+  if(!root) return;
+
+  root.addEventListener("click", e=>{
+    if(e.target.closest("#tbAddTaskBtn")){
+      const name=prompt("New task name:"); if(!name||!name.trim()) return;
+      const tasks=loadTaskBank();
+      tasks.push({id:_tbId(), name:name.trim(), bucket:"day", days:[], subs:[]});
+      saveTaskBank(tasks); renderTaskBank(); showToast("✓ Task added");
+      return;
+    }
+    const addSub=e.target.closest("[data-act='add-sub']");
+    if(addSub){
+      const pid=addSub.dataset.parent;
+      const name=prompt("New sub-task name:"); if(!name||!name.trim()) return;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t) return;
+      t.subs=t.subs||[]; t.subs.push({id:_tbId(), name:name.trim()});
+      saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const circleBtn=e.target.closest(".tb-circle");
+    if(circleBtn){
+      const row=circleBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const act=circleBtn.dataset.act;
+      if(act==="day") _tbSetBucketDay(t, circleBtn.dataset.day);
+      else if(act==="whenever") _tbSetWhenever(t);
+      else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
+      saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const chevron=e.target.closest("[data-act='toggle-expand']");
+    if(chevron){
+      const row=chevron.closest(".tb-row"); const id=row.dataset.id;
+      if(_tbExpanded.has(id)) _tbExpanded.delete(id); else _tbExpanded.add(id);
+      renderTaskBank();
+      return;
+    }
+    const renameBtn=e.target.closest("[data-act='rename']");
+    if(renameBtn){
+      const row=renameBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const name=prompt("Rename task:", t.name); if(name===null||!name.trim()) return;
+      t.name=name.trim(); saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const renameSub=e.target.closest("[data-act='rename-sub']");
+    if(renameSub){
+      const row=renameSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
+      const name=prompt("Rename sub-task:", t.subs[sidx].name); if(name===null||!name.trim()) return;
+      t.subs[sidx].name=name.trim(); saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const delBtn=e.target.closest("[data-act='delete']");
+    if(delBtn){
+      const row=delBtn.closest(".tb-row"); const id=row.dataset.id;
+      const hasSubs=!!row.querySelector(".tb-count");
+      if(!confirm("Delete this task"+(hasSubs?" and all its sub-tasks":"")+"?")) return;
+      const tasks=loadTaskBank().filter(x=>x.id!==id);
+      saveTaskBank(tasks); renderTaskBank(); showToast("🗑 Deleted");
+      return;
+    }
+    const delSub=e.target.closest("[data-act='delete-sub']");
+    if(delSub){
+      const row=delSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      if(!confirm("Delete this sub-task?")) return;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs) return;
+      t.subs.splice(sidx,1); saveTaskBank(tasks); renderTaskBank();
+      return;
+    }
+    const promoteBtn=e.target.closest("[data-act='promote']");
+    if(promoteBtn){
+      const row=promoteBtn.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
+      const sub=t.subs.splice(sidx,1)[0];
+      tasks.push({id:sub.id, name:sub.name, bucket:"day", days:[], subs:[]});
+      saveTaskBank(tasks); renderTaskBank(); showToast("↑ Promoted to a top-level task");
+      return;
+    }
+  });
+
+  /* drag-to-reorder — top-level rows only (v1; sub-task reordering is not yet wired) */
+  let dragFromId=null;
+  root.addEventListener("dragstart", e=>{
+    const row=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(!row){ e.preventDefault(); return; }
+    dragFromId=row.dataset.id;
+    e.dataTransfer.effectAllowed="move";
+  });
+  root.addEventListener("dragover", e=>{ if(e.target.closest(".tb-row:not(.tb-subrow)")) e.preventDefault(); });
+  root.addEventListener("drop", e=>{
+    const row=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(!row || !dragFromId) return;
+    e.preventDefault();
+    const toId=row.dataset.id;
+    if(toId!==dragFromId){
+      const tasks=loadTaskBank();
+      const fromIdx=tasks.findIndex(x=>x.id===dragFromId), toIdx=tasks.findIndex(x=>x.id===toId);
+      if(fromIdx>-1 && toIdx>-1){
+        const moved=tasks.splice(fromIdx,1)[0];
+        tasks.splice(toIdx,0,moved);
+        saveTaskBank(tasks); renderTaskBank();
+      }
+    }
+    dragFromId=null;
+  });
+})();
+
+_wireTBChecks("tbWeeklyContent", renderTBWeekly);
+_wireTBChecks("tbFortContent", renderTBFort);
+_wireTBChecks("tbMonthContent", renderTBMonth);
+
 /* ── Boot: wait for OT file, load cache, then init ── */
 
 /* ══════════════════════════════════════════════════════════
    MODE MANAGEMENT
 ══════════════════════════════════════════════════════════ */
 const MODE_KEY = "ONETRACK_ROUTINES_MODE";
-const MODES = ["daily","weekly","fortnightly","monthly"];
+const MODES = ["daily","weekly","fortnightly","monthly","taskbank"];
 let activeMode = "daily";
 
 const MODE_META = {
   daily:       { label:"☀️ Daily",        progress:"✦ Daily progress",       title:"🔁 Routines" },
-  weekend:     { label:"🌤 Weekend",       progress:"✦ Weekend progress",     title:"🌤 Weekend" },
   weekly:      { label:"📅 Weekly",        progress:"✦ Weekly progress",      title:"📅 Weekly" },
   fortnightly: { label:"🗓 Fortnightly",   progress:"✦ Fortnightly progress", title:"🗓 Fortnightly" },
   monthly:     { label:"📆 Monthly",       progress:"✦ Monthly progress",     title:"📆 Monthly" },
+  taskbank:    { label:"🗂 Task bank",     progress:"✦ Task bank",            title:"🗂 Task bank" },
 };
 
 function setMode(mode){
@@ -2164,20 +2635,27 @@ function setMode(mode){
   document.getElementById("pageTitle").textContent =
     (mode==="daily") ? ("🔁 " + _routinesLabel()) : MODE_META[mode].title;
   document.getElementById("progressLabel").textContent = MODE_META[mode].progress;
-  // Show/hide bodies
-  document.getElementById("bodyDaily").style.display  = mode==="daily"   ? "" : "none";
-  document.getElementById("bodyWeekly").style.display = mode==="weekly"  ? "" : "none";
-  document.getElementById("bodySimple").style.display = (mode!=="daily"&&mode!=="weekly") ? "" : "none";
-  // Print button
-  document.getElementById("btnPrint").style.display    = mode!=="weekly"  ? "" : "none";
-  document.getElementById("btnWkPrint").style.display  = mode==="weekly"  ? "" : "none";
-  // Sidebar label
-  document.getElementById("simpleSidebarLabel").textContent = MODE_META[mode].label.replace(/^[^ ]+ /,"");
+  // Show/hide bodies — old Weekly/Simple containers are deprecated (kept, but never shown again)
+  document.getElementById("bodyDaily").style.display      = mode==="daily"       ? "" : "none";
+  document.getElementById("bodyWeekly").style.display     = "none";
+  document.getElementById("bodySimple").style.display     = "none";
+  document.getElementById("bodyWeeklyGrid").style.display = mode==="weekly"      ? "" : "none";
+  document.getElementById("bodyFortGrid").style.display   = mode==="fortnightly" ? "" : "none";
+  document.getElementById("bodyMonthGrid").style.display  = mode==="monthly"     ? "" : "none";
+  document.getElementById("bodyTaskBank").style.display   = mode==="taskbank"    ? "" : "none";
+  // Print/Reset buttons — hidden on Task bank (it's an editor, not a checklist)
+  document.getElementById("btnPrint").style.display    = mode==="taskbank" ? "none" : "";
+  document.getElementById("btnWkPrint").style.display  = "none";
+  document.getElementById("btnResetAll").style.display = mode==="taskbank" ? "none" : "";
+  // Progress bar — not meaningful on Task bank
+  const progRow=document.querySelector(".overall-progress");
+  if(progRow) progRow.style.display = mode==="taskbank" ? "none" : "";
   // Render
   if(mode==="daily"){ render(); }
-  else if(mode==="weekly"){ renderWeekly(); }
-  else if(mode==="fortnightly"){ renderFortnightBoard(); }
-  else { renderSimple(mode); }
+  else if(mode==="weekly"){ renderTBWeekly(); }
+  else if(mode==="fortnightly"){ renderTBFort(); }
+  else if(mode==="monthly"){ renderTBMonth(); }
+  else if(mode==="taskbank"){ _tbExpanded.clear(); renderTaskBank(); }
 }
 
 /* Current renamable label for the Routines tab (falls back gracefully). */
@@ -2217,21 +2695,13 @@ document.getElementById("btnResetAll").addEventListener("click", ()=>{
     saveData(d); render(); showToast("↺ All routines reset");
   } else if(activeMode==="weekly"){
     if(!confirm("Uncheck all tasks for the week?")) return;
-    const d=loadWkData()||{days:[]};
-    (d.days||[]).forEach(day=>{ (day.items||[]).forEach(it=>it.done=false); });
-    saveWkData(d);
-    const active=getWkActive(); if(active) renderWeeklyCard(active);
-    renderWeeklySidebar(); updateWkProgress(); showToast("↺ Week reset");
+    saveTBDone(TB_DONE_WK_KEY, {}); renderTBWeekly(); showToast("↺ Week reset");
   } else if(activeMode==="fortnightly"){
-    if(!confirm("Uncheck every task in List A and List B?")) return;
-    const b=getFortnightBoard();
-    b.lists.forEach(l=>l.items.forEach(it=>it.done=false));
-    saveFortnightBoard(b); renderFortnightBoard(); showToast("↺ Reset");
-  } else {
-    if(!confirm("Reset all tasks in this view? This unchecks everything.")) return;
-    const d=loadSimpleData(activeMode);
-    Object.keys(d).forEach(id=>{ if(d[id]&&d[id].items) d[id].items.forEach(it=>it.done=false); });
-    saveSimpleData(activeMode,d); renderSimple(activeMode); showToast("↺ Reset");
+    if(!confirm("Uncheck every task in F1 and F2?")) return;
+    saveTBDone(TB_DONE_F1_KEY, {}); renderTBFort(); showToast("↺ Reset");
+  } else if(activeMode==="monthly"){
+    if(!confirm("Uncheck all monthly tasks?")) return;
+    saveTBDone(TB_DONE_MO_KEY, {}); renderTBMonth(); showToast("↺ Reset");
   }
 });
 
