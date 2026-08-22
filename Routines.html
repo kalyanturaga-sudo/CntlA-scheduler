@@ -461,8 +461,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-row:last-child{border-bottom:none;}
 .tb-row.tb-subrow{background:var(--surface2);padding-left:34px;}
 .tb-grip{cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0;user-select:none;}
-.tb-chevron{width:16px;flex-shrink:0;text-align:center;cursor:pointer;color:var(--text2);font-size:11px;user-select:none;}
-.tb-chevron-empty{cursor:default;}
 .tb-name{flex:none;width:var(--tb-name-w,160px);min-width:0;font-size:13px;color:var(--text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tb-name:hover{color:var(--accent);}
 .tb-count{color:var(--text3);font-size:11px;}
@@ -473,10 +471,10 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-circle-wide{width:34px;border-radius:15px;font-size:11px;}
 .tb-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:4px 6px;border-radius:6px;flex-shrink:0;}
 .tb-icon-btn:hover{color:#c0392b;background:var(--surface2);}
-.tb-sub-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;}
-.tb-sub-actions .tb-icon-btn{font-size:11px;color:var(--text2);}
-.tb-addsub{padding:6px 10px 10px 58px;font-size:12px;color:var(--accent);cursor:pointer;background:var(--surface2);border-bottom:1px solid var(--border);}
-.tb-addsub:hover{text-decoration:underline;}
+.tb-icon-btn[data-act="indent"],.tb-icon-btn[data-act="outdent"]{color:var(--text2);font-size:15px;}
+.tb-icon-btn[data-act="indent"]:hover,.tb-icon-btn[data-act="outdent"]:hover{color:var(--accent);background:var(--surface2);}
+.tb-icon-btn[disabled]{opacity:.3;cursor:not-allowed;}
+.tb-icon-btn[disabled]:hover{color:var(--text3);background:none;}
 
 .tb-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
 .tb-fort-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -2459,7 +2457,6 @@ function tbSmartPrint(){
 /* ══════════════════════════════════════════════════════════
    TASK BANK — EDITOR (the only tab that creates/schedules/orders)
 ══════════════════════════════════════════════════════════ */
-let _tbExpanded = new Set(); // resets every tab load, on purpose — no persistence
 
 function _tbSetBucketDay(t, day){
   t.bucket="day"; t.days=t.days||[];
@@ -2496,28 +2493,23 @@ function renderTaskBank(){
   let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="tbAddTaskBtn">＋ Add task</button></div>';
   html+='<div class="tb-table" id="tbTable">';
   tasks.forEach((t,idx)=>{
-    const expanded=_tbExpanded.has(t.id);
     const hasSubs = t.subs && t.subs.length>0;
+    const canIndent = idx>0 && !hasSubs;
     html+=`<div class="tb-row" draggable="true" data-idx="${idx}" data-id="${t.id}">`
         +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
-        +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-expand":""}">${hasSubs?(expanded?"▼":"▶"):""}</span>`
-        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
+        +`<span class="tb-name" data-act="rename" title="Click to rename">${_esc(t.name)}</span>`
         +_tbCircleRow(t)
+        +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
         +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
         +`</div>`;
-    if(expanded){
-      (t.subs||[]).forEach((s,sidx)=>{
-        html+=`<div class="tb-row tb-subrow" data-parent="${t.id}" data-subidx="${sidx}">`
-            +`<span class="tb-grip" style="visibility:hidden;">⠿</span>`
-            +`<span class="tb-chevron tb-chevron-empty"></span>`
-            +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
-            +`<span class="tb-sub-actions">`
-            +`<button class="tb-icon-btn" data-act="promote" title="Promote to a top-level task">↑ Promote</button>`
-            +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
-            +`</span></div>`;
-      });
-      html+=`<div class="tb-addsub" data-parent="${t.id}" data-act="add-sub">＋ Add sub-task</div>`;
-    }
+    (t.subs||[]).forEach((s,sidx)=>{
+      html+=`<div class="tb-row tb-subrow" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
+          +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
+          +`<span class="tb-name" data-act="rename-sub" title="Click to rename">${_esc(s.name)}</span>`
+          +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
+          +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
+          +`</div>`;
+    });
   });
   html+='</div>';
   document.getElementById("tbBankContent").innerHTML = html || '<div class="tb-empty">No tasks yet — start with “Add task” above.</div>';
@@ -2535,15 +2527,6 @@ function renderTaskBank(){
       saveTaskBank(tasks); renderTaskBank(); showToast("✓ Task added");
       return;
     }
-    const addSub=e.target.closest("[data-act='add-sub']");
-    if(addSub){
-      const pid=addSub.dataset.parent;
-      const name=prompt("New sub-task name:"); if(!name||!name.trim()) return;
-      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t) return;
-      t.subs=t.subs||[]; t.subs.push({id:_tbId(), name:name.trim()});
-      saveTaskBank(tasks); renderTaskBank();
-      return;
-    }
     const circleBtn=e.target.closest(".tb-circle");
     if(circleBtn){
       const row=circleBtn.closest(".tb-row"); const id=row.dataset.id;
@@ -2553,13 +2536,6 @@ function renderTaskBank(){
       else if(act==="whenever") _tbSetWhenever(t);
       else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
       saveTaskBank(tasks); renderTaskBank();
-      return;
-    }
-    const chevron=e.target.closest("[data-act='toggle-expand']");
-    if(chevron){
-      const row=chevron.closest(".tb-row"); const id=row.dataset.id;
-      if(_tbExpanded.has(id)) _tbExpanded.delete(id); else _tbExpanded.add(id);
-      renderTaskBank();
       return;
     }
     const renameBtn=e.target.closest("[data-act='rename']");
@@ -2581,9 +2557,10 @@ function renderTaskBank(){
     const delBtn=e.target.closest("[data-act='delete']");
     if(delBtn){
       const row=delBtn.closest(".tb-row"); const id=row.dataset.id;
-      const hasSubs=!!row.querySelector(".tb-count");
+      const tasks0=loadTaskBank(); const t0=tasks0.find(x=>x.id===id);
+      const hasSubs=!!(t0 && t0.subs && t0.subs.length);
       if(!confirm("Delete this task"+(hasSubs?" and all its sub-tasks":"")+"?")) return;
-      const tasks=loadTaskBank().filter(x=>x.id!==id);
+      const tasks=tasks0.filter(x=>x.id!==id);
       saveTaskBank(tasks); renderTaskBank(); showToast("🗑 Deleted");
       return;
     }
@@ -2595,27 +2572,59 @@ function renderTaskBank(){
       t.subs.splice(sidx,1); saveTaskBank(tasks); renderTaskBank();
       return;
     }
-    const promoteBtn=e.target.closest("[data-act='promote']");
-    if(promoteBtn){
-      const row=promoteBtn.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
-      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
+    const indentBtn=e.target.closest("[data-act='indent']");
+    if(indentBtn){
+      if(indentBtn.disabled) return;
+      const row=indentBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=loadTaskBank();
+      const idx=tasks.findIndex(x=>x.id===id); if(idx<1) return;
+      const t=tasks[idx];
+      if(t.subs && t.subs.length){ showToast("Can't indent — this task already has sub-tasks"); return; }
+      const parent=tasks[idx-1];
+      tasks.splice(idx,1);
+      parent.subs=parent.subs||[];
+      parent.subs.push({id:t.id, name:t.name});
+      saveTaskBank(tasks); renderTaskBank(); showToast("↳ Made a sub-task of “"+parent.name+"”");
+      return;
+    }
+    const outdentBtn=e.target.closest("[data-act='outdent']");
+    if(outdentBtn){
+      const row=outdentBtn.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=loadTaskBank(); const pidx=tasks.findIndex(x=>x.id===pid); if(pidx<0) return;
+      const t=tasks[pidx]; if(!t.subs||!t.subs[sidx]) return;
       const sub=t.subs.splice(sidx,1)[0];
-      tasks.push({id:sub.id, name:sub.name, bucket:"day", days:[], subs:[]});
-      saveTaskBank(tasks); renderTaskBank(); showToast("↑ Promoted to a top-level task");
+      tasks.splice(pidx+1,0,{id:sub.id, name:sub.name, bucket:t.bucket, days:(t.days||[]).slice(), subs:[]});
+      saveTaskBank(tasks); renderTaskBank(); showToast("↰ Made a top-level task");
       return;
     }
   });
 
-  /* drag-to-reorder — top-level rows only (v1; sub-task reordering is not yet wired) */
-  let dragFromId=null;
+  /* drag-to-reorder — top-level rows reorder among themselves;
+     sub-task rows reorder only among siblings under the same parent */
+  let dragFromId=null, dragFromSub=null;
   root.addEventListener("dragstart", e=>{
+    const subRow=e.target.closest(".tb-subrow");
+    if(subRow){ dragFromSub={parent:subRow.dataset.parent, subidx:+subRow.dataset.subidx}; dragFromId=null; e.dataTransfer.effectAllowed="move"; return; }
     const row=e.target.closest(".tb-row:not(.tb-subrow)");
     if(!row){ e.preventDefault(); return; }
-    dragFromId=row.dataset.id;
+    dragFromId=row.dataset.id; dragFromSub=null;
     e.dataTransfer.effectAllowed="move";
   });
-  root.addEventListener("dragover", e=>{ if(e.target.closest(".tb-row:not(.tb-subrow)")) e.preventDefault(); });
+  root.addEventListener("dragover", e=>{ if(e.target.closest(".tb-row")) e.preventDefault(); });
   root.addEventListener("drop", e=>{
+    const subRow=e.target.closest(".tb-subrow");
+    if(subRow && dragFromSub){
+      e.preventDefault();
+      const toParent=subRow.dataset.parent, toSubidx=+subRow.dataset.subidx;
+      if(toParent!==dragFromSub.parent) return; // reorder only within the same parent
+      if(toSubidx===dragFromSub.subidx) return;
+      const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===toParent); if(!t||!t.subs) return;
+      const moved=t.subs.splice(dragFromSub.subidx,1)[0];
+      t.subs.splice(toSubidx,0,moved);
+      saveTaskBank(tasks); renderTaskBank();
+      dragFromSub=null;
+      return;
+    }
     const row=e.target.closest(".tb-row:not(.tb-subrow)");
     if(!row || !dragFromId) return;
     e.preventDefault();
@@ -2683,7 +2692,7 @@ function setMode(mode){
   else if(mode==="weekly"){ renderTBWeekly(); }
   else if(mode==="fortnightly"){ renderTBFort(); }
   else if(mode==="monthly"){ renderTBMonth(); }
-  else if(mode==="taskbank"){ _tbExpanded.clear(); renderTaskBank(); }
+  else if(mode==="taskbank"){ renderTaskBank(); }
 }
 
 /* Current renamable label for the Routines tab (falls back gracefully). */
