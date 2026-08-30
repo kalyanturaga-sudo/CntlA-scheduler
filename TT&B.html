@@ -1296,6 +1296,25 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   opacity: 0.9;
 }
 /* ── END NAV HEADER NORMALIZED ── */
+
+/* Manage tabs (Today / Tomorrow / Operations) */
+.btn-manage-tabs{font-size:11px;padding:5px 10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-manage-tabs:hover{color:var(--text);background:var(--accent-soft);}
+.manage-tabs-pop{position:fixed;z-index:9998;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-hover);padding:12px;width:280px;font-family:'DM Sans',sans-serif;max-height:70vh;overflow-y:auto;}
+.manage-tabs-pop .lsp-h{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:11px;}
+.manage-tabs-pop .lsp-h:first-child{margin-top:0;}
+.mtab-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);}
+.mtab-row:last-child{border-bottom:none;}
+.mtab-name{flex:1;font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mtab-rename,.mtab-del{font-size:11px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.mtab-rename{border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.mtab-rename:hover{color:var(--text);background:var(--accent-soft);}
+.mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
+.mtab-del:hover{background:#e85c5c;color:#fff;}
+.mtab-deleted-note{font-size:11px;color:var(--text3);flex-shrink:0;}
+.mtab-hide-toggle{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.mtab-hide-cb{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;}
+.mtab-row-hidden .mtab-name{opacity:.5;font-style:italic;}
 </style>
 <script src="storage.js"></script>
 <script>
@@ -1461,7 +1480,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 <div class="topbar">
   <div class="topbar-logo"></div>
   <div class="tab-strip" id="tabStrip"></div>
-  <div class="topbar-right"></div>
+  <div class="topbar-right"><button class="btn-manage-tabs" id="manageTabsBtn" title="Rename, hide, or delete tabs">⚙️ Manage tabs</button></div>
 </div>
 <div class="panels">
 <div class="panel active" id="panel-today">
@@ -1626,9 +1645,41 @@ const PAGE_LABELS_KEY='PLANNER_PAGE_LABELS';
 (function(){ try{ const s=JSON.parse(localStorage.getItem(PAGE_LABELS_KEY)||'{}'); Object.keys(PAGE_META).forEach(id=>{ if(s[id]) PAGE_META[id].label=s[id]; }); }catch(e){} })();
 function savePageLabel(id,val){ try{ const s=JSON.parse(localStorage.getItem(PAGE_LABELS_KEY)||'{}'); s[id]=val; localStorage.setItem(PAGE_LABELS_KEY,JSON.stringify(s)); }catch(e){} }
 
+/* ============================================================
+   MANAGE TABS — rename, hide, & permanently delete the top-level
+   tabs (Today / Tomorrow / Operations).
+   Delete always downloads a JSON backup of that tab's data first;
+   there is no in-app undo for delete, only the backup file.
+   At least one tab must always stay visible — hide/delete on the
+   last remaining one is blocked, since an empty tab strip would
+   strand the page.
+   ============================================================ */
+const TAB_DELETED_KEY='PLANNER_TAB_DELETED';
+const TAB_HIDDEN_KEY='PLANNER_TAB_HIDDEN';
+const PAGE_DATA_KEYS={
+  today:    ["TODAY_BLOCKS_V2","TODAY_SLOT_ACTIVE","TODAY_SLOT_ORDER","TODAY_SLOT_LABELS"],
+  tomorrow: ["TOMORROW_BLOCKS_V2","TOMORROW_SLOT_ACTIVE","TOMORROW_SLOT_ORDER","TOMORROW_SLOT_LABELS"],
+  ops:      ["OPERATIONS_BLOCKS_V1","OPERATIONS_LABELS_V1","OPERATIONS_SLOTS_V1"]
+};
+function _tabDeletedList(){ try{ const a=JSON.parse(localStorage.getItem(TAB_DELETED_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _tabHiddenList(){ try{ const a=JSON.parse(localStorage.getItem(TAB_HIDDEN_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function _downloadJSON(filename,obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function _mtabHasOtherVisible(excludeId){
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  return Object.keys(PAGE_META).some(id=>id!==excludeId && !deleted.includes(id) && !hidden.includes(id));
+}
+
 function renderTabs(){
   const strip=document.getElementById('tabStrip');strip.innerHTML='';
-  tabOrder.forEach(id=>{
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  tabOrder.filter(id=>!deleted.includes(id) && !hidden.includes(id)).forEach(id=>{
     const m=PAGE_META[id];const tab=document.createElement('div');
     tab.className='tab'+(id===activePanel?' active':'');tab.dataset.id=id;tab.draggable=true;
     const iconSpan=document.createElement('span');iconSpan.className='tab-icon';iconSpan.textContent=m.icon;
@@ -1660,7 +1711,134 @@ function renderTabs(){
   });
 }
 function activatePanel(id){activePanel=id;document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+id));renderTabs();var m=PAGE_META[id];if(m)OT.setTitle(m.label);}
+
+/* Skip past any deleted/hidden tab picked up from a stale saved activePanel. */
+(function _resolveInitialActivePanel(){
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  if(deleted.includes(activePanel) || hidden.includes(activePanel)){
+    activePanel=tabOrder.find(id=>!deleted.includes(id) && !hidden.includes(id))||activePanel;
+  }
+})();
 renderTabs();activatePanel(activePanel);
+
+function tabRename(id){
+  const cur=PAGE_META[id].label;
+  const next=prompt('New name for this tab:',cur);
+  if(next===null || !next.trim()) return;
+  const v=next.trim();
+  PAGE_META[id].label=v; savePageLabel(id,v);
+  const h1=document.getElementById(id+'__heading'); if(h1)h1.textContent=v;
+  if(id===activePanel)OT.setTitle(v);
+  renderTabs();
+  _renderManageTabs();
+  showTabToast(`✓ Renamed to "${v}"`);
+}
+
+/* Hide/unhide a tab. Unlike delete, this keeps all data intact — it just
+   pulls the tab out of the strip. Toggled via the checkbox in Manage tabs. */
+function tabToggleHidden(id, hide){
+  if(hide && !_mtabHasOtherVisible(id)){
+    showTabToast("⚠ Can't hide the last visible tab");
+    _renderManageTabs();
+    return;
+  }
+  const hidden=_tabHiddenList();
+  const idx=hidden.indexOf(id);
+  if(hide && idx===-1) hidden.push(id);
+  if(!hide && idx>-1) hidden.splice(idx,1);
+  localStorage.setItem(TAB_HIDDEN_KEY,JSON.stringify(hidden));
+  if(hide && activePanel===id){
+    const deleted=_tabDeletedList();
+    const fallback=tabOrder.find(t=>t!==id && !deleted.includes(t) && !hidden.includes(t));
+    if(fallback) activatePanel(fallback); else renderTabs();
+  } else {
+    renderTabs();
+  }
+  showTabToast(hide ? `Hidden "${PAGE_META[id].label}"` : `Shown "${PAGE_META[id].label}"`);
+}
+
+function tabDeleteWithBackup(id){
+  if(!_mtabHasOtherVisible(id)){
+    showTabToast("⚠ Can't delete the last visible tab");
+    return;
+  }
+  const label=PAGE_META[id].label;
+  if(!confirm(`Delete "${label}" permanently?\n\nA backup file will download first — that file is the only way to get this tab's data back. This cannot be undone from within OneTrack.`)) return;
+  const backup={tabId:id,label,exportedAt:new Date().toISOString(),data:{}};
+  (PAGE_DATA_KEYS[id]||[]).forEach(k=>{ backup.data[k]=localStorage.getItem(k); });
+  _downloadJSON(`onetrack-backup-${id}-${Date.now()}.json`,backup);
+  (PAGE_DATA_KEYS[id]||[]).forEach(k=>localStorage.removeItem(k));
+  const deleted=_tabDeletedList();
+  if(!deleted.includes(id)){ deleted.push(id); localStorage.setItem(TAB_DELETED_KEY,JSON.stringify(deleted)); }
+  if(activePanel===id){
+    const hidden=_tabHiddenList();
+    const fallback=tabOrder.find(t=>!deleted.includes(t) && !hidden.includes(t));
+    if(fallback) activatePanel(fallback); else renderTabs();
+  } else {
+    renderTabs();
+  }
+  _renderManageTabs();
+  showTabToast(`✓ "${label}" deleted — backup downloaded`);
+}
+
+function showTabToast(msg){
+  const el=document.createElement('div');el.textContent=msg;
+  Object.assign(el.style,{position:'fixed',bottom:'70px',left:'50%',transform:'translateX(-50%)',
+    background:'#1a1714',color:'#fff',padding:'8px 18px',borderRadius:'40px',
+    fontSize:'12px',zIndex:'99999',opacity:'1',transition:'opacity 0.4s',
+    fontFamily:"'DM Sans',sans-serif",pointerEvents:'none'});
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),400);},1600);
+}
+
+function _closeManageTabs(){
+  document.querySelectorAll('.manage-tabs-pop').forEach(p=>p.remove());
+  document.removeEventListener('pointerdown',_mtabOutside,true);
+}
+function _mtabOutside(e){
+  if(!e.target.closest('.manage-tabs-pop') && !e.target.closest('#manageTabsBtn')) _closeManageTabs();
+}
+function _renderManageTabs(){
+  const pop=document.querySelector('.manage-tabs-pop'); if(!pop) return;
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  const visible=tabOrder.filter(id=>!deleted.includes(id));
+  let html='<div class="lsp-h">Manage tabs</div>';
+  html+=visible.map(id=>{
+    const isHidden=hidden.includes(id);
+    return `<div class="mtab-row${isHidden?' mtab-row-hidden':''}" data-id="${id}"><label class="mtab-hide-toggle" title="Hide tab"><input type="checkbox" class="mtab-hide-cb" data-id="${id}" ${isHidden?'checked':''}></label><span class="mtab-name">${_esc(PAGE_META[id].label)}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button><button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button></div>`;
+  }).join('');
+  if(deleted.length){
+    html+='<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
+    html+=deleted.map(id=>`<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_esc(PAGE_META[id].label)}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join('');
+  }
+  pop.innerHTML=html;
+  pop.querySelectorAll('.mtab-hide-cb').forEach(cb=>cb.onchange=()=>tabToggleHidden(cb.dataset.id, cb.checked));
+  pop.querySelectorAll('.mtab-rename').forEach(b=>b.onclick=()=>tabRename(b.dataset.id));
+  pop.querySelectorAll('.mtab-del').forEach(b=>b.onclick=()=>tabDeleteWithBackup(b.dataset.id));
+}
+function _openManageTabs(){
+  _closeManageTabs();
+  const btn=document.getElementById('manageTabsBtn'); if(!btn) return;
+  const pop=document.createElement('div');
+  pop.className='manage-tabs-pop';
+  document.body.appendChild(pop);
+  _renderManageTabs();
+  const r=btn.getBoundingClientRect();
+  let left=r.right-pop.offsetWidth, top=r.bottom+6;
+  left=Math.max(8,Math.min(left,window.innerWidth-pop.offsetWidth-8));
+  if(top+pop.offsetHeight>window.innerHeight-8) top=Math.max(8,r.top-pop.offsetHeight-6);
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',_mtabOutside,true),0);
+}
+(function wireManageTabsBtn(){
+  const btn=document.getElementById('manageTabsBtn');
+  if(!btn) return;
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(document.querySelector('.manage-tabs-pop')) _closeManageTabs();
+    else _openManageTabs();
+  });
+})();
 
 /* ── h1 heading rename: apply saved labels + wire dblclick ── */
 (function(){
