@@ -642,6 +642,25 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .wk-modal-cancel{background:var(--surface2);color:var(--text2);border:1px solid var(--border)!important;}
 .wk-modal-bw{background:var(--surface2);color:var(--text2);border:1px solid var(--border)!important;}
 .wk-modal-color{background:var(--accent);color:#fff;}
+
+/* Manage tabs (mode tabs: Daily / Weekly / Task bank) */
+.btn-manage-tabs{font-size:11px;padding:3px 8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;}
+.btn-manage-tabs:hover{color:var(--text);background:var(--accent-soft);}
+.manage-tabs-pop{position:fixed;z-index:9998;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-hover);padding:12px;width:280px;font-family:'DM Sans',sans-serif;max-height:70vh;overflow-y:auto;}
+.manage-tabs-pop .lsp-h{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:11px;}
+.manage-tabs-pop .lsp-h:first-child{margin-top:0;}
+.mtab-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);}
+.mtab-row:last-child{border-bottom:none;}
+.mtab-name{flex:1;font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mtab-rename,.mtab-del{font-size:11px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.mtab-rename{border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.mtab-rename:hover{color:var(--text);background:var(--accent-soft);}
+.mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
+.mtab-del:hover{background:#e85c5c;color:#fff;}
+.mtab-deleted-note{font-size:11px;color:var(--text3);flex-shrink:0;}
+.mtab-hide-toggle{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.mtab-hide-cb{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;}
+.mtab-row-hidden .mtab-name{opacity:.5;font-style:italic;}
 </style>
 
 <body>
@@ -683,6 +702,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <button class="mode-tab active" data-mode="daily">☀️ Daily</button>
     <button class="mode-tab" data-mode="weekly">📅 Weekly</button>
     <button class="mode-tab" data-mode="taskbank">🗂 Task bank</button>
+    <button class="btn-manage-tabs" id="manageTabsBtn" title="Rename, hide, or delete tabs" style="margin-left:auto;flex-shrink:0;">⚙️ Manage tabs</button>
   </div>
 
   <!-- OVERALL PROGRESS -->
@@ -1150,6 +1170,11 @@ async function bootstrapDaily(){
   // Restore active mode tab
   const savedMode = _cget(MODE_KEY);
   if(savedMode && MODES.includes(savedMode)) activeMode = savedMode;
+  applyModeTabCustomizations();
+  const _mtabDeletedAtBoot=_mtabDeletedList(), _mtabHiddenAtBoot=_mtabHiddenList();
+  if(_mtabDeletedAtBoot.includes(activeMode) || _mtabHiddenAtBoot.includes(activeMode)){
+    activeMode=MODES.find(m=>!_mtabDeletedAtBoot.includes(m) && !_mtabHiddenAtBoot.includes(m))||activeMode;
+  }
   _hideDriveWait();
   setMode(activeMode);                   // first real paint — from authoritative data only
 }
@@ -2803,6 +2828,163 @@ document.querySelectorAll(".mode-tab").forEach(t=>{
   t.addEventListener("click", ()=>setMode(t.dataset.mode));
 });
 
+/* ============================================================
+   MANAGE TABS — rename, hide, & permanently delete the top-level
+   mode tabs (Daily / Weekly / Task bank).
+   Delete always downloads a JSON backup of that tab's data first;
+   there is no in-app undo for delete, only the backup file.
+   At least one tab must always stay visible — hide/delete on the
+   last remaining one is blocked, since an empty tab bar would
+   strand the page.
+   ============================================================ */
+const TAB_LABELS_KEY  = "RTN_TAB_LABELS";   // {modeId: customLabel}
+const TAB_DELETED_KEY = "RTN_TAB_DELETED";  // [modeId, ...]
+const TAB_HIDDEN_KEY  = "RTN_TAB_HIDDEN";   // [modeId, ...] — hidden, not deleted; data kept
+const TAB_META = {
+  daily:    { defaultLabel:"☀️ Daily",    keys:[ROUTINES_KEY,CUSTOM_KEY,NAMES_KEY,ORDER_KEY,SEED_KEY,TODAY_DATE_KEY,ACTIVE_KEY,SECHDR_KEY] },
+  weekly:   { defaultLabel:"📅 Weekly",   keys:[WK_KEY,WK_ORD_KEY,WK_ACT_KEY,FNB_KEY,TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY] },
+  taskbank: { defaultLabel:"🗂 Task bank", keys:[TB_KEY,TB_SEED_KEY] }
+};
+function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
+function _tabDeletedList(){ try{ const a=JSON.parse(_cget(TAB_DELETED_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _tabHiddenList(){ try{ const a=JSON.parse(_cget(TAB_HIDDEN_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _tabLabel(id){ return _tabLabels()[id] || (TAB_META[id]?TAB_META[id].defaultLabel:id); }
+function _tabRemoveKey(k){ delete _otCache[k]; if(typeof OT!=="undefined" && OT.remove && typeof OT.remove==="function") OT.remove(k); else _cset(k,null); }
+
+/* Applies saved custom labels + hides deleted/hidden tabs' buttons. Pure UI —
+   does not switch modes itself, callers handle activeMode fallback. */
+function applyModeTabCustomizations(){
+  const labels=_tabLabels(), deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  document.querySelectorAll(".mode-tab").forEach(btn=>{
+    const id=btn.dataset.mode;
+    if(!TAB_META[id]) return;
+    btn.textContent = labels[id] || TAB_META[id].defaultLabel;
+    btn.style.display = (deleted.includes(id) || hidden.includes(id)) ? "none" : "";
+  });
+}
+
+function _downloadJSON(filename,obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* True if at least one OTHER (non-excluded) tab would remain visible. */
+function _mtabHasOtherVisible(excludeId){
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  return Object.keys(TAB_META).some(id=>id!==excludeId && !deleted.includes(id) && !hidden.includes(id));
+}
+
+function tabRename(id){
+  const cur=_tabLabel(id);
+  const next=prompt("New name for this tab:",cur);
+  if(next===null || !next.trim()) return;
+  const labels=_tabLabels();
+  labels[id]=next.trim();
+  _cset(TAB_LABELS_KEY,JSON.stringify(labels));
+  applyModeTabCustomizations();
+  _renderManageTabs();
+  showToast(`✓ Renamed to "${next.trim()}"`);
+}
+
+/* Hide/unhide a mode tab. Unlike delete, this keeps all data intact — it
+   just pulls the tab button out of the bar. Toggled via the checkbox. */
+function tabToggleHidden(id, hide){
+  if(hide && !_mtabHasOtherVisible(id)){
+    showToast("⚠ Can't hide the last visible tab");
+    _renderManageTabs();
+    return;
+  }
+  const hidden=_tabHiddenList();
+  const idx=hidden.indexOf(id);
+  if(hide && idx===-1) hidden.push(id);
+  if(!hide && idx>-1) hidden.splice(idx,1);
+  _cset(TAB_HIDDEN_KEY,JSON.stringify(hidden));
+  applyModeTabCustomizations();
+  if(hide && activeMode===id){
+    const deleted=_tabDeletedList();
+    const fallback=Object.keys(TAB_META).find(m=>m!==id && !deleted.includes(m) && !hidden.includes(m));
+    if(fallback) setMode(fallback);
+  }
+  showToast(hide ? `Hidden "${_tabLabel(id)}"` : `Shown "${_tabLabel(id)}"`);
+}
+
+function tabDeleteWithBackup(id){
+  const meta=TAB_META[id]; if(!meta) return;
+  if(!_mtabHasOtherVisible(id)){
+    showToast("⚠ Can't delete the last visible tab");
+    return;
+  }
+  const label=_tabLabel(id);
+  if(!confirm(`Delete "${label}" permanently?\n\nA backup file will download first — that file is the only way to get this tab's data back. This cannot be undone from within OneTrack.`)) return;
+  const backup={tabId:id,label,exportedAt:new Date().toISOString(),data:{}};
+  meta.keys.forEach(k=>{ backup.data[k]=_cget(k); });
+  _downloadJSON(`onetrack-backup-${id}-${Date.now()}.json`,backup);
+  meta.keys.forEach(k=>_tabRemoveKey(k));
+  const deleted=_tabDeletedList();
+  if(!deleted.includes(id)){ deleted.push(id); _cset(TAB_DELETED_KEY,JSON.stringify(deleted)); }
+  applyModeTabCustomizations();
+  if(activeMode===id){
+    const hidden=_tabHiddenList();
+    const fallback=Object.keys(TAB_META).find(m=>!deleted.includes(m) && !hidden.includes(m));
+    if(fallback) setMode(fallback);
+  }
+  _renderManageTabs();
+  showToast(`✓ "${label}" deleted — backup downloaded`);
+}
+
+function _closeManageTabs(){
+  document.querySelectorAll('.manage-tabs-pop').forEach(p=>p.remove());
+  document.removeEventListener('pointerdown',_mtabOutside,true);
+}
+function _mtabOutside(e){
+  if(!e.target.closest('.manage-tabs-pop') && !e.target.closest('#manageTabsBtn')) _closeManageTabs();
+}
+function _renderManageTabs(){
+  const pop=document.querySelector('.manage-tabs-pop'); if(!pop) return;
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
+  const visible=Object.keys(TAB_META).filter(id=>!deleted.includes(id));
+  let html='<div class="lsp-h">Manage tabs</div>';
+  html+=visible.map(id=>{
+    const isHidden=hidden.includes(id);
+    return `<div class="mtab-row${isHidden?' mtab-row-hidden':''}" data-id="${id}"><label class="mtab-hide-toggle" title="Hide tab"><input type="checkbox" class="mtab-hide-cb" data-id="${id}" ${isHidden?'checked':''}></label><span class="mtab-name">${_esc(_tabLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button><button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button></div>`;
+  }).join('');
+  if(deleted.length){
+    html+='<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
+    html+=deleted.map(id=>`<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_esc(_tabLabel(id))}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join('');
+  }
+  pop.innerHTML=html;
+  pop.querySelectorAll('.mtab-hide-cb').forEach(cb=>cb.onchange=()=>tabToggleHidden(cb.dataset.id, cb.checked));
+  pop.querySelectorAll('.mtab-rename').forEach(b=>b.onclick=()=>tabRename(b.dataset.id));
+  pop.querySelectorAll('.mtab-del').forEach(b=>b.onclick=()=>tabDeleteWithBackup(b.dataset.id));
+}
+function _openManageTabs(){
+  _closeManageTabs();
+  const btn=document.getElementById('manageTabsBtn'); if(!btn) return;
+  const pop=document.createElement('div');
+  pop.className='manage-tabs-pop';
+  document.body.appendChild(pop);
+  _renderManageTabs();
+  const r=btn.getBoundingClientRect();
+  let left=r.right-pop.offsetWidth, top=r.bottom+6;
+  left=Math.max(8,Math.min(left,window.innerWidth-pop.offsetWidth-8));
+  if(top+pop.offsetHeight>window.innerHeight-8) top=Math.max(8,r.top-pop.offsetHeight-6);
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',_mtabOutside,true),0);
+}
+(function wireManageTabsBtn(){
+  const btn=document.getElementById('manageTabsBtn');
+  if(!btn) return;
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(document.querySelector('.manage-tabs-pop')) _closeManageTabs();
+    else _openManageTabs();
+  });
+})();
+applyModeTabCustomizations();
+
 document.getElementById("btnWkPrint").onclick=()=>{ if(typeof window._openWkPrintModal==="function") window._openWkPrintModal(); };
 
 document.getElementById("btnResetAll").addEventListener("click", ()=>{
@@ -4019,6 +4201,11 @@ OT.onReady(async () => {
       if(!_daoBooted){ await bootstrapDaily(); return; }
       // Later hand-over (e.g. a re-sync) — just re-hydrate and repaint.
       _otCache = await OT.getAll();
+      applyModeTabCustomizations();
+      const _tabDeletedOnSync=_tabDeletedList(), _tabHiddenOnSync=_tabHiddenList();
+      if(_tabDeletedOnSync.includes(activeMode) || _tabHiddenOnSync.includes(activeMode)){
+        activeMode=MODES.find(m=>!_tabDeletedOnSync.includes(m) && !_tabHiddenOnSync.includes(m))||activeMode;
+      }
       setMode(activeMode);
     });
   } else {
