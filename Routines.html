@@ -2842,7 +2842,7 @@ const TAB_DELETED_KEY = "RTN_TAB_DELETED";  // [modeId, ...]
 const TAB_HIDDEN_KEY  = "RTN_TAB_HIDDEN";   // [modeId, ...] — hidden, not deleted; data kept
 const TAB_META = {
   daily:    { defaultLabel:"☀️ Daily",    keys:[ROUTINES_KEY,CUSTOM_KEY,NAMES_KEY,ORDER_KEY,SEED_KEY,TODAY_DATE_KEY,ACTIVE_KEY,SECHDR_KEY] },
-  weekly:   { defaultLabel:"📅 Weekly",   keys:[WK_KEY,WK_ORD_KEY,WK_ACT_KEY,FNB_KEY,TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY] },
+  weekly:   { defaultLabel:"📅 Weekly",   keys:["ONETRACK_WEEKLY_V2","ONETRACK_WEEKLY_ORDER_V1","ONETRACK_WEEKLY_ACTIVE_V1","ONETRACK_FORTNIGHT_BOARD_V1",TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY] },
   taskbank: { defaultLabel:"🗂 Task bank", keys:[TB_KEY,TB_SEED_KEY] }
 };
 function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
