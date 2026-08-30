@@ -188,6 +188,28 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 @media print {
   .nav, .topbar, .tab-sidebar { display:none !important; }
 }
+
+/* Manage tabs (month tabs + Full plan) */
+.topbar-right { margin-left: auto; display: flex; align-items: center; }
+.btn-manage-tabs{font-size:11px;padding:5px 10px;background:var(--surface2, #f3f2f0);color:var(--text2, #5c5a60);border:1px solid var(--border, rgba(0,0,0,0.12));border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-manage-tabs:hover{color:var(--text, #16151a);background:var(--accent-soft, rgba(29,79,214,0.10));}
+.manage-tabs-pop{position:fixed;z-index:9998;background:var(--surface, #fff);border:1px solid var(--border, rgba(0,0,0,0.12));border-radius:12px;box-shadow:var(--shadow-hover, 0 8px 28px rgba(0,0,0,0.15));padding:12px;width:280px;font-family:'DM Sans',sans-serif;max-height:70vh;overflow-y:auto;}
+.manage-tabs-pop .lsp-h{font-size:10px;font-weight:700;color:var(--text3, #8a8790);text-transform:uppercase;letter-spacing:.08em;margin-top:11px;}
+.manage-tabs-pop .lsp-h:first-child{margin-top:0;}
+.mtab-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border, rgba(0,0,0,0.08));}
+.mtab-row:last-child{border-bottom:none;}
+.mtab-name{flex:1;font-size:13px;font-weight:500;color:var(--text, #16151a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mtab-rename,.mtab-del{font-size:11px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.mtab-rename{border:1px solid var(--border, rgba(0,0,0,0.12));background:var(--surface2, #f3f2f0);color:var(--text2, #5c5a60);}
+.mtab-rename:hover{color:var(--text, #16151a);background:var(--accent-soft, rgba(29,79,214,0.10));}
+.mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
+.mtab-del:hover{background:#e85c5c;color:#fff;}
+.mtab-del:disabled,.mtab-hide-cb:disabled{opacity:.3;cursor:default;}
+.mtab-deleted-note{font-size:11px;color:var(--text3, #8a8790);flex-shrink:0;}
+.mtab-protected-note{font-size:10px;color:var(--text3, #8a8790);flex-shrink:0;font-style:italic;}
+.mtab-hide-toggle{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.mtab-hide-cb{width:14px;height:14px;cursor:pointer;accent-color:var(--accent, #1d4fd6);flex-shrink:0;}
+.mtab-row-hidden .mtab-name{opacity:.5;font-style:italic;}
 </style>
 </head>
 <body>
@@ -214,6 +236,7 @@ body.nav-is-collapsed #nav-show-tab { display: block; }
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-logo">&#10022; Marathon Training</div>
+  <div class="topbar-right"><button class="btn-manage-tabs" id="manageTabsBtn" title="Rename, hide, or delete tabs">&#9881;&#65039; Manage tabs</button></div>
 </div>
 
 <!-- PANELS -->
@@ -249,7 +272,10 @@ const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct',
 const appState = {
   activeTab: 'm0',
   months: buildMonths(),
-  entries: {} // 'YYYY-MM-DD' -> { run, cross, exercise, weight }
+  entries: {}, // 'YYYY-MM-DD' -> { run, cross, exercise, weight }
+  tabLabels: {},   // {tabId: customLabel} — cosmetic rename, month math unaffected
+  hiddenTabs: [],  // [tabId,...] — hidden from sidebar, data kept
+  deletedTabs: []  // [tabId,...] — permanently removed, entries wiped (backup downloaded first)
 };
 
 function pad2(n) { return String(n).padStart(2, '0'); }
@@ -309,7 +335,15 @@ function loadData() {
         const loaded = JSON.parse(saved);
         if (loaded.entries) appState.entries = loaded.entries;
         if (loaded.activeTab) appState.activeTab = loaded.activeTab;
+        if (loaded.tabLabels && typeof loaded.tabLabels === 'object') appState.tabLabels = loaded.tabLabels;
+        if (Array.isArray(loaded.hiddenTabs)) appState.hiddenTabs = loaded.hiddenTabs;
+        if (Array.isArray(loaded.deletedTabs)) appState.deletedTabs = loaded.deletedTabs;
       } catch (e) { console.log('Using default data'); }
+    }
+    // never let a deleted tab linger as hidden or as the active tab
+    appState.hiddenTabs = appState.hiddenTabs.filter(id => appState.deletedTabs.indexOf(id) < 0);
+    if (appState.deletedTabs.indexOf(appState.activeTab) >= 0 || appState.hiddenTabs.indexOf(appState.activeTab) >= 0) {
+      appState.activeTab = 'full';
     }
     _hideDriveWait();
     renderTabSidebar();
@@ -326,26 +360,41 @@ function loadData() {
 }
 
 function saveData() {
-  if (window.OT) OT.set('ONETRACK_MARATHON_TRAINING', JSON.stringify({ entries: appState.entries, activeTab: appState.activeTab }));
+  if (window.OT) OT.set('ONETRACK_MARATHON_TRAINING', JSON.stringify({
+    entries: appState.entries,
+    activeTab: appState.activeTab,
+    tabLabels: appState.tabLabels,
+    hiddenTabs: appState.hiddenTabs,
+    deletedTabs: appState.deletedTabs
+  }));
 }
 
 /* ══════════════════════════════════════════════════════════
    SIDEBAR TABS
 ══════════════════════════════════════════════════════════ */
+function defaultTabLabel(id) {
+  if (id === 'full') return 'Full plan';
+  const mo = appState.months.find(m => m.id === id);
+  return mo ? (MONTH_ABBR[mo.month] + ' ' + mo.year) : id;
+}
+function tabLabel(id) { return appState.tabLabels[id] || defaultTabLabel(id); }
+
 function renderTabSidebar() {
   const el = document.getElementById('tabSidebar');
   let html = '';
   appState.months.forEach(mo => {
+    if (appState.hiddenTabs.indexOf(mo.id) >= 0 || appState.deletedTabs.indexOf(mo.id) >= 0) return;
     const active = appState.activeTab === mo.id ? ' active' : '';
-    html += `<div class="tab-item${active}" onclick="switchTab('${mo.id}')">${MONTH_ABBR[mo.month]} ${mo.year}</div>`;
+    html += `<div class="tab-item${active}" onclick="switchTab('${mo.id}')">${esc(tabLabel(mo.id))}</div>`;
   });
   html += `<div class="tab-divider"></div>`;
   const fpActive = appState.activeTab === 'full' ? ' active' : '';
-  html += `<div class="tab-item full-plan${fpActive}" onclick="switchTab('full')"><i class="ti ti-layout-grid"></i>&nbsp;Full plan</div>`;
+  html += `<div class="tab-item full-plan${fpActive}" onclick="switchTab('full')"><i class="ti ti-layout-grid"></i>&nbsp;${esc(tabLabel('full'))}</div>`;
   el.innerHTML = html;
 }
 
 function switchTab(id) {
+  if (appState.hiddenTabs.indexOf(id) >= 0 || appState.deletedTabs.indexOf(id) >= 0) id = 'full';
   appState.activeTab = id;
   saveData();
   renderTabSidebar();
@@ -674,6 +723,138 @@ function printFullPlan() {
   </body></html>`);
   w.document.close(); w.onload = () => { w.focus(); w.print(); };
 }
+
+/* ══════════════════════════════════════════════════════════
+   MANAGE TABS — rename, hide, & permanently delete the month
+   tabs (Full plan is always protected: it's a read-only rollup,
+   not its own data, so it can't be hidden or deleted — that
+   also guarantees at least one tab is always visible).
+   Delete downloads a JSON backup of that month's logged entries
+   first, then wipes them; there is no in-app undo for delete.
+══════════════════════════════════════════════════════════ */
+function _mtabEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function _mtabDownloadJSON(filename, obj) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function showTabToast(msg) {
+  const el = document.createElement('div'); el.textContent = msg;
+  Object.assign(el.style, {
+    position: 'fixed', bottom: '70px', left: '50%', transform: 'translateX(-50%)',
+    background: '#1a1714', color: '#fff', padding: '8px 18px', borderRadius: '40px',
+    fontSize: '12px', zIndex: '99999', opacity: '1', transition: 'opacity 0.4s',
+    fontFamily: "'DM Sans',sans-serif", pointerEvents: 'none'
+  });
+  document.body.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 400); }, 1600);
+}
+
+function tabRename(id) {
+  const cur = tabLabel(id);
+  const next = prompt('New name for this tab:', cur);
+  if (next === null || !next || !next.trim()) return;
+  appState.tabLabels[id] = next.trim();
+  saveData();
+  renderTabSidebar();
+  _renderManageTabs();
+  showTabToast(`✓ Renamed to "${next.trim()}"`);
+}
+
+function tabToggleHidden(id, hide) {
+  if (id === 'full') { showTabToast("Full plan can't be hidden"); _renderManageTabs(); return; }
+  const idx = appState.hiddenTabs.indexOf(id);
+  if (hide && idx === -1) appState.hiddenTabs.push(id);
+  if (!hide && idx > -1) appState.hiddenTabs.splice(idx, 1);
+  saveData();
+  if (hide && appState.activeTab === id) switchTab('full'); else renderTabSidebar();
+  _renderManageTabs();
+  showTabToast(hide ? `Hidden "${tabLabel(id)}"` : `Shown "${tabLabel(id)}"`);
+}
+
+function tabDeleteWithBackup(id) {
+  if (id === 'full') { showTabToast("Full plan can't be deleted"); return; }
+  const mo = appState.months.find(m => m.id === id);
+  if (!mo) return;
+  const label = tabLabel(id);
+  if (!confirm(`Delete "${label}" permanently?\n\nA backup file will download first — that file is the only way to get this month's logged entries back. This cannot be undone from within OneTrack.`)) return;
+
+  const prefix = mo.year + '-' + pad2(mo.month + 1) + '-';
+  const monthEntries = {};
+  Object.keys(appState.entries).forEach(iso => {
+    if (iso.indexOf(prefix) === 0) monthEntries[iso] = appState.entries[iso];
+  });
+  const backup = { tabId: id, label, exportedAt: new Date().toISOString(), data: { entries: monthEntries } };
+  _mtabDownloadJSON(`onetrack-backup-${id}-${Date.now()}.json`, backup);
+
+  Object.keys(monthEntries).forEach(iso => { delete appState.entries[iso]; });
+  if (appState.deletedTabs.indexOf(id) < 0) appState.deletedTabs.push(id);
+  const hIdx = appState.hiddenTabs.indexOf(id);
+  if (hIdx > -1) appState.hiddenTabs.splice(hIdx, 1);
+  saveData();
+
+  if (appState.activeTab === id) switchTab('full'); else renderTabSidebar();
+  _renderManageTabs();
+  showTabToast(`✓ "${label}" deleted — backup downloaded`);
+}
+
+function _closeManageTabs() {
+  document.querySelectorAll('.manage-tabs-pop').forEach(p => p.remove());
+  document.removeEventListener('pointerdown', _mtabOutside, true);
+}
+function _mtabOutside(e) {
+  if (!e.target.closest('.manage-tabs-pop') && !e.target.closest('#manageTabsBtn')) _closeManageTabs();
+}
+function _renderManageTabs() {
+  const pop = document.querySelector('.manage-tabs-pop'); if (!pop) return;
+  const allIds = appState.months.map(m => m.id).concat(['full']);
+  const visible = allIds.filter(id => appState.deletedTabs.indexOf(id) < 0);
+  let html = '<div class="lsp-h">Manage tabs</div>';
+  html += visible.map(id => {
+    const isProtected = id === 'full';
+    const isHidden = appState.hiddenTabs.indexOf(id) >= 0;
+    const cb = isProtected
+      ? `<input type="checkbox" class="mtab-hide-cb" disabled>`
+      : `<input type="checkbox" class="mtab-hide-cb" data-id="${id}" ${isHidden ? 'checked' : ''}>`;
+    const delBtn = isProtected
+      ? `<span class="mtab-protected-note">always on</span>`
+      : `<button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button>`;
+    return `<div class="mtab-row${isHidden ? ' mtab-row-hidden' : ''}" data-id="${id}"><label class="mtab-hide-toggle" title="${isProtected ? "Can't be hidden" : 'Hide tab'}">${cb}</label><span class="mtab-name">${_mtabEsc(tabLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button>${delBtn}</div>`;
+  }).join('');
+  if (appState.deletedTabs.length) {
+    html += '<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
+    html += appState.deletedTabs.map(id => `<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_mtabEsc(tabLabel(id))}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join('');
+  }
+  pop.innerHTML = html;
+  pop.querySelectorAll('.mtab-hide-cb:not(:disabled)').forEach(cb => cb.onchange = () => tabToggleHidden(cb.dataset.id, cb.checked));
+  pop.querySelectorAll('.mtab-rename').forEach(b => b.onclick = () => tabRename(b.dataset.id));
+  pop.querySelectorAll('.mtab-del').forEach(b => b.onclick = () => tabDeleteWithBackup(b.dataset.id));
+}
+function _openManageTabs() {
+  _closeManageTabs();
+  const btn = document.getElementById('manageTabsBtn'); if (!btn) return;
+  const pop = document.createElement('div');
+  pop.className = 'manage-tabs-pop';
+  document.body.appendChild(pop);
+  _renderManageTabs();
+  const r = btn.getBoundingClientRect();
+  let left = r.right - pop.offsetWidth, top = r.bottom + 6;
+  left = Math.max(8, Math.min(left, window.innerWidth - pop.offsetWidth - 8));
+  if (top + pop.offsetHeight > window.innerHeight - 8) top = Math.max(8, r.top - pop.offsetHeight - 6);
+  pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  setTimeout(() => document.addEventListener('pointerdown', _mtabOutside, true), 0);
+}
+(function wireManageTabsBtn() {
+  const btn = document.getElementById('manageTabsBtn');
+  if (!btn) return;
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (document.querySelector('.manage-tabs-pop')) _closeManageTabs();
+    else _openManageTabs();
+  });
+})();
 
 // Init
 loadData();
