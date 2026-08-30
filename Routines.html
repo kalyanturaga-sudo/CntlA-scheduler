@@ -1171,7 +1171,7 @@ async function bootstrapDaily(){
   const savedMode = _cget(MODE_KEY);
   if(savedMode && MODES.includes(savedMode)) activeMode = savedMode;
   applyModeTabCustomizations();
-  const _mtabDeletedAtBoot=_mtabDeletedList(), _mtabHiddenAtBoot=_mtabHiddenList();
+  const _mtabDeletedAtBoot=_tabDeletedList(), _mtabHiddenAtBoot=_tabHiddenList();
   if(_mtabDeletedAtBoot.includes(activeMode) || _mtabHiddenAtBoot.includes(activeMode)){
     activeMode=MODES.find(m=>!_mtabDeletedAtBoot.includes(m) && !_mtabHiddenAtBoot.includes(m))||activeMode;
   }
