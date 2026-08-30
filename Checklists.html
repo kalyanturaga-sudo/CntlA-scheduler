@@ -266,6 +266,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
 .mtab-del:hover{background:#e85c5c;color:#fff;}
 .mtab-deleted-note{font-size:11px;color:var(--text3);flex-shrink:0;}
+.mtab-hide-toggle{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.mtab-hide-cb{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;}
+.mtab-row-hidden .mtab-name{opacity:.5;font-style:italic;}
 
 /* PT Job section colours */
 .sec-eve    {background:linear-gradient(160deg,var(--eve-from),var(--eve-to) 80%);}
@@ -1615,6 +1618,7 @@ function switchTab(tab){
    ============================================================ */
 const TAB_LABELS_KEY  = "CL_TAB_LABELS";   // {tabId: customLabel}
 const TAB_DELETED_KEY = "CL_TAB_DELETED";  // [tabId, ...]
+const TAB_HIDDEN_KEY  = "CL_TAB_HIDDEN";   // [tabId, ...] — hidden, not deleted; data kept
 const TAB_META = {
   job:     {defaultLabel:"🧳 Job Checklist",        keys:[]},
   joblib:  {defaultLabel:"🗂️ Task (Jobs) Library", keys:["JOB_TASKLIB_V1","JOB_TASKLIB_DONE_V1","JOB_TASKLIB_SEEDED_V1"]},
@@ -1627,19 +1631,37 @@ const TAB_META = {
 };
 function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
 function _tabDeletedList(){ try{ const a=JSON.parse(_cget(TAB_DELETED_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _tabHiddenList(){ try{ const a=JSON.parse(_cget(TAB_HIDDEN_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function _tabLabel(id){ return _tabLabels()[id] || (TAB_META[id]?TAB_META[id].defaultLabel:id); }
 function _cremove(k){ delete _otCache[k]; if(OT&&typeof OT.remove==="function") OT.remove(k); else _cset(k,null); }
 
 /* Applies saved custom labels + hides deleted tabs' buttons. Pure UI —
    does not switch tabs itself, callers handle activeTab fallback. */
 function applyTabCustomizations(){
-  const labels=_tabLabels(), deleted=_tabDeletedList();
+  const labels=_tabLabels(), deleted=_tabDeletedList(), hidden=_tabHiddenList();
   Object.keys(TAB_META).forEach(id=>{
     const btn=document.getElementById("tab"+id.charAt(0).toUpperCase()+id.slice(1));
     if(!btn) return;
     btn.textContent = labels[id] || TAB_META[id].defaultLabel;
-    btn.style.display = deleted.includes(id) ? "none" : "";
+    btn.style.display = (deleted.includes(id) || hidden.includes(id)) ? "none" : "";
   });
+}
+
+/* Hide/unhide a tab. Unlike delete, this keeps all data intact — it just
+   pulls the tab button out of the bar. Toggled via the checkbox in Manage tabs. */
+function tabToggleHidden(id, hide){
+  const hidden=_tabHiddenList();
+  const idx=hidden.indexOf(id);
+  if(hide && idx===-1) hidden.push(id);
+  if(!hide && idx>-1) hidden.splice(idx,1);
+  _cset(TAB_HIDDEN_KEY,JSON.stringify(hidden));
+  applyTabCustomizations();
+  if(hide && activeTab===id){
+    const deleted=_tabDeletedList();
+    const fallback=Object.keys(TAB_META).find(t=>t!==id && !deleted.includes(t) && !hidden.includes(t));
+    if(fallback) switchTab(fallback);
+  }
+  showToast(hide ? `Hidden "${_tabLabel(id)}"` : `Shown "${_tabLabel(id)}"`);
 }
 
 function _downloadJSON(filename,obj){
@@ -1690,15 +1712,19 @@ function _mtabOutside(e){
 }
 function _renderManageTabs(){
   const pop=document.querySelector('.manage-tabs-pop'); if(!pop) return;
-  const deleted=_tabDeletedList();
+  const deleted=_tabDeletedList(), hidden=_tabHiddenList();
   const visible=Object.keys(TAB_META).filter(id=>!deleted.includes(id));
   let html='<div class="lsp-h">Manage tabs</div>';
-  html+=visible.map(id=>`<div class="mtab-row" data-id="${id}"><span class="mtab-name">${_esc(_tabLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button><button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button></div>`).join('');
+  html+=visible.map(id=>{
+    const isHidden=hidden.includes(id);
+    return `<div class="mtab-row${isHidden?' mtab-row-hidden':''}" data-id="${id}"><label class="mtab-hide-toggle" title="Hide tab"><input type="checkbox" class="mtab-hide-cb" data-id="${id}" ${isHidden?'checked':''}></label><span class="mtab-name">${_esc(_tabLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button><button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button></div>`;
+  }).join('');
   if(deleted.length){
     html+='<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
     html+=deleted.map(id=>`<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_esc(_tabLabel(id))}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join('');
   }
   pop.innerHTML=html;
+  pop.querySelectorAll('.mtab-hide-cb').forEach(cb=>cb.onchange=()=>tabToggleHidden(cb.dataset.id, cb.checked));
   pop.querySelectorAll('.mtab-rename').forEach(b=>b.onclick=()=>tabRename(b.dataset.id));
   pop.querySelectorAll('.mtab-del').forEach(b=>b.onclick=()=>tabDeleteWithBackup(b.dataset.id));
 }
@@ -3574,9 +3600,9 @@ async function bootstrapChecklists(){
   renderJobLib();
   renderJobChecklist();
   applyTabCustomizations();
-  const _deletedAtBoot=_tabDeletedList();
-  if(_deletedAtBoot.includes(activeTab)){
-    activeTab=Object.keys(TAB_META).find(id=>!_deletedAtBoot.includes(id))||activeTab;
+  const _deletedAtBoot=_tabDeletedList(), _hiddenAtBoot=_tabHiddenList();
+  if(_deletedAtBoot.includes(activeTab) || _hiddenAtBoot.includes(activeTab)){
+    activeTab=Object.keys(TAB_META).find(id=>!_deletedAtBoot.includes(id) && !_hiddenAtBoot.includes(id))||activeTab;
   }
   _hideDriveWait();
   switchTab(activeTab);
@@ -3612,9 +3638,9 @@ OT.onReady(async () => {
       renderWtl(); renderWychBoard();
       renderJobLib(); renderJobChecklist();
       applyTabCustomizations();
-      const _deletedOnSync=_tabDeletedList();
-      if(_deletedOnSync.includes(activeTab)){
-        activeTab=Object.keys(TAB_META).find(id=>!_deletedOnSync.includes(id))||activeTab;
+      const _deletedOnSync=_tabDeletedList(), _hiddenOnSync=_tabHiddenList();
+      if(_deletedOnSync.includes(activeTab) || _hiddenOnSync.includes(activeTab)){
+        activeTab=Object.keys(TAB_META).find(id=>!_deletedOnSync.includes(id) && !_hiddenOnSync.includes(id))||activeTab;
       }
       switchTab(activeTab);
     });
