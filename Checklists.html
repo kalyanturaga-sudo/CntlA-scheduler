@@ -24,6 +24,8 @@
   --trv-accent:#1a7fbf;
   --rtn-accent: #c17b3f; --rtn-soft: rgba(193,123,63,0.12); --trv-soft:rgba(26,127,191,0.12);
   --hom-accent:#e07040;  --hom-soft:rgba(224,112,64,0.12);
+  --tasklib-accent:#6a6a8a; --tasklib-soft:rgba(106,106,138,0.12);
+  --job-accent:#2a8f8f; --job-soft:rgba(42,143,143,0.12);
 
   /* active (swapped by JS) */
   --accent:var(--pt-accent); --accent-soft:var(--pt-soft);
@@ -79,6 +81,8 @@
   --esh-accent:#cc88bc; --esh-soft:rgba(204,136,188,0.14);
   --trv-accent:#4da8e0; --trv-soft:rgba(77,168,224,0.14);
   --hom-accent:#f08850;  --hom-soft:rgba(240,136,80,0.14);
+  --tasklib-accent:#9a9ac0; --tasklib-soft:rgba(154,154,192,0.14);
+  --job-accent:#4cc9c9; --job-soft:rgba(76,201,201,0.14);
   --eve-from:#201c16; --eve-to:#1c1912;
   --mental-from:#201c16; --mental-to:#1c1912;
   --tech-from:#201c16; --tech-to:#1c1912;
@@ -119,14 +123,15 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tab-group{display:flex;gap:0;}
 .tab-btn{padding:14px 20px;font-family:'DM Serif Display',serif;font-size:15px;border:none;background:none;cursor:grab;color:var(--text2);border-bottom:3px solid transparent;transition:color .15s,border-color .15s,background .15s;white-space:nowrap;position:relative;flex-shrink:0;}
 .tab-btn:hover{color:var(--text);}
-.tab-btn.active-ft {color:var(--ft-accent); border-bottom-color:var(--ft-accent);}
-.tab-btn.active-pt {color:var(--pt-accent); border-bottom-color:var(--pt-accent);}
-.tab-btn.active-roh{color:var(--roh-accent);border-bottom-color:var(--roh-accent);}
-.tab-btn.active-esh{color:var(--esh-accent);border-bottom-color:var(--esh-accent);}
+.tab-btn.active-job{color:var(--job-accent);border-bottom-color:var(--job-accent);}
+.tab-btn.active-joblib{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
 .tab-btn.active-kal{color:var(--kal-accent);border-bottom-color:var(--kal-accent);}
 .tab-btn.active-trv{color:var(--trv-accent);border-bottom-color:var(--trv-accent);}
+.tab-btn.active-tasklib{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
+.tab-btn.active-ahtml{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
+.tab-btn.active-wtl{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
+.tab-btn.active-wych{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
 .tab-btn.active-rtn{color:var(--rtn-accent);border-bottom-color:var(--rtn-accent);}
-.tab-btn.active-hom{color:var(--hom-accent);border-bottom-color:var(--hom-accent);}
 .tab-btn.tab-dragging{opacity:.3;cursor:grabbing;}
 .tab-btn.tab-drop-before::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--pt-accent);border-radius:2px;}
 .tab-btn.tab-drop-after::after{content:'';position:absolute;right:0;top:6px;bottom:6px;width:3px;background:var(--pt-accent);border-radius:2px;}
@@ -249,6 +254,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 /* ====== PT UNCHECK-ALL BUTTON ====== */
 .btn-uncheck-all{font-size:11px;padding:3px 8px;background:rgba(232,92,92,0.08);color:#c05050;border:1px solid rgba(232,92,92,0.2);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;}
 .btn-uncheck-all:hover{background:rgba(232,92,92,0.16);color:#e85c5c;}
+.btn-manage-tabs{font-size:11px;padding:3px 8px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;}
+.btn-manage-tabs:hover{color:var(--text);background:var(--accent-soft);}
+.manage-tabs-pop{width:280px;max-height:70vh;overflow-y:auto;}
+.mtab-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);}
+.mtab-row:last-child{border-bottom:none;}
+.mtab-name{flex:1;font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mtab-rename,.mtab-del{font-size:11px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.mtab-rename{border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.mtab-rename:hover{color:var(--text);background:var(--accent-soft);}
+.mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
+.mtab-del:hover{background:#e85c5c;color:#fff;}
+.mtab-deleted-note{font-size:11px;color:var(--text3);flex-shrink:0;}
 
 /* PT Job section colours */
 .sec-eve    {background:linear-gradient(160deg,var(--eve-from),var(--eve-to) 80%);}
@@ -304,6 +321,130 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* Move portal */
 
+
+/* ====== TASK LIBRARY (admin) ====== */
+.tl-row{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface);margin-bottom:6px;transition:background .15s,box-shadow .15s;}
+.tl-row:hover{box-shadow:var(--shadow);}
+.tl-row.tl-dragging{opacity:.35;}
+.tl-row.tl-drop-above::before{content:'';display:block;position:relative;top:-6px;height:2px;background:var(--tasklib-accent);}
+.tl-row.tl-drop-below::after{content:'';display:block;position:relative;bottom:-6px;height:2px;background:var(--tasklib-accent);}
+.tl-row.tl-sub{padding:7px 12px 7px 34px;background:var(--surface2);margin-bottom:4px;margin-top:-2px;}
+.tl-grip{color:var(--text3);cursor:grab;font-size:14px;flex-shrink:0;user-select:none;}
+.tl-chevron{color:var(--text3);cursor:pointer;font-size:12px;flex-shrink:0;width:14px;text-align:center;}
+.tl-name{flex:1;font-size:13px;font-weight:500;color:var(--text);border:none;background:transparent;outline:none;padding:2px 4px;border-radius:5px;min-width:0;}
+.tl-row.tl-sub .tl-name{font-weight:400;font-size:12.5px;color:var(--text2);}
+.tl-name:focus{border:1px solid var(--accent);background:var(--surface2);}
+.tl-count{font-size:11px;color:var(--text3);flex-shrink:0;}
+.tl-owner-pills{display:flex;gap:4px;flex-shrink:0;}
+.tl-pill{width:22px;height:22px;border-radius:50%;border:none;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;background:var(--border);color:var(--text3);}
+.tl-pill.tl-pill-k.on{background:var(--kal-accent);color:#fff;}
+.tl-pill.tl-pill-r.on{background:var(--roh-accent);color:#fff;}
+.tl-pill.tl-pill-e.on{background:var(--esh-accent);color:#fff;}
+.tl-icon-btn{font-size:13px;border:none;background:none;cursor:pointer;color:var(--text3);padding:3px 5px;border-radius:5px;transition:color .15s,background .15s;flex-shrink:0;}
+.tl-icon-btn:hover{color:var(--text);background:rgba(0,0,0,0.07);}
+.tl-icon-btn.tl-del:hover{color:#e85c5c;background:rgba(232,92,92,0.1);}
+.tl-empty{font-size:12px;color:var(--text3);font-style:italic;padding:10px 4px;}
+.tl-empty-tag{font-size:10px;color:var(--text3);flex-shrink:0;font-style:italic;}
+.tl-row.tl-subsub{padding:6px 12px 6px 58px;background:var(--surface2);margin-bottom:3px;margin-top:-2px;}
+.tl-row.tl-subsub .tl-name{font-weight:400;font-size:12px;color:var(--text3);}
+.tl-cat-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface2);margin-bottom:6px;}
+.tl-cat-row.tl-dragging{opacity:.35;}
+.tl-cat-row.tl-drop-above::before{content:'';display:block;position:relative;top:-6px;height:2px;background:var(--tasklib-accent);}
+.tl-cat-row.tl-drop-below::after{content:'';display:block;position:relative;bottom:-6px;height:2px;background:var(--tasklib-accent);}
+.tl-cat-row .tl-name{font-family:'DM Serif Display',serif;font-weight:400;font-size:14px;}
+.tl-cat-chevron{color:var(--text3);cursor:pointer;font-size:12px;flex-shrink:0;width:14px;text-align:center;}
+.tl-pill{padding:3px 8px;border-radius:12px;}
+.tl-pill.tl-pill-jft.on{background:var(--ft-accent);color:#111;}
+.tl-pill.tl-pill-jpt.on{background:var(--pt-accent);color:#111;}
+.tl-pill.tl-pill-jboth.on{background:var(--job-accent);color:#111;}
+.tl-cat-block{margin-bottom:10px;}
+
+.job-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:900px){.job-cols{grid-template-columns:1fr;}}
+.job-col{border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);padding:16px;background:var(--surface);}
+.job-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.job-col-title{font-family:'DM Serif Display',serif;font-size:16px;}
+.job-col-count{font-size:11px;font-weight:600;color:var(--text3);}
+.job-col-progress{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+.job-col-progress-fill{height:100%;border-radius:3px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.job-cat{margin-bottom:12px;}
+.job-cat-title{font-family:'DM Serif Display',serif;font-size:13px;color:var(--text2);padding:5px 4px;border-bottom:1px solid var(--border);margin-bottom:3px;}
+.job-item{display:flex;align-items:flex-start;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;user-select:none;}
+.job-item:hover{background:var(--surface2);}
+.job-item.lvl2{padding-left:22px;}
+.job-item.lvl3{padding-left:40px;}
+.job-item-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--text3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;margin-top:1px;}
+.job-item.job-done .job-item-cb{border-color:transparent;}
+.job-item-label{font-size:13px;color:var(--text);line-height:1.4;}
+.job-item.job-done .job-item-label{color:var(--text3);text-decoration:line-through;}
+.job-item.lvl1 .job-item-label{font-weight:500;}
+.job-empty{font-size:12px;color:var(--text3);font-style:italic;padding:6px 4px;}
+
+/* ====== AFTER YOU COME HOME (display, 3 columns) ====== */
+.ahtml-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+@media(max-width:900px){.ahtml-cols{grid-template-columns:1fr;}}
+.ahtml-col{border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);padding:16px;background:var(--surface);}
+.ahtml-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.ahtml-col-title{font-family:'DM Serif Display',serif;font-size:16px;}
+.ahtml-col-count{font-size:11px;font-weight:600;color:var(--text3);}
+.ahtml-col-progress{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+.ahtml-col-progress-fill{height:100%;border-radius:3px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.ahtml-item{display:flex;align-items:center;gap:8px;padding:6px 4px;border-radius:6px;cursor:pointer;user-select:none;}
+.ahtml-item:hover{background:var(--surface2);}
+.ahtml-item.ahtml-sub{padding-left:26px;}
+.ahtml-item-cb{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--text3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;}
+.ahtml-item.ahtml-done .ahtml-item-cb{border-color:transparent;}
+.ahtml-item-label{font-size:13px;color:var(--text);}
+.ahtml-item.ahtml-done .ahtml-item-label{color:var(--text3);text-decoration:line-through;}
+.ahtml-item-count{font-size:11px;color:var(--text3);}
+.ahtml-empty{font-size:12px;color:var(--text3);font-style:italic;padding:6px 4px;}
+
+/* ====== WYCH-imported: Task Library (WYCH) admin table ====== */
+.tb-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}
+.tb-table{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
+.tb-row{display:flex;align-items:center;gap:8px;padding:10px 10px;border-bottom:1px solid var(--border);}
+.tb-row:last-child{border-bottom:none;}
+.tb-row.tb-subrow{background:var(--surface2);padding-left:34px;}
+.tb-grip{cursor:grab;color:var(--text3);font-size:14px;flex-shrink:0;user-select:none;}
+.tb-chevron{width:14px;flex-shrink:0;text-align:center;cursor:pointer;color:var(--text2);font-size:10px;user-select:none;}
+.tb-chevron-empty{cursor:default;}
+.tb-name{flex:none;width:var(--tb-name-w,160px);min-width:0;font-size:13px;color:var(--text);cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tb-name:hover{color:var(--accent);}
+.tb-count{color:var(--text3);font-size:11px;}
+.tb-circles{display:flex;gap:5px;flex-shrink:0;}
+.tb-circle{width:30px;height:30px;border-radius:50%;border:1px solid var(--border);background:var(--surface2);color:var(--text3);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.tb-circle:hover{border-color:var(--accent);}
+.tb-circle.on-k{background:var(--kal-accent);border-color:var(--kal-accent);color:#fff;}
+.tb-circle.on-r{background:var(--roh-accent);border-color:var(--roh-accent);color:#fff;}
+.tb-circle.on-e{background:var(--esh-accent);border-color:var(--esh-accent);color:#fff;}
+.tb-circle-all{width:30px;height:30px;border-radius:50%;border:1px dashed var(--border);background:var(--surface2);color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;transition:all .12s;}
+.tb-circle-all:hover{border-color:var(--accent);color:var(--accent);}
+.tb-circle-all.on-all{background:var(--accent);border-style:solid;border-color:var(--accent);color:#fff;}
+.tb-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:4px 6px;border-radius:6px;flex-shrink:0;}
+.tb-icon-btn:hover{color:#c0392b;background:var(--surface2);}
+.tb-icon-btn[data-act="indent"],.tb-icon-btn[data-act="outdent"]{color:var(--text2);font-size:15px;}
+.tb-icon-btn[data-act="indent"]:hover,.tb-icon-btn[data-act="outdent"]:hover{color:var(--accent);background:var(--surface2);}
+.tb-icon-btn[disabled]{opacity:.3;cursor:not-allowed;}
+.tb-icon-btn[disabled]:hover{color:var(--text3);background:none;}
+.tb-row.tb-row-selected{background:var(--accent-soft);}
+.tb-row.tb-subrow.tb-row-selected{background:var(--accent-soft);}
+.tb-empty{font-size:12px;color:var(--text3);font-style:italic;padding:14px;}
+
+/* ====== WYCH-imported: WYCH board (display, 3 columns) ====== */
+.wych-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
+@media(max-width:900px){.wych-cols{grid-template-columns:1fr;}}
+.wych-col{border-radius:var(--radius-md);border:1px solid var(--border);box-shadow:var(--shadow);padding:16px;background:var(--surface);}
+.wych-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.wych-col-title{font-family:'DM Serif Display',serif;font-size:16px;}
+.wych-col-count{font-size:11px;font-weight:600;color:var(--text3);}
+.wych-col-progress{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:14px;}
+.wych-col-progress-fill{height:100%;border-radius:3px;transition:width .4s cubic-bezier(.4,0,.2,1);}
+.tb-item{display:flex;align-items:center;padding:5px 0;cursor:pointer;user-select:none;}
+.tb-item.tb-sub{padding-left:22px;}
+.tb-checkbox{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;margin-right:9px;font-size:11px;color:#fff;background:var(--surface);}
+.tb-item.tb-done .tb-checkbox{background:var(--accent);border-color:var(--accent);}
+.tb-item-label{font-size:13px;color:var(--text);}
+.tb-item.tb-done .tb-item-label{color:var(--text3);text-decoration:line-through;}
 
 /* Travel section colours */
 :root{
@@ -514,120 +655,101 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <!-- TAB BAR -->
   <div class="tab-bar">
     <div class="tab-group" id="tabGroup">
-      <button class="tab-btn active-ft"  id="tabFt"  draggable="true" data-tab="ft" >🏢 FT Job</button>
-      <button class="tab-btn"            id="tabHom" draggable="true" data-tab="hom">🏠 Come Home</button>
-      <button class="tab-btn"            id="tabPt"  draggable="true" data-tab="pt" >💼 PT Job</button>
-      <button class="tab-btn"            id="tabRoh" draggable="true" data-tab="roh">🎒 Rohan</button>
-      <button class="tab-btn"            id="tabEsh" draggable="true" data-tab="esh">🌸 Esha</button>
-      <button class="tab-btn"            id="tabKal" draggable="true" data-tab="kal">🏠 Kalyan</button>
+      <button class="tab-btn active-job"  id="tabJob"    draggable="true" data-tab="job"    >🧳 Job Checklist</button>
+      <button class="tab-btn"            id="tabJoblib" draggable="true" data-tab="joblib" >🗂️ Task (Jobs) Library</button>
+      <button class="tab-btn"            id="tabTasklib" draggable="true" data-tab="tasklib">🗂️ Task Library</button>
+      <button class="tab-btn"            id="tabAhtml"  draggable="true" data-tab="ahtml"  >🏡 After you come Home</button>
+      <button class="tab-btn"            id="tabWtl"    draggable="true" data-tab="wtl"    >🗂️ Task Library</button>
+      <button class="tab-btn"            id="tabWych"   draggable="true" data-tab="wych"   >🏡 WYCH</button>
+      <button class="tab-btn"            id="tabKal"    draggable="true" data-tab="kal"    >🏠 Kalyan</button>
       <button class="tab-btn"            id="tabTrv" draggable="true" data-tab="trv">✈️ Travel</button>
     </div>
     <div class="tab-right">
+      <button class="btn-manage-tabs" id="manageTabsBtn" title="Rename or delete tabs">⚙️ Manage tabs</button>
       <button class="btn-uncheck-all" id="masterUncheckBtn" title="Uncheck everything across all tabs" onclick="masterUncheckAll()">↺ Uncheck All</button>
     </div>
   </div>
 
-  <div class="panel active" id="panelFt">
+  <div class="panel active" id="panelJob">
     <div class="panel-header">
       <div>
-        <h2 style="color:var(--ft-accent)">🏢 FT Job Checklist</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Pre-shift routine — check everything before you leave</div>
+        <h2 style="color:var(--job-accent)">🧳 Job Checklist</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Pre-shift routine — FT and PT side by side, live from the Task (Jobs) Library</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('ft')" title="Print — style set in Settings">🖨 Print</button>
+        <button class="btn btn-ghost" onclick="jobBoardResetAll()" title="Uncheck FT and PT">↺ Reset all</button>
+        <button class="btn btn-ghost" onclick="jobBoardPrint()" title="Print both columns">🖨 Print</button>
       </div>
     </div>
-    <div class="overall-progress" id="ftProgressBar">
-      <span class="progress-label" style="color:var(--ft-accent)">✦ Ready to go</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="ftFill" style="width:0%;background:linear-gradient(90deg,var(--ft-accent),#5ec99a)"></div></div>
-      <span class="progress-pct" id="ftPct" style="color:var(--ft-accent)">0%</span>
-    </div>
-    <div class="cl-body-layout">
-      <div class="cl-sidebar" id="sidebar_ftGrid"></div>
-      <div class="cl-content" id="content_ftGrid"></div>
-    </div>
+    <div class="job-cols" id="jobCols"></div>
   </div>
 
-  <!-- ========== COME HOME PANEL ========== -->
-  <div class="panel" id="panelHom">
+  <!-- ========== TASK (JOBS) LIBRARY PANEL (admin) ========== -->
+  <div class="panel" id="panelJoblib">
     <div class="panel-header">
       <div>
-        <h2 style="color:var(--hom-accent)">🏠 Come Home Checklist</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">After-arrival routine — wind down the right way</div>
+        <h2 style="color:var(--tasklib-accent)">🗂️ Task (Jobs) Library</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Categories → tasks → sub-tasks, tagged FT / PT / Both — edit here, feeds the Job Checklist tab live</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('hom')" title="Print — style set in Settings">🖨 Print</button>
+        <button class="btn btn-add-list" id="joblibAddCatBtn" onclick="jlAddCategory()" style="border-color:var(--tasklib-accent);color:var(--tasklib-accent);background:var(--tasklib-soft);">+ Add category</button>
       </div>
     </div>
-    <div class="overall-progress" id="homProgressBar">
-      <span class="progress-label" style="color:var(--hom-accent)">✦ Settled in</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="homFill" style="width:0%;background:linear-gradient(90deg,var(--hom-accent),#f0a870)"></div></div>
-      <span class="progress-pct" id="homPct" style="color:var(--hom-accent)">0%</span>
-    </div>
-    <div class="cl-body-layout">
-      <div class="cl-sidebar" id="sidebar_homGrid"></div>
-      <div class="cl-content" id="content_homGrid"></div>
-    </div>
+    <div id="joblibList"></div>
   </div>
 
-  <!-- ========== PT JOB PANEL ========== -->
-  <div class="panel" id="panelPt">
+  <!-- ========== TASK LIBRARY PANEL (admin) ========== -->
+  <div class="panel" id="panelTasklib">
     <div class="panel-header">
       <div>
-        <h2 style="color:var(--pt-accent)">💼 PT Job Checklist</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Pre-shift routine — check everything before you leave</div>
+        <h2 style="color:var(--tasklib-accent)">🗂️ Task Library</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Shared tasks, tagged by who they're for — edit here, not in the person tabs</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('pt')" title="Print — style set in Settings">🖨 Print</button>
+        <button class="btn btn-add-list" id="tasklibAddBtn" onclick="tasklibAddTask()" style="border-color:var(--tasklib-accent);color:var(--tasklib-accent);background:var(--tasklib-soft);">+ Add task</button>
       </div>
     </div>
-    <div class="overall-progress" id="ptProgressBar">
-      <span class="progress-label" style="color:var(--pt-accent)">✦ Ready to go</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="ptFill" style="width:0%;background:linear-gradient(90deg,var(--pt-accent),#e09050)"></div></div>
-      <span class="progress-pct" id="ptPct" style="color:var(--pt-accent)">0%</span>
-    </div>
-    <div class="cl-body-layout">
-      <div class="cl-sidebar" id="sidebar_ptGrid"></div>
-      <div class="cl-content" id="content_ptGrid"></div>
-    </div>
+    <div id="tasklibList"></div>
   </div>
 
-  <!-- ========== ROHAN PANEL ========== -->
-  <div class="panel" id="panelRoh">
+  <!-- ========== AFTER YOU COME HOME PANEL (display) ========== -->
+  <div class="panel" id="panelAhtml">
     <div class="panel-header">
       <div>
-        <h2 style="color:var(--roh-accent)">🎒 Rohan's Routine</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">After school checklist — step by step</div>
+        <h2 style="color:var(--tasklib-accent)">🏡 After you come Home</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Kalyan, Rohan and Esha — filtered live from the Task Library</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('roh')" title="Print — style set in Settings">🖨 Print</button>
+        <button class="btn btn-ghost" onclick="ahtmlPrint()" title="Print all three">🖨 Print</button>
       </div>
     </div>
-    <div class="overall-progress">
-      <span class="progress-label" style="color:var(--roh-accent)">✦ Rohan's progress</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="rohFill" style="width:0%;background:linear-gradient(90deg,var(--roh-accent),#7ab8f0)"></div></div>
-      <span class="progress-pct" id="rohPct" style="color:var(--roh-accent)">0%</span>
-    </div>
-    <div class="grid" id="rohGrid"></div>
+    <div class="ahtml-cols" id="ahtmlCols"></div>
   </div>
 
-  <!-- ========== ESHA PANEL ========== -->
-  <div class="panel" id="panelEsh">
+  <!-- ========== TASK LIBRARY (WYCH) PANEL — imported as-is from WYCH.html, same storage keys ========== -->
+  <div class="panel" id="panelWtl">
     <div class="panel-header">
       <div>
-        <h2 style="color:var(--esh-accent)">🌸 Esha's Routine</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">After school checklist — step by step</div>
+        <h2 style="color:var(--tasklib-accent)">🗂️ Task Library</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Imported from WYCH.html — shared tasks, tagged by owner (K/R/E)</div>
+      </div>
+    </div>
+    <div id="wtlBankContent"></div>
+  </div>
+
+  <!-- ========== WYCH PANEL — imported as-is from WYCH.html, same storage keys ========== -->
+  <div class="panel" id="panelWych">
+    <div class="panel-header">
+      <div>
+        <h2 style="color:var(--tasklib-accent)">🏡 WYCH</h2>
+        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Imported from WYCH.html — filtered live from the Task Library above</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('esh')" title="Print — style set in Settings">🖨 Print</button>
+        <button class="btn btn-ghost" onclick="wychBoardResetAll()" title="Uncheck everyone's tasks">↺ Reset all</button>
+        <button class="btn btn-ghost" onclick="wychBoardPrint()" title="Print all three columns">🖨 Print</button>
       </div>
     </div>
-    <div class="overall-progress">
-      <span class="progress-label" style="color:var(--esh-accent)">✦ Esha's progress</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="eshFill" style="width:0%;background:linear-gradient(90deg,var(--esh-accent),#d4a0c8)"></div></div>
-      <span class="progress-pct" id="eshPct" style="color:var(--esh-accent)">0%</span>
-    </div>
-    <div class="grid" id="eshGrid"></div>
+    <div class="wych-cols" id="wychCols"></div>
   </div>
 
   <!-- ========== KALYAN PANEL ========== -->
@@ -736,7 +858,7 @@ const UndoManager=(function(){
   }
   document.addEventListener('keydown',function(e){
     if(document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName))return;
-    const active=window._activeChecklistTab||'pt';
+    const active=window._activeChecklistTab||'joblib';
     if((e.ctrlKey||e.metaKey)&&!e.altKey){
       if((e.key==='z'||e.key==='Z')&&e.shiftKey){if(redo(active)){e.preventDefault();toast('↷ Redo');}}
       else if(e.key==='z'||e.key==='Z'){if(undo(active)){e.preventDefault();toast('↺ Undo');}}
@@ -886,6 +1008,7 @@ function applySettingsFontScale(){
 }
 
 function showToast(msg){ const t=document.getElementById("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
+function _esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
 function fireConfetti(colors){
   colors=colors||["#f44336","#ff9800","#4caf50","#2196f3","#9c27b0","#ffeb3b","#c17b3f"];
@@ -1398,27 +1521,66 @@ function openPrint(html){ const w=window.open('','_blank'); w.document.write(htm
 /* ============================================================
    TAB SYSTEM — draggable, order persisted
    ============================================================ */
-const TAB_ACTIVE_CLS = {ft:'active-ft',hom:'active-hom',pt:'active-pt',roh:'active-roh',esh:'active-esh',kal:'active-kal',trv:'active-trv'};
+const TAB_ACTIVE_CLS = {job:'active-job',joblib:'active-joblib',kal:'active-kal',trv:'active-trv',tasklib:'active-tasklib',ahtml:'active-ahtml',wtl:'active-wtl',wych:'active-wych'};
 const TAB_ORDER_KEY  = "CL_TAB_ORDER";
-let activeTab = (()=>{ const t=_cget("CL_ACTIVE_TAB"); return (t&&t!=="rtn")?t:"ft"; })();
+let activeTab = (()=>{ const t=_cget("CL_ACTIVE_TAB"); return (t&&t!=="rtn")?t:"job"; })();
 
 function switchTab(tab){
   window._activeChecklistTab = tab;
-  var _tl={ft:'FT Job',hom:'Come Home',pt:'PT Job',roh:'Rohan',esh:'Esha',kal:'Kalyan',trv:'Travel'};
+  var _tl={job:'Job Checklist',joblib:'Task (Jobs) Library',kal:'Kalyan',trv:'Travel',tasklib:'Task Library',ahtml:'After you come Home',wtl:'Task Library (WYCH)',wych:'WYCH'};
   if(OT&&typeof OT.setTitle==="function")OT.setTitle(_tl[tab]||tab);else document.title=_tl[tab]||tab;
   activeTab=tab;
   _cset("CL_ACTIVE_TAB",tab);
-  ["ft","hom","pt","roh","esh","kal","trv"].forEach(id=>{
+  ["job","joblib","kal","trv","tasklib","ahtml","wtl","wych"].forEach(id=>{
     document.getElementById("panel"+id.charAt(0).toUpperCase()+id.slice(1)).classList.toggle("active",id===tab);
   });
-  /* swap footer buttons */
-  document.getElementById("addListBtn").style.display="";
-  document.getElementById("addListBtn").onclick = TAB_ADD[tab];
+  /* swap footer buttons — Task Library, After you come Home, the two
+     imported WYCH tabs, and the Job Checklist pair all have their own
+     add/print controls in the panel header, not the shared footer */
+  const addBtn=document.getElementById("addListBtn");
+  if(tab==="tasklib"||tab==="ahtml"||tab==="wtl"||tab==="wych"||tab==="job"||tab==="joblib"){
+    addBtn.style.display="none";
+  } else {
+    addBtn.style.display="";
+    addBtn.onclick = TAB_ADD[tab];
+  }
   /* update tab buttons — always, including rtn */
   document.querySelectorAll(".tab-btn").forEach(b=>{
     b.className="tab-btn"+(b.dataset.tab===tab?" "+TAB_ACTIVE_CLS[tab]:"");
   });
   /* update footer stats */
+  if(tab==="tasklib"){
+    document.getElementById("footerStats").textContent=tlTasks.length?`${tlTasks.length} task(s) in library`:"";
+    return;
+  }
+  if(tab==="ahtml"){
+    const totals=TASKLIB_OWNERS.map(_ahtmlOwnerStats);
+    const done=totals.reduce((n,s)=>n+s.done,0), total=totals.reduce((n,s)=>n+s.total,0);
+    document.getElementById("footerStats").textContent=total?`${done} / ${total} items`:"";
+    return;
+  }
+  if(tab==="job"){
+    const totals=["ft","pt"].map(_jobColStats);
+    const done=totals.reduce((n,s)=>n+s.done,0), total=totals.reduce((n,s)=>n+s.total,0);
+    document.getElementById("footerStats").textContent=total?`${done} / ${total} items`:"";
+    return;
+  }
+  if(tab==="joblib"){
+    const n=jtCats.reduce((n,c)=>n+c.items.length,0);
+    document.getElementById("footerStats").textContent=n?`${n} task(s) in library`:"";
+    return;
+  }
+  if(tab==="wtl"){
+    const wtlTasks=wtlLoad();
+    document.getElementById("footerStats").textContent=wtlTasks.length?`${wtlTasks.length} task(s) in library`:"";
+    return;
+  }
+  if(tab==="wych"){
+    const totals=WTL_OWNERS.map(_wychBOwnerStats);
+    const done=totals.reduce((n,s)=>n+s.done,0), total=totals.reduce((n,s)=>n+s.total,0);
+    document.getElementById("footerStats").textContent=total?`${done} / ${total} items`:"";
+    return;
+  }
   const cfg = TAB_CFGS[tab]; if(!cfg)return;
   const allItems=cfg.SECTIONS.flatMap(s=>cfg.data[s.id]||[]);
   const doneAll=allItems.filter(t=>t.done).length, totalAll=allItems.length;
@@ -1444,6 +1606,119 @@ function switchTab(tab){
     });
   }
   restoreOrder(); wire();
+})();
+
+/* ============================================================
+   MANAGE TABS — rename & permanently delete top-level tabs
+   Delete always downloads a JSON backup of that tab's data first;
+   there is no in-app undo for delete, only the backup file.
+   ============================================================ */
+const TAB_LABELS_KEY  = "CL_TAB_LABELS";   // {tabId: customLabel}
+const TAB_DELETED_KEY = "CL_TAB_DELETED";  // [tabId, ...]
+const TAB_META = {
+  job:     {defaultLabel:"🧳 Job Checklist",        keys:[]},
+  joblib:  {defaultLabel:"🗂️ Task (Jobs) Library", keys:["JOB_TASKLIB_V1","JOB_TASKLIB_DONE_V1","JOB_TASKLIB_SEEDED_V1"]},
+  tasklib: {defaultLabel:"🗂️ Task Library",        keys:["TASKLIB_V1","TASKLIB_DONE_V1","TASKLIB_SEEDED_V1"]},
+  ahtml:   {defaultLabel:"🏡 After you come Home", keys:[]},
+  wtl:     {defaultLabel:"🗂️ Task Library",        keys:["WYCH_TASKLIB_V1","WYCH_TASKLIB_DONE_V1","WYCH_TASKLIB_SEEDED_V1"]},
+  wych:    {defaultLabel:"🏡 WYCH",                 keys:[]},
+  kal:     {defaultLabel:"🏠 Kalyan",               keys:["KALYAN_CHORES_V1","KALYAN_CHORES_SECTIONS_V1"]},
+  trv:     {defaultLabel:"✈️ Travel",               keys:["TRAVEL_CHECKLIST_V1","TRAVEL_CHECKLIST_SECTIONS_V1"]}
+};
+function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
+function _tabDeletedList(){ try{ const a=JSON.parse(_cget(TAB_DELETED_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function _tabLabel(id){ return _tabLabels()[id] || (TAB_META[id]?TAB_META[id].defaultLabel:id); }
+function _cremove(k){ delete _otCache[k]; if(OT&&typeof OT.remove==="function") OT.remove(k); else _cset(k,null); }
+
+/* Applies saved custom labels + hides deleted tabs' buttons. Pure UI —
+   does not switch tabs itself, callers handle activeTab fallback. */
+function applyTabCustomizations(){
+  const labels=_tabLabels(), deleted=_tabDeletedList();
+  Object.keys(TAB_META).forEach(id=>{
+    const btn=document.getElementById("tab"+id.charAt(0).toUpperCase()+id.slice(1));
+    if(!btn) return;
+    btn.textContent = labels[id] || TAB_META[id].defaultLabel;
+    btn.style.display = deleted.includes(id) ? "none" : "";
+  });
+}
+
+function _downloadJSON(filename,obj){
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function tabRename(id){
+  const cur=_tabLabel(id);
+  const next=prompt("New name for this tab:",cur);
+  if(next===null || !next.trim()) return;
+  const labels=_tabLabels();
+  labels[id]=next.trim();
+  _cset(TAB_LABELS_KEY,JSON.stringify(labels));
+  applyTabCustomizations();
+  _renderManageTabs();
+  showToast(`✓ Renamed to "${next.trim()}"`);
+}
+
+function tabDeleteWithBackup(id){
+  const meta=TAB_META[id]; if(!meta) return;
+  const label=_tabLabel(id);
+  if(!confirm(`Delete "${label}" permanently?\n\nA backup file will download first — that file is the only way to get this tab's data back. This cannot be undone from within OneTrack.`)) return;
+  const backup={tabId:id,label,exportedAt:new Date().toISOString(),data:{}};
+  meta.keys.forEach(k=>{ backup.data[k]=_cget(k); });
+  _downloadJSON(`onetrack-backup-${id}-${Date.now()}.json`,backup);
+  meta.keys.forEach(k=>_cremove(k));
+  const deleted=_tabDeletedList();
+  if(!deleted.includes(id)){ deleted.push(id); _cset(TAB_DELETED_KEY,JSON.stringify(deleted)); }
+  applyTabCustomizations();
+  if(activeTab===id){
+    const fallback=Object.keys(TAB_META).find(t=>!deleted.includes(t));
+    if(fallback) switchTab(fallback);
+  }
+  _renderManageTabs();
+  showToast(`✓ "${label}" deleted — backup downloaded`);
+}
+
+function _closeManageTabs(){
+  document.querySelectorAll('.manage-tabs-pop').forEach(p=>p.remove());
+  document.removeEventListener('pointerdown',_mtabOutside,true);
+}
+function _mtabOutside(e){
+  if(!e.target.closest('.manage-tabs-pop') && !e.target.closest('#manageTabsBtn')) _closeManageTabs();
+}
+function _renderManageTabs(){
+  const pop=document.querySelector('.manage-tabs-pop'); if(!pop) return;
+  const deleted=_tabDeletedList();
+  const visible=Object.keys(TAB_META).filter(id=>!deleted.includes(id));
+  let html='<div class="lsp-h">Manage tabs</div>';
+  html+=visible.map(id=>`<div class="mtab-row" data-id="${id}"><span class="mtab-name">${_esc(_tabLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button><button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button></div>`).join('');
+  if(deleted.length){
+    html+='<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
+    html+=deleted.map(id=>`<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_esc(_tabLabel(id))}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join('');
+  }
+  pop.innerHTML=html;
+  pop.querySelectorAll('.mtab-rename').forEach(b=>b.onclick=()=>tabRename(b.dataset.id));
+  pop.querySelectorAll('.mtab-del').forEach(b=>b.onclick=()=>tabDeleteWithBackup(b.dataset.id));
+}
+function _openManageTabs(){
+  _closeManageTabs();
+  const btn=document.getElementById('manageTabsBtn'); if(!btn) return;
+  const pop=document.createElement('div');
+  pop.className='list-style-pop manage-tabs-pop';
+  document.body.appendChild(pop);
+  _renderManageTabs();
+  const r=btn.getBoundingClientRect();
+  let left=r.right-pop.offsetWidth, top=r.bottom+6;
+  left=Math.max(8,Math.min(left,window.innerWidth-pop.offsetWidth-8));
+  if(top+pop.offsetHeight>window.innerHeight-8) top=Math.max(8,r.top-pop.offsetHeight-6);
+  pop.style.left=left+'px'; pop.style.top=top+'px';
+  setTimeout(()=>document.addEventListener('pointerdown',_mtabOutside,true),0);
+}
+(function wireManageTabsBtn(){
+  const btn=document.getElementById('manageTabsBtn');
+  if(btn) btn.addEventListener('click',e=>{e.stopPropagation();_openManageTabs();});
 })();
 
 // ── One-time migration: old flat "Lunch Box" list → two independent lists ──
@@ -1598,70 +1873,9 @@ function ftPrintColor(sel){
 
 function ftSendToday(){const unc=ftSECTIONS.flatMap(s=>s.split?[...(ftData[s.split.left.id]||[]),...(ftData[s.split.right.id]||[])]:(ftData[s.id]||[])).filter(t=>!t.done);if(!unc.length){showToast("✓ Everything is checked — you're ready!");return;}let today=JSON.parse(_cget(TODAY_KEY))||Object.fromEntries(["pre-9","9-12","12-3","3-6","6-9","post-9"].map(s=>[s,[]]));unc.forEach(t=>today["pre-9"].push({text:t.text,done:false,sub:false,priority:"none",mins:""}));_cset(TODAY_KEY,JSON.stringify(today));showToast(`✓ ${unc.length} item(s) added to Today`);}
 
-/* ============================================================
-   COME HOME — storage: HOM_CHECKLIST_V1 / HOM_SECTIONS_V1
-   ============================================================ */
-const HOM_KEY      = "HOM_CHECKLIST_V1";
-const HOM_META_KEY = "HOM_SECTIONS_V1";
-const HOM_EXTRA_CLS   = ["sec-c1","sec-c2","sec-c3","sec-c4","sec-c5","sec-c6"];
-const HOM_EXTRA_ICONS = ["🏠","🧺","👟","🛁","🍽️","📋","⭐","💡"];
-const HOM_DEFAULT_SECTIONS=[
-  {id:"hom_arrive",  label:"Arrival",        icon:"🚪", cls:"sec-eve"},
-  {id:"hom_freshen", label:"Freshen Up",     icon:"🛁", cls:"sec-mental"},
-  {id:"hom_wind",    label:"Wind Down",      icon:"🌙", cls:"sec-tech"},
-  {id:"hom_prep",    label:"Prep for Tomorrow", icon:"📅", cls:"sec-c1"},
-];
-const HOM_DEFAULT_ITEMS={
-  hom_arrive:[
-    {text:"Remove your shoes and stow in the shoe rack",done:false,level:0},
-    {text:"Put your soiled clothes in the laundry",done:false,level:0},
-    {text:"Wash hands and face",done:false,level:0},
-    {text:"Put keys and wallet in their designated spot",done:false,level:0},
-    {text:"Put bag away",done:false,level:0},
-  ],
-  hom_freshen:[
-    {text:"Change into home clothes",done:false,level:0},
-    {text:"Shower if needed",done:false,level:0},
-    {text:"Have a glass of water",done:false,level:0},
-    {text:"Grab something to eat if hungry",done:false,level:0},
-  ],
-  hom_wind:[
-    {text:"Check messages and emails briefly",done:false,level:0},
-    {text:"Note any pending tasks for tomorrow",done:false,level:0},
-    {text:"Put devices on charge",done:false,level:0},
-    {text:"Tidy the living area",done:false,level:0},
-  ],
-  hom_prep:[
-    {text:"Set out tomorrow's clothes",done:false,level:0},
-    {text:"Prepare or plan tomorrow's lunch",done:false,level:0},
-    {text:"Check tomorrow's calendar",done:false,level:0},
-    {text:"Set alarm",done:false,level:0},
-  ],
-};
-function homLoadSections(){const r=_cget(HOM_META_KEY);return r?JSON.parse(r):JSON.parse(JSON.stringify(HOM_DEFAULT_SECTIONS));}
-function homSaveSections(){_cset(HOM_META_KEY,JSON.stringify(homSECTIONS));}
-function homLoadData(){const r=_cget(HOM_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(HOM_DEFAULT_ITEMS));if(_authoritative()) homSaveData(d);return d;}
-function homSaveData(d){_cset(HOM_KEY,JSON.stringify(d));UndoManager.push('hom');}
-let homSECTIONS=[], homData={};
-UndoManager.register('hom',
-  ()=>({data:JSON.parse(JSON.stringify(homData)),sections:JSON.parse(JSON.stringify(homSECTIONS))}),
-  (snap)=>{homData=snap.data;homSECTIONS=snap.sections;renderChecklist(homCfg());}
-);
-const homCfg=()=>({gridId:"homGrid",SECTIONS:homSECTIONS,data:homData,saveData:homSaveData,saveSections:homSaveSections,fillId:"homFill",pctId:"homPct",statsId:"footerStats",doneMsg:"🏡 All done — you're fully settled in!",confettiColors:["#e07040","#f0a870","#4caf50","#2196f3","#9c27b0"],tabId:"hom",extraCls:HOM_EXTRA_CLS});
-function homAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=HOM_EXTRA_ICONS[Math.floor(Math.random()*HOM_EXTRA_ICONS.length)];const cls=HOM_EXTRA_CLS[homSECTIONS.length%HOM_EXTRA_CLS.length];const id="hom_custom_"+Date.now();homSECTIONS.push({id,label:label.trim(),icon,cls});homSaveSections();if(!homData[id])homData[id]=[];homSaveData(homData);_activeSection["homGrid"]=id;renderChecklist(homCfg());setTimeout(()=>document.querySelector('#content_homGrid .add-input')?.focus(),50);}
-function homSendToday(){const unc=homSECTIONS.flatMap(s=>(homData[s.id]||[]).filter(t=>!t.done));if(!unc.length){showToast("✓ Everything is checked — you're settled in!");return;}let today=JSON.parse(_cget(TODAY_KEY))||Object.fromEntries(["pre-9","9-12","12-3","3-6","6-9","post-9"].map(s=>[s,[]]));unc.forEach(t=>today["pre-9"].push({text:t.text,done:false,sub:false,priority:"none",mins:""}));_cset(TODAY_KEY,JSON.stringify(today));showToast(`✓ ${unc.length} item(s) added to Today`);}
-function homPrint(sel){
-  const secs=sel?homSECTIONS.filter(s=>sel.includes(s.id)):homSECTIONS;
-  let bodyHTML='<div class="grid">';
-  secs.forEach(sec=>{bodyHTML+=`<div class="block"><div class="block-title">${sec.icon} ${sec.label}</div>`;(homData[sec.id]||[]).forEach(item=>{bodyHTML+=`<div class="item level-${item.level||0}"><div class="cb"></div><span>${item.text}</span></div>`;});bodyHTML+=`</div>`;});
-  bodyHTML+='</div>';
-  openPrint(buildPrintDoc('Come Home Checklist','After-arrival routine',bodyHTML,'#e07040'));
-}
-function homPrintColor(sel){
-  const secs=sel?homSECTIONS.filter(s=>sel.includes(s.id)):homSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=homData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#e07040','linear-gradient(135deg,rgba(224,112,64,0.08),rgba(240,168,112,0.04))','rgba(224,112,64,0.16)');});
-  openPrint(buildPrintDoc('Come Home Checklist','After-arrival routine','<div class="grid">'+sh+'</div>','#e07040'));
-}
+/* HOM / ROH / ESH sectioned tabs replaced by the shared Task Library +
+   After you come Home tabs below (search TASK_LIBRARY). Their old default
+   text is preserved there as the one-time seed migration. */
 
 /* ============================================================
    PT JOB — storage: PT_ROLE_CHECKLIST_V4 / PT_ROLE_SECTIONS_V4
@@ -1789,91 +2003,1313 @@ function ptPrintColor(sel){
 }
 
 /* ============================================================
-   ROHAN — storage: ROHAN_ROUTINE_V1 / ROHAN_ROUTINE_SECTIONS_V1
+   TASK LIBRARY — shared flat task pool, tagged by owner (K/R/E),
+   feeding the "After you come Home" 3-column display.
+   storage: TASKLIB_V1 (task list) / TASKLIB_DONE_V1 (per-owner
+   completion, keyed "taskId::owner" — mirrors Routines.html's
+   Task Bank ONETRACK_TASKBANK_V1 / done-map pattern).
+
+   Task shape: {id, name, owners:["K","R","E"], subs:[{id,name}]}
+   Subs carry no owners of their own — they are an inseparable
+   part of the parent and inherit its visibility. A sub's checked
+   state is independent per owner, same as the parent; the parent
+   auto-checks only once ALL of its subs are checked for that
+   owner (and checking the parent checks all its subs), no partial
+   state in between.
    ============================================================ */
-const ROH_KEY      = "ROHAN_ROUTINE_V1";
-const ROH_META_KEY = "ROHAN_ROUTINE_SECTIONS_V1";
-const ROH_EXTRA_CLS   = ["sec-c1","sec-c2","sec-c3","sec-c4","sec-c5","sec-c6"];
-const ROH_EXTRA_ICONS = ["📋","⭐","🗂️","📌","🔖","💡","🧩","🏷️"];
-const ROH_DEFAULT_SECTIONS=[
-  {id:"home",    label:"After School",   icon:"🏠",cls:"roh-sec-a"},
-  {id:"break",   label:"Break & Study",  icon:"📚",cls:"roh-sec-b"},
-  {id:"evening", label:"Evening",        icon:"🌙",cls:"roh-sec-c"},
-  {id:"nextday", label:"For Next Day",   icon:"📅",cls:"roh-sec-d"},
-];
-const ROH_DEFAULT_ITEMS={
-  home:[{text:"Remove shoes and socks",done:false,level:0},{text:"Change to home clothes",done:false,level:0},{text:"Put clothes and socks for washing",done:false,level:0},{text:"Wash hands and face",done:false,level:0},{text:"Have something to eat",done:false,level:0}],
-  break:[{text:"1 hour break",done:false,level:0},{text:"1 hour school or education activities",done:false,level:0},{text:"Help parents in home activities",done:false,level:0}],
-  evening:[{text:"Bath and get ready",done:false,level:0},{text:"Do we need to trim nails?",done:false,level:0}],
-  nextday:[{text:"Bag ready",done:false,level:0},{text:"Shoes",done:false,level:1},{text:"Socks",done:false,level:1},{text:"Water bottle",done:false,level:1},{text:"Lunch",done:false,level:1},{text:"School uniform",done:false,level:1}],
+const TASKLIB_KEY      = "TASKLIB_V1";
+const TASKLIB_DONE_KEY = "TASKLIB_DONE_V1";
+const TASKLIB_SEED_KEY = "TASKLIB_SEEDED_V1";
+const TASKLIB_OWNERS   = ["K","R","E"];
+const TASKLIB_OWNER_META = {
+  K:{label:"Kalyan",  accentVar:"--kal-accent", softVar:"--kal-soft", doneMsg:"🏡 All done — you're fully settled in!",     confetti:["#2a9d6a","#5ecb96","#4caf50","#2196f3","#9c27b0"]},
+  R:{label:"Rohan",   accentVar:"--roh-accent", softVar:"--roh-soft", doneMsg:"🎉 Amazing work Rohan — all done!",          confetti:["#4a90d9","#7ab8f0","#4caf50","#f44336","#ff9800"]},
+  E:{label:"Esha",    accentVar:"--esh-accent", softVar:"--esh-soft", doneMsg:"🎉 Brilliant work Esha — all done!",         confetti:["#b06aa0","#d49fcc","#4caf50","#f44336","#ff9800"]},
 };
-function rohLoadSections(){const r=_cget(ROH_META_KEY);return r?JSON.parse(r):JSON.parse(JSON.stringify(ROH_DEFAULT_SECTIONS));}
-function rohSaveSections(){_cset(ROH_META_KEY,JSON.stringify(rohSECTIONS));}
-function rohLoadData(){const r=_cget(ROH_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(ROH_DEFAULT_ITEMS));if(_authoritative()) rohSaveData(d);return d;}
-function rohSaveData(d){_cset(ROH_KEY,JSON.stringify(d));UndoManager.push('roh');}
-let rohSECTIONS=[], rohData={};
-UndoManager.register('roh',
-  ()=>({data:JSON.parse(JSON.stringify(rohData)),sections:JSON.parse(JSON.stringify(rohSECTIONS))}),
-  (snap)=>{rohData=snap.data;rohSECTIONS=snap.sections;renderChecklist(rohCfg());}
+
+function _tlId(){ return "tl"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function _tlDoneId(taskId,owner){ return taskId+"::"+owner; }
+
+function tlLoad(){ const r=_cget(TASKLIB_KEY); return r?JSON.parse(r):[]; }
+function tlSave(t){ _cset(TASKLIB_KEY,JSON.stringify(t)); UndoManager.push('tasklib'); }
+function tlLoadDone(){ const r=_cget(TASKLIB_DONE_KEY); return r?JSON.parse(r):{}; }
+function tlSaveDone(d){ _cset(TASKLIB_DONE_KEY,JSON.stringify(d)); }
+
+let tlTasks=[], tlDone={};
+
+UndoManager.register('tasklib',
+  ()=>({tasks:JSON.parse(JSON.stringify(tlTasks))}),
+  (snap)=>{tlTasks=snap.tasks; renderTasklib(); renderAhtml();}
 );
-const rohCfg=()=>({gridId:"rohGrid",SECTIONS:rohSECTIONS,data:rohData,saveData:rohSaveData,saveSections:rohSaveSections,fillId:"rohFill",pctId:"rohPct",statsId:"footerStats",doneMsg:"🎉 Amazing work Rohan — all done!",confettiColors:["#4a90d9","#7ab8f0","#4caf50","#f44336","#ff9800"],tabId:"roh",extraCls:ROH_EXTRA_CLS});
-function rohAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=ROH_EXTRA_ICONS[Math.floor(Math.random()*ROH_EXTRA_ICONS.length)];const cls=ROH_EXTRA_CLS[rohSECTIONS.length%ROH_EXTRA_CLS.length];const id="roh_custom_"+Date.now();rohSECTIONS.push({id,label:label.trim(),icon,cls});rohSaveSections();if(!rohData[id])rohData[id]=[];rohSaveData(rohData);renderChecklist(rohCfg());setTimeout(()=>{const inp=document.querySelectorAll("#rohGrid .add-input");inp[inp.length-1]?.focus();},50);}
-function rohSendToday(){const unc=rohSECTIONS.flatMap(s=>(rohData[s.id]||[]).filter(t=>!t.done));if(!unc.length){showToast("✓ All done — great job Rohan!");return;}let today=JSON.parse(_cget(TODAY_KEY))||Object.fromEntries(["pre-9","9-12","12-3","3-6","6-9","post-9"].map(s=>[s,[]]));unc.forEach(t=>today["pre-9"].push({text:t.text,done:false,sub:false,priority:"none",mins:""}));_cset(TODAY_KEY,JSON.stringify(today));showToast(`✓ ${unc.length} item(s) added to Today`);}
-function rohPrint(sel){
-  const secs=sel?rohSECTIONS.filter(s=>sel.includes(s.id)):rohSECTIONS;
-  let bodyHTML='<div class="grid">';
-  secs.forEach(sec=>{bodyHTML+=`<div class="block"><div class="block-title">${sec.icon} ${sec.label}</div>`;(rohData[sec.id]||[]).forEach(item=>{bodyHTML+=`<div class="item level-${item.level}"><div class="cb"></div><span>${item.text}</span></div>`;});bodyHTML+=`</div>`;});
-  bodyHTML+='</div>';
-  openPrint(buildPrintDoc("Rohan's Routine",'After school checklist',bodyHTML,'#4a90d9'));
+
+/* one-time seed: merge old HOM (→K) / ROH (→R) / ESH (→E) default item
+   text into the new flat, tagged list. Section grouping is intentionally
+   dropped — Kalyan said he'll organise the flat list himself. Runs once,
+   guarded by TASKLIB_SEED_KEY, only after Drive authority is confirmed. */
+function tlSeedOnce(){
+  if(_cget(TASKLIB_SEED_KEY)==="1") return;
+  const mk=(name,owner)=>({id:_tlId(),name,owners:[owner],subs:[]});
+  const seed=[
+    ...["Remove your shoes and stow in the shoe rack","Put your soiled clothes in the laundry","Wash hands and face","Put keys and wallet in their designated spot","Put bag away","Change into home clothes","Shower if needed","Have a glass of water","Grab something to eat if hungry","Check messages and emails briefly","Note any pending tasks for tomorrow","Put devices on charge","Tidy the living area","Set out tomorrow's clothes","Prepare or plan tomorrow's lunch","Check tomorrow's calendar","Set alarm"].map(n=>mk(n,"K")),
+    ...["Remove shoes and socks","Change to home clothes","Put clothes and socks for washing","Wash hands and face","Have something to eat","1 hour break","1 hour school or education activities","Help parents in home activities","Bath and get ready","Do we need to trim nails?","Bag ready"].map(n=>mk(n,"R")),
+    ...["Remove shoes","Put socks and uniform for wash","Change into home clothes","Wash hands and face","Have something to eat","Check for homework","1 hour break","Do homework","Ask dad if he can teach or help in anything","Have dinner","Run EoD tasks","Pack bag for next day","Organise school clothes and socks","Shoe polish","Lunch — needs to be ordered?","Need to go early to school? Inform dad."].map(n=>mk(n,"E")),
+  ];
+  // Rohan's next-day sub-items become a sub-list under one parent task.
+  const rohBag=seed.find(t=>t.name==="Bag ready");
+  if(rohBag) rohBag.subs=["Shoes","Socks","Water bottle","Lunch","School uniform"].map(n=>({id:_tlId(),name:n}));
+  tlTasks=seed;
+  tlSave(tlTasks);
+  _cset(TASKLIB_SEED_KEY,"1");
 }
-function rohPrintColor(sel){
-  const secs=sel?rohSECTIONS.filter(s=>sel.includes(s.id)):rohSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=rohData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#4a90d9','#f5f0e8','rgba(74,144,217,0.16)');});
-  openPrint(buildPrintDoc("Rohan's Routine",'After school checklist','<div class="grid">'+sh+'</div>','#4a90d9'));
+
+/* cascade: does this owner have every sub of task t checked? */
+function _tlAllSubsDone(t,owner){
+  if(!t.subs||!t.subs.length) return null; // no subs → cascade not applicable
+  return t.subs.every(s=>!!tlDone[_tlDoneId(s.id,owner)]);
+}
+function _tlSetDone(id,owner,val){ tlDone[_tlDoneId(id,owner)]=val; }
+function _tlIsDone(id,owner){ return !!tlDone[_tlDoneId(id,owner)]; }
+
+/* toggling a checkbox for owner on task/sub id, with parent<->sub cascade */
+function tlToggle(taskId,subId,owner){
+  const t=tlTasks.find(x=>x.id===taskId); if(!t) return;
+  if(subId){
+    const wasDone=_tlIsDone(subId,owner);
+    _tlSetDone(subId,owner,!wasDone);
+    const allDone=_tlAllSubsDone(t,owner);
+    if(allDone!==null) _tlSetDone(t.id,owner,allDone);
+  } else {
+    const nowDone=!_tlIsDone(taskId,owner);
+    _tlSetDone(taskId,owner,nowDone);
+    (t.subs||[]).forEach(s=>_tlSetDone(s.id,owner,nowDone));
+  }
+  tlSaveDone(tlDone);
+  renderAhtml();
+}
+
+/* ---------- ADMIN VIEW: Task Library tab ---------- */
+let _tlCollapsed=new Set();
+let _tlDragSrc=null;
+
+function tasklibAddTask(){
+  const name=prompt("Task name:",""); if(!name||!name.trim()) return;
+  tlTasks.push({id:_tlId(),name:name.trim(),owners:[],subs:[]});
+  tlSave(tlTasks);
+  renderTasklib(); renderAhtml();
+}
+
+function renderTasklib(){
+  const root=document.getElementById("tasklibList");
+  if(!root) return;
+  root.innerHTML="";
+  if(!tlTasks.length){
+    root.innerHTML='<div class="tl-empty">No tasks yet — use "+ Add task" above.</div>';
+    return;
+  }
+  tlTasks.forEach((t,idx)=>{
+    const hasSubs=t.subs&&t.subs.length>0;
+    const row=document.createElement("div");
+    row.className="tl-row"; row.draggable=true; row.dataset.taskId=t.id;
+
+    const grip=document.createElement("span"); grip.className="tl-grip"; grip.textContent="⠿";
+    row.appendChild(grip);
+
+    if(hasSubs){
+      const chev=document.createElement("span");
+      chev.className="tl-chevron";
+      chev.textContent=_tlCollapsed.has(t.id)?"▸":"▾";
+      chev.onclick=()=>{ _tlCollapsed.has(t.id)?_tlCollapsed.delete(t.id):_tlCollapsed.add(t.id); renderTasklib(); };
+      row.appendChild(chev);
+    } else {
+      const sp=document.createElement("span"); sp.className="tl-chevron"; row.appendChild(sp);
+    }
+
+    const name=document.createElement("input");
+    name.className="tl-name"; name.value=t.name;
+    name.onchange=()=>{ t.name=name.value.trim()||t.name; tlSave(tlTasks); renderAhtml(); };
+    row.appendChild(name);
+
+    if(hasSubs){
+      const count=document.createElement("span"); count.className="tl-count"; count.textContent=`(${t.subs.length})`;
+      row.appendChild(count);
+    }
+
+    const pills=document.createElement("div"); pills.className="tl-owner-pills";
+    TASKLIB_OWNERS.forEach(o=>{
+      const btn=document.createElement("button");
+      btn.className="tl-pill tl-pill-"+o.toLowerCase()+(t.owners.includes(o)?" on":"");
+      btn.textContent=o;
+      btn.title=(t.owners.includes(o)?"Remove from ":"Assign to ")+TASKLIB_OWNER_META[o].label;
+      btn.onclick=()=>{
+        const i=t.owners.indexOf(o);
+        i>-1?t.owners.splice(i,1):t.owners.push(o);
+        tlSave(tlTasks); renderTasklib(); renderAhtml();
+      };
+      pills.appendChild(btn);
+    });
+    row.appendChild(pills);
+
+    if(!hasSubs){
+      const indentBtn=document.createElement("button");
+      indentBtn.className="tl-icon-btn"; indentBtn.title="Fold into task above as a sub-task"; indentBtn.textContent="↳";
+      indentBtn.onclick=()=>{
+        if(idx===0){ showToast("⚠ No task above to fold into"); return; }
+        const parent=tlTasks[idx-1];
+        if(parent.subs&&parent.subs.length===0 && parent===t){ return; }
+        if(!parent) return;
+        if(parent.subs===undefined) parent.subs=[];
+        parent.subs.push({id:t.id,name:t.name});
+        tlTasks.splice(idx,1);
+        tlSave(tlTasks); renderTasklib(); renderAhtml();
+      };
+      row.appendChild(indentBtn);
+    }
+
+    const del=document.createElement("button");
+    del.className="tl-icon-btn tl-del"; del.title="Delete task"; del.textContent="🗑";
+    del.onclick=()=>{
+      if(!confirm(`Delete "${t.name}"${hasSubs?" and its "+t.subs.length+" sub-task(s)":""}?`)) return;
+      tlTasks.splice(idx,1);
+      tlSave(tlTasks); renderTasklib(); renderAhtml();
+    };
+    row.appendChild(del);
+
+    row.ondragstart=e=>{ _tlDragSrc=t.id; e.dataTransfer.effectAllowed="move"; setTimeout(()=>row.classList.add("tl-dragging"),0); };
+    row.ondragend=()=>{ row.classList.remove("tl-dragging"); document.querySelectorAll(".tl-row").forEach(r=>r.classList.remove("tl-drop-above","tl-drop-below")); _tlDragSrc=null; };
+    row.ondragover=e=>{
+      e.preventDefault();
+      if(!_tlDragSrc||_tlDragSrc===t.id) return;
+      document.querySelectorAll(".tl-row").forEach(r=>r.classList.remove("tl-drop-above","tl-drop-below"));
+      const rect=row.getBoundingClientRect();
+      row.classList.add(e.clientY<rect.top+rect.height/2?"tl-drop-above":"tl-drop-below");
+    };
+    row.ondrop=e=>{
+      e.preventDefault();
+      row.classList.remove("tl-drop-above","tl-drop-below");
+      if(!_tlDragSrc||_tlDragSrc===t.id) return;
+      const srcIdx=tlTasks.findIndex(x=>x.id===_tlDragSrc);
+      const dstIdx=tlTasks.findIndex(x=>x.id===t.id);
+      if(srcIdx<0||dstIdx<0) return;
+      const [moved]=tlTasks.splice(srcIdx,1);
+      const rect=row.getBoundingClientRect();
+      let insertAt=tlTasks.findIndex(x=>x.id===t.id);
+      if(e.clientY>=rect.top+rect.height/2) insertAt++;
+      tlTasks.splice(insertAt,0,moved);
+      tlSave(tlTasks); renderTasklib();
+    };
+
+    root.appendChild(row);
+
+    if(hasSubs && !_tlCollapsed.has(t.id)){
+      t.subs.forEach((s,sidx)=>{
+        const sr=document.createElement("div");
+        sr.className="tl-row tl-sub";
+        const sgrip=document.createElement("span"); sgrip.className="tl-grip"; sgrip.textContent="⠿"; sr.appendChild(sgrip);
+        const sname=document.createElement("input");
+        sname.className="tl-name"; sname.value=s.name;
+        sname.onchange=()=>{ s.name=sname.value.trim()||s.name; tlSave(tlTasks); renderAhtml(); };
+        sr.appendChild(sname);
+        const tag=document.createElement("span"); tag.className="tl-empty-tag"; tag.textContent="no tags — follows "+t.name; sr.appendChild(tag);
+        const outdentBtn=document.createElement("button");
+        outdentBtn.className="tl-icon-btn"; outdentBtn.title="Make this a standalone task"; outdentBtn.textContent="↰";
+        outdentBtn.onclick=()=>{
+          t.subs.splice(sidx,1);
+          const taskIdx=tlTasks.findIndex(x=>x.id===t.id);
+          tlTasks.splice(taskIdx+1,0,{id:s.id,name:s.name,owners:[],subs:[]});
+          tlSave(tlTasks); renderTasklib(); renderAhtml();
+        };
+        sr.appendChild(outdentBtn);
+        const sdel=document.createElement("button");
+        sdel.className="tl-icon-btn tl-del"; sdel.title="Delete sub-task"; sdel.textContent="🗑";
+        sdel.onclick=()=>{
+          if(!confirm(`Delete "${s.name}"?`)) return;
+          t.subs.splice(sidx,1);
+          tlSave(tlTasks); renderTasklib(); renderAhtml();
+        };
+        sr.appendChild(sdel);
+        root.appendChild(sr);
+      });
+    }
+  });
+}
+
+/* ---------- DISPLAY VIEW: After you come Home tab ---------- */
+function _ahtmlOwnerStats(owner){
+  let total=0,done=0;
+  tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
+    total++; if(_tlIsDone(t.id,owner)) done++;
+    (t.subs||[]).forEach(s=>{ total++; if(_tlIsDone(s.id,owner)) done++; });
+  });
+  return {total,done};
+}
+
+let _ahtmlCelebrated={K:false,R:false,E:false};
+
+function renderAhtml(){
+  const root=document.getElementById("ahtmlCols");
+  if(!root) return;
+  root.innerHTML="";
+  TASKLIB_OWNERS.forEach(owner=>{
+    const meta=TASKLIB_OWNER_META[owner];
+    const stats=_ahtmlOwnerStats(owner);
+    const pct=stats.total?Math.round(stats.done/stats.total*100):0;
+
+    const col=document.createElement("div"); col.className="ahtml-col";
+    col.innerHTML=`
+      <div class="ahtml-col-header">
+        <span class="ahtml-col-title" style="color:var(${meta.accentVar})">${meta.label}</span>
+        <span class="ahtml-col-count">${stats.done}/${stats.total}</span>
+      </div>
+      <div class="ahtml-col-progress"><div class="ahtml-col-progress-fill" style="width:${pct}%;background:var(${meta.accentVar})"></div></div>
+    `;
+    const list=document.createElement("div");
+    const ownerTasks=tlTasks.filter(t=>t.owners.includes(owner));
+    if(!ownerTasks.length){
+      list.innerHTML='<div class="ahtml-empty">No tasks assigned yet</div>';
+    } else {
+      ownerTasks.forEach(t=>{
+        const done=_tlIsDone(t.id,owner);
+        const item=document.createElement("div");
+        item.className="ahtml-item"+(done?" ahtml-done":"");
+        item.innerHTML=`<span class="ahtml-item-cb" style="${done?`background:var(${meta.accentVar})`:""}">${done?"✓":""}</span>`+
+          `<span class="ahtml-item-label">${_esc(t.name)}</span>`+
+          (t.subs&&t.subs.length?`<span class="ahtml-item-count">(${t.subs.length})</span>`:"");
+        item.onclick=()=>tlToggle(t.id,null,owner);
+        list.appendChild(item);
+        (t.subs||[]).forEach(s=>{
+          const sdone=_tlIsDone(s.id,owner);
+          const sitem=document.createElement("div");
+          sitem.className="ahtml-item ahtml-sub"+(sdone?" ahtml-done":"");
+          sitem.innerHTML=`<span class="ahtml-item-cb" style="${sdone?`background:var(${meta.accentVar})`:""}">${sdone?"✓":""}</span>`+
+            `<span class="ahtml-item-label">${_esc(s.name)}</span>`;
+          sitem.onclick=()=>tlToggle(t.id,s.id,owner);
+          list.appendChild(sitem);
+        });
+      });
+    }
+    col.appendChild(list);
+    root.appendChild(col);
+
+    if(stats.total>0 && stats.done===stats.total){
+      if(!_ahtmlCelebrated[owner] && window._celebrationsArmed){
+        _ahtmlCelebrated[owner]=true;
+        fireConfetti(meta.confetti);
+        showToast(meta.doneMsg);
+      }
+    } else {
+      _ahtmlCelebrated[owner]=false;
+    }
+  });
+}
+
+function ahtmlPrint(){
+  let bodyHTML='<div class="grid">';
+  TASKLIB_OWNERS.forEach(owner=>{
+    const meta=TASKLIB_OWNER_META[owner];
+    bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
+    tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
+      bodyHTML+=`<div class="item level-0"><div class="cb"></div><span>${t.name}</span></div>`;
+      (t.subs||[]).forEach(s=>{ bodyHTML+=`<div class="item level-1"><div class="cb"></div><span>${s.name}</span></div>`; });
+    });
+    bodyHTML+='</div>';
+  });
+  bodyHTML+='</div>';
+  openPrint(buildPrintDoc('After you come Home','Kalyan · Rohan · Esha',bodyHTML,'#6a6a8a'));
 }
 
 /* ============================================================
-   ESHA — storage: ESHA_ROUTINE_V1 / ESHA_ROUTINE_SECTIONS_V1
+   TASK (JOBS) LIBRARY + JOB CHECKLIST
+   Replaces the old FT Job / PT Job tabs. Same shape as the
+   Task Library → After you come Home pair above, but three
+   levels deep (category → task → sub-task) and filtered by
+   FT / PT / Both instead of by owner. Own storage keys
+   (JOB_TASKLIB_V1 etc.) — nothing here touches TASKLIB_V1,
+   WYCH_TASKLIB_V1, FT_ROLE_CHECKLIST_V1 or PT_ROLE_CHECKLIST_V4.
+   Functions/vars are prefixed jt/job to avoid clashing.
    ============================================================ */
-const ESH_KEY      = "ESHA_ROUTINE_V1";
-const ESH_META_KEY = "ESHA_ROUTINE_SECTIONS_V1";
-const ESH_EXTRA_CLS   = ["sec-c1","sec-c2","sec-c3","sec-c4","sec-c5","sec-c6"];
-const ESH_EXTRA_ICONS = ["📋","⭐","🗂️","📌","🔖","💡","🧩","🏷️"];
-const ESH_DEFAULT_SECTIONS=[
-  {id:"home",    label:"After Coming Home",  icon:"🏠",cls:"esh-sec-a"},
-  {id:"study",   label:"Break & Homework",   icon:"📚",cls:"esh-sec-b"},
-  {id:"evening", label:"Evening",            icon:"🌙",cls:"esh-sec-c"},
-  {id:"eod",     label:"EoD Tasks",          icon:"✅",cls:"esh-sec-d"},
-];
-const ESH_DEFAULT_ITEMS={
-  home:[{text:"Remove shoes",done:false,level:0},{text:"Put socks and uniform for wash",done:false,level:0},{text:"Change into home clothes",done:false,level:0},{text:"Wash hands and face",done:false,level:0},{text:"Have something to eat",done:false,level:0},{text:"Check for homework",done:false,level:0}],
-  study:[{text:"1 hour break",done:false,level:0},{text:"Do homework",done:false,level:0},{text:"Ask dad if he can teach or help in anything",done:false,level:0}],
-  evening:[{text:"Have dinner",done:false,level:0},{text:"Run EoD tasks",done:false,level:0}],
-  eod:[{text:"Pack bag for next day",done:false,level:0},{text:"Organise school clothes and socks",done:false,level:0},{text:"Shoe polish",done:false,level:0},{text:"Lunch — needs to be ordered?",done:false,level:0},{text:"Need to go early to school? Inform dad.",done:false,level:0}],
+const JOB_KEY      = "JOB_TASKLIB_V1";
+const JOB_DONE_KEY = "JOB_TASKLIB_DONE_V1";
+const JOB_SEED_KEY = "JOB_TASKLIB_SEEDED_V1";
+const JOB_COLS = ["ft","pt"];
+const JOB_COL_META = {
+  ft:{label:"FT Job", accentVar:"--ft-accent", doneMsg:"✓ FT checklist complete — go get 'em!"},
+  pt:{label:"PT Job", accentVar:"--pt-accent", doneMsg:"✓ PT checklist complete — go get 'em!"},
 };
-function eshLoadSections(){const r=_cget(ESH_META_KEY);return r?JSON.parse(r):JSON.parse(JSON.stringify(ESH_DEFAULT_SECTIONS));}
-function eshSaveSections(){_cset(ESH_META_KEY,JSON.stringify(eshSECTIONS));}
-function eshLoadData(){const r=_cget(ESH_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(ESH_DEFAULT_ITEMS));if(_authoritative()) eshSaveData(d);return d;}
-function eshSaveData(d){_cset(ESH_KEY,JSON.stringify(d));UndoManager.push('esh');}
-let eshSECTIONS=[], eshData={};
-UndoManager.register('esh',
-  ()=>({data:JSON.parse(JSON.stringify(eshData)),sections:JSON.parse(JSON.stringify(eshSECTIONS))}),
-  (snap)=>{eshData=snap.data;eshSECTIONS=snap.sections;renderChecklist(eshCfg());}
+
+function _jtId(){ return "jt"+Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function jtLoad(){ const r=_cget(JOB_KEY); return r?JSON.parse(r):[]; }
+function jtSave(t){ _cset(JOB_KEY,JSON.stringify(t)); UndoManager.push('joblib'); }
+function jtLoadDone(){ const r=_cget(JOB_DONE_KEY); return r?JSON.parse(r):{}; }
+function jtSaveDone(d){ _cset(JOB_DONE_KEY,JSON.stringify(d)); }
+
+let jtCats=[], jtDone={};
+
+UndoManager.register('joblib',
+  ()=>({cats:JSON.parse(JSON.stringify(jtCats))}),
+  (snap)=>{jtCats=snap.cats; renderJobLib(); renderJobChecklist();}
 );
-const eshCfg=()=>({gridId:"eshGrid",SECTIONS:eshSECTIONS,data:eshData,saveData:eshSaveData,saveSections:eshSaveSections,fillId:"eshFill",pctId:"eshPct",statsId:"footerStats",doneMsg:"🎉 Brilliant work Esha — all done!",confettiColors:["#b06aa0","#d49fcc","#4caf50","#f44336","#ff9800"],tabId:"esh",extraCls:ESH_EXTRA_CLS});
-function eshAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=ESH_EXTRA_ICONS[Math.floor(Math.random()*ESH_EXTRA_ICONS.length)];const cls=ESH_EXTRA_CLS[eshSECTIONS.length%ESH_EXTRA_CLS.length];const id="esh_custom_"+Date.now();eshSECTIONS.push({id,label:label.trim(),icon,cls});eshSaveSections();if(!eshData[id])eshData[id]=[];eshSaveData(eshData);renderChecklist(eshCfg());setTimeout(()=>{const inp=document.querySelectorAll("#eshGrid .add-input");inp[inp.length-1]?.focus();},50);}
-function eshSendToday(){const unc=eshSECTIONS.flatMap(s=>(eshData[s.id]||[]).filter(t=>!t.done));if(!unc.length){showToast("✓ All done — great job Esha!");return;}let today=JSON.parse(_cget(TODAY_KEY))||Object.fromEntries(["pre-9","9-12","12-3","3-6","6-9","post-9"].map(s=>[s,[]]));unc.forEach(t=>today["pre-9"].push({text:t.text,done:false,sub:false,priority:"none",mins:""}));_cset(TODAY_KEY,JSON.stringify(today));showToast(`✓ ${unc.length} item(s) added to Today`);}
-function eshPrint(sel){
-  const secs=sel?eshSECTIONS.filter(s=>sel.includes(s.id)):eshSECTIONS;
-  let bodyHTML='<div class="grid">';
-  secs.forEach(sec=>{bodyHTML+=`<div class="block"><div class="block-title">${sec.icon} ${sec.label}</div>`;(eshData[sec.id]||[]).forEach(item=>{bodyHTML+=`<div class="item level-${item.level}"><div class="cb"></div><span>${item.text}</span></div>`;});bodyHTML+=`</div>`;});
-  bodyHTML+='</div>';
-  openPrint(buildPrintDoc("Esha's Routine",'After school checklist',bodyHTML,'#b06aa0'));
+
+/* one-time seed, built from the FT/PT Job Checklist PDFs. Items with
+   identical wording in both are tagged "both"; everything else is
+   tagged to whichever list it came from. The Snacks & Veg nesting
+   (Lunch box → Carrots/Cucumber, Chips/Soda) mirrors what was already
+   in the live FT tab. Runs once, guarded by JOB_SEED_KEY. */
+function jtSeedOnce(){
+  if(_cget(JOB_SEED_KEY)==="1") return;
+  const it=(name,tag,subs)=>({id:_jtId(),name,tag,subs:(subs||[]).map(s=>({id:_jtId(),name:s[0],tag:s[1]}))});
+  jtCats=[
+    { id:_jtId(), name:"🌙 Actions", items:[
+      it("Shoes & socks ready","both"),
+      it("Iron Clothes (do it in batch if working back2back)","both"),
+      it("Put perfume on ironed clothes","both"),
+      it("Eve-shower","both"),
+      it("Shaving","both"),
+      it("Toupee stickering","both"),
+      it("Prep breakfast & pack lunch","both"),
+      it("Check Email of the Shift","pt"),
+    ]},
+    { id:_jtId(), name:"🧠 Mindset", items:[
+      it("Plan what you want to do to keep the shift productive personally","pt"),
+      it("Check who is your partner","pt"),
+      it("Ensure you have a good Audiobook checked out","pt"),
+      it("Think about whole day — run simulation in mind","both"),
+      it("Check weather","both"),
+      it("Umbrella or jacket needed?","both"),
+      it("Plan activities / transportation / timings","both"),
+      it("Any documents or emails to review?","both"),
+    ]},
+    { id:_jtId(), name:"🧩 Toupee", items:[
+      it("Toupee","both"),
+      it("Peel old stickers/clean residue","both"),
+      it("Stick new tape","both"),
+      it("Comb hair/clear any debris on the hair","both"),
+      it("Slightly oil if it looks dry","both"),
+      it("Take extra tape","both"),
+      it("Take comb","both"),
+    ]},
+    { id:_jtId(), name:"🔌 Tech", items:[
+      it("Laptop/ Laptop Charger","ft"),
+      it("Mobile/Mobile charger","ft"),
+      it("Watch/ Watch charger","ft"),
+      it("Wired and Wireless Earphones","ft"),
+      it("Laptop","pt"),
+      it("Laptop charger","pt"),
+      it("Mobile charger","pt"),
+      it("Watch charger","pt"),
+      it("Earphones","pt"),
+      it("Mouse","both"),
+    ]},
+    { id:_jtId(), name:"🎒 Misc", items:[
+      it("Wallet/Keys/ID card","ft"),
+      it("Notebook/Pen","ft"),
+      it("Waterbottle/Tiffin box/ Umbrella/Snacks","ft"),
+      it("Wallet","pt"),
+      it("Keys","pt"),
+      it("Phone","pt"),
+      it("Watch","pt"),
+      it("Pen","pt"),
+      it("Notebook","pt"),
+      it("ID card","pt"),
+    ]},
+    { id:_jtId(), name:"🗂 Shower Kit", items:[
+      it("Pair of clothes","pt"), it("Pair of Inners","pt"), it("Nail Cutter/Nose hair scissors","pt"),
+      it("Perfume (optional)","pt"), it("Earbuds","pt"), it("Moisturizer","pt"), it("Comb","pt"),
+      it("Toothbrush","pt"), it("Deo","pt"), it("Toothpaste","pt"), it("Towel","pt"), it("Soap","pt"),
+      it("Shower cap","pt"), it("Shaving blade","pt"), it("Shaving cream","pt"), it("Bathroom slippers","pt"),
+    ]},
+    { id:_jtId(), name:"🍳 Hot/Extras", items:[
+      it("If working on night shift","pt"), it("Take coffee powder","pt"), it("Take round bread for Omlette","pt"),
+      it("Take premade omlette","pt"), it("Standard Lunch/Dinner","pt"),
+    ]},
+    { id:_jtId(), name:"🥕 Snacks & Veg", items:[
+      it("Lunch box/ Main course/Yogurt rice/ Pickle/Dessert","ft",[["Carrots/Cucumber/Fruits","ft"],["Chips/ Soda / Coints for Soda","ft"]]),
+      it("Carrots","pt"), it("Cucumber","pt"), it("Chips","pt"), it("Thumbs Up/Coins for Soda","pt"),
+      it("Crackers and Cheese/Granola bar","both"), it("Fruits","both"),
+    ]},
+  ];
+  jtSave(jtCats);
+  _cset(JOB_SEED_KEY,"1");
 }
-function eshPrintColor(sel){
-  const secs=sel?eshSECTIONS.filter(s=>sel.includes(s.id)):eshSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=eshData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#b06aa0','#f5f0e8','rgba(176,106,160,0.16)');});
-  openPrint(buildPrintDoc("Esha's Routine",'After school checklist','<div class="grid">'+sh+'</div>','#b06aa0'));
+
+function _jtDoneId(id,col){ return id+"::"+col; }
+function _jtIsDone(id,col){ return !!jtDone[_jtDoneId(id,col)]; }
+function _jtSetDone(id,col,val){ jtDone[_jtDoneId(id,col)]=val; }
+function _jtAppliesTo(tag,col){ return tag==="both"||tag===col; }
+
+function _jtAllSubsDone(item,col){
+  const applicable=(item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col));
+  if(!applicable.length) return null;
+  return applicable.every(s=>_jtIsDone(s.id,col));
+}
+
+/* toggle a checkbox in the Job Checklist display, with cascade */
+function jtToggle(itemId,subId,col){
+  let item=null;
+  for(const cat of jtCats){ const f=cat.items.find(i=>i.id===itemId); if(f){item=f;break;} }
+  if(!item) return;
+  if(subId){
+    const wasDone=_jtIsDone(subId,col);
+    _jtSetDone(subId,col,!wasDone);
+    const allDone=_jtAllSubsDone(item,col);
+    if(allDone!==null) _jtSetDone(item.id,col,allDone);
+  } else {
+    const nowDone=!_jtIsDone(item.id,col);
+    _jtSetDone(item.id,col,nowDone);
+    (item.subs||[]).forEach(s=>{ if(_jtAppliesTo(s.tag,col)) _jtSetDone(s.id,col,nowDone); });
+  }
+  jtSaveDone(jtDone);
+  renderJobChecklist();
+}
+
+/* ---------- ADMIN VIEW: Task (Jobs) Library tab ---------- */
+let _jlCollapsed=new Set();
+let _jlDragCat=null, _jlDragItem=null /* {catId,itemId} */, _jlDragSub=null /* {catId,itemId,subId} */;
+
+function jlAddCategory(){
+  const name=prompt("Category name (emoji + text, e.g. 🧴 Grooming):",""); if(!name||!name.trim()) return;
+  jtCats.push({id:_jtId(),name:name.trim(),items:[]});
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlAddItem(catId){
+  const name=prompt("Task name:",""); if(!name||!name.trim()) return;
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  cat.items.push({id:_jtId(),name:name.trim(),tag:"both",subs:[]});
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlAddSub(catId,itemId){
+  const name=prompt("Sub-task name:",""); if(!name||!name.trim()) return;
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+  if(!item.subs) item.subs=[];
+  item.subs.push({id:_jtId(),name:name.trim(),tag:item.tag});
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlDeleteCategory(catId){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  if(!confirm(`Delete category "${cat.name}" and its ${cat.items.length} task(s)?`)) return;
+  jtCats=jtCats.filter(c=>c.id!==catId);
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlDeleteItem(catId,itemId){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const item=cat.items.find(i=>i.id===itemId);
+  if(!confirm(`Delete "${item.name}"${item.subs&&item.subs.length?" and its "+item.subs.length+" sub-task(s)":""}?`)) return;
+  cat.items=cat.items.filter(i=>i.id!==itemId);
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlDeleteSub(catId,itemId,subId){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+  item.subs=item.subs.filter(s=>s.id!==subId);
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlSetTag(catId,itemId,subId,val){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+  if(subId){ const s=item.subs.find(x=>x.id===subId); if(s) s.tag=val; }
+  else { item.tag=val; }
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+function jlRename(catId,itemId,subId,newName){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  if(!itemId){ cat.name=newName.trim()||cat.name; jtSave(jtCats); renderJobChecklist(); return; }
+  const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+  if(subId){ const s=item.subs.find(x=>x.id===subId); if(s) s.name=newName.trim()||s.name; }
+  else { item.name=newName.trim()||item.name; }
+  jtSave(jtCats); renderJobChecklist();
+}
+
+/* convert a standalone task into a sub-task of the task directly above it
+   in the same category. Refuses if the task itself already has sub-tasks
+   (would create a 4th level, which the model doesn't support). */
+function jlFoldIntoAbove(catId,itemId){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const idx=cat.items.findIndex(i=>i.id===itemId); if(idx<=0){ showToast("⚠ No task above to fold into"); return; }
+  const item=cat.items[idx];
+  if(item.subs&&item.subs.length){ showToast("⚠ This task has its own sub-tasks — move or delete them first"); return; }
+  const parent=cat.items[idx-1];
+  if(!parent.subs) parent.subs=[];
+  parent.subs.push({id:item.id,name:item.name,tag:item.tag});
+  cat.items.splice(idx,1);
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+/* promote a sub-task back to a standalone task, placed right after its
+   former parent in the same category. */
+function jlOutdentSub(catId,itemId,subId){
+  const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+  const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+  const sidx=item.subs.findIndex(s=>s.id===subId); if(sidx<0) return;
+  const [sub]=item.subs.splice(sidx,1);
+  const itemIdx=cat.items.findIndex(i=>i.id===itemId);
+  cat.items.splice(itemIdx+1,0,{id:sub.id,name:sub.name,tag:sub.tag,subs:[]});
+  jtSave(jtCats); renderJobLib(); renderJobChecklist();
+}
+
+/* ---- drag-reorder: categories (whole block, tasks + sub-tasks travel with it) ---- */
+function _jlClearCatDropMarks(){ document.querySelectorAll(".tl-cat-row").forEach(r=>r.classList.remove("tl-drop-above","tl-drop-below")); }
+function _jlWireCatDrag(head,cat){
+  head.draggable=true;
+  head.ondragstart=e=>{ _jlDragCat=cat.id; e.dataTransfer.effectAllowed="move"; setTimeout(()=>head.classList.add("tl-dragging"),0); };
+  head.ondragend=()=>{ head.classList.remove("tl-dragging"); _jlClearCatDropMarks(); _jlDragCat=null; };
+  head.ondragover=e=>{
+    e.preventDefault();
+    if(!_jlDragCat||_jlDragCat===cat.id) return;
+    _jlClearCatDropMarks();
+    const rect=head.getBoundingClientRect();
+    head.classList.add(e.clientY<rect.top+rect.height/2?"tl-drop-above":"tl-drop-below");
+  };
+  head.ondrop=e=>{
+    e.preventDefault();
+    head.classList.remove("tl-drop-above","tl-drop-below");
+    if(!_jlDragCat||_jlDragCat===cat.id) return;
+    const srcIdx=jtCats.findIndex(c=>c.id===_jlDragCat);
+    const dstIdx=jtCats.findIndex(c=>c.id===cat.id);
+    if(srcIdx<0||dstIdx<0) return;
+    const [moved]=jtCats.splice(srcIdx,1);
+    const rect=head.getBoundingClientRect();
+    let insertAt=jtCats.findIndex(c=>c.id===cat.id);
+    if(e.clientY>=rect.top+rect.height/2) insertAt++;
+    jtCats.splice(insertAt,0,moved);
+    jtSave(jtCats); renderJobLib(); renderJobChecklist();
+  };
+}
+/* ---- drag-reorder: tasks within their category (sub-tasks travel with the task) ---- */
+function _jlClearItemDropMarks(){ document.querySelectorAll(".tl-row.tl-job-item").forEach(r=>r.classList.remove("tl-drop-above","tl-drop-below")); }
+function _jlWireItemDrag(row,catId,item){
+  row.draggable=true;
+  row.ondragstart=e=>{ e.stopPropagation(); _jlDragItem={catId,itemId:item.id}; e.dataTransfer.effectAllowed="move"; setTimeout(()=>row.classList.add("tl-dragging"),0); };
+  row.ondragend=e=>{ e.stopPropagation(); row.classList.remove("tl-dragging"); _jlClearItemDropMarks(); _jlDragItem=null; };
+  row.ondragover=e=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!_jlDragItem||_jlDragItem.catId!==catId||_jlDragItem.itemId===item.id) return;
+    _jlClearItemDropMarks();
+    const rect=row.getBoundingClientRect();
+    row.classList.add(e.clientY<rect.top+rect.height/2?"tl-drop-above":"tl-drop-below");
+  };
+  row.ondrop=e=>{
+    e.preventDefault(); e.stopPropagation();
+    row.classList.remove("tl-drop-above","tl-drop-below");
+    if(!_jlDragItem||_jlDragItem.catId!==catId||_jlDragItem.itemId===item.id) return;
+    const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+    const srcIdx=cat.items.findIndex(i=>i.id===_jlDragItem.itemId);
+    const dstIdx=cat.items.findIndex(i=>i.id===item.id);
+    if(srcIdx<0||dstIdx<0) return;
+    const [moved]=cat.items.splice(srcIdx,1);
+    const rect=row.getBoundingClientRect();
+    let insertAt=cat.items.findIndex(i=>i.id===item.id);
+    if(e.clientY>=rect.top+rect.height/2) insertAt++;
+    cat.items.splice(insertAt,0,moved);
+    jtSave(jtCats); renderJobLib(); renderJobChecklist();
+  };
+}
+/* ---- drag-reorder: sub-tasks within their task ---- */
+function _jlClearSubDropMarks(){ document.querySelectorAll(".tl-row.tl-subsub").forEach(r=>r.classList.remove("tl-drop-above","tl-drop-below")); }
+function _jlWireSubDrag(row,catId,itemId,sub){
+  row.draggable=true;
+  row.ondragstart=e=>{ e.stopPropagation(); _jlDragSub={catId,itemId,subId:sub.id}; e.dataTransfer.effectAllowed="move"; setTimeout(()=>row.classList.add("tl-dragging"),0); };
+  row.ondragend=e=>{ e.stopPropagation(); row.classList.remove("tl-dragging"); _jlClearSubDropMarks(); _jlDragSub=null; };
+  row.ondragover=e=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!_jlDragSub||_jlDragSub.catId!==catId||_jlDragSub.itemId!==itemId||_jlDragSub.subId===sub.id) return;
+    _jlClearSubDropMarks();
+    const rect=row.getBoundingClientRect();
+    row.classList.add(e.clientY<rect.top+rect.height/2?"tl-drop-above":"tl-drop-below");
+  };
+  row.ondrop=e=>{
+    e.preventDefault(); e.stopPropagation();
+    row.classList.remove("tl-drop-above","tl-drop-below");
+    if(!_jlDragSub||_jlDragSub.catId!==catId||_jlDragSub.itemId!==itemId||_jlDragSub.subId===sub.id) return;
+    const cat=jtCats.find(c=>c.id===catId); if(!cat) return;
+    const item=cat.items.find(i=>i.id===itemId); if(!item) return;
+    const srcIdx=item.subs.findIndex(s=>s.id===_jlDragSub.subId);
+    const dstIdx=item.subs.findIndex(s=>s.id===sub.id);
+    if(srcIdx<0||dstIdx<0) return;
+    const [moved]=item.subs.splice(srcIdx,1);
+    const rect=row.getBoundingClientRect();
+    let insertAt=item.subs.findIndex(s=>s.id===sub.id);
+    if(e.clientY>=rect.top+rect.height/2) insertAt++;
+    item.subs.splice(insertAt,0,moved);
+    jtSave(jtCats); renderJobLib(); renderJobChecklist();
+  };
+}
+
+function _jlPills(catId,itemId,subId,tag){
+  const mk=(val,label,cls)=>`<button class="tl-pill ${cls}${tag===val?' on':''}" onclick="jlSetTag('${catId}','${itemId}',${subId?`'${subId}'`:'null'},'${val}')">${label}</button>`;
+  return `<div class="tl-owner-pills">${mk('ft','FT','tl-pill-jft')}${mk('pt','PT','tl-pill-jpt')}${mk('both','BOTH','tl-pill-jboth')}</div>`;
+}
+
+function renderJobLib(){
+  const root=document.getElementById("joblibList");
+  if(!root) return;
+  root.innerHTML="";
+  if(!jtCats.length){
+    root.innerHTML='<div class="tl-empty">No categories yet — use "+ Add category" above.</div>';
+    return;
+  }
+  jtCats.forEach(cat=>{
+    const block=document.createElement("div");
+    block.className="tl-cat-block";
+    const collapsed=_jlCollapsed.has(cat.id);
+
+    const head=document.createElement("div");
+    head.className="tl-cat-row";
+    const grip=document.createElement("span"); grip.className="tl-grip"; grip.title="Drag to reorder — tasks come with it"; grip.textContent="⠿";
+    head.appendChild(grip);
+    const chev=document.createElement("span"); chev.className="tl-cat-chevron"; chev.textContent=collapsed?"▸":"▾";
+    chev.onclick=()=>{ collapsed?_jlCollapsed.delete(cat.id):_jlCollapsed.add(cat.id); renderJobLib(); };
+    head.appendChild(chev);
+    const name=document.createElement("input");
+    name.className="tl-name"; name.value=cat.name;
+    name.onchange=()=>jlRename(cat.id,null,null,name.value);
+    head.appendChild(name);
+    const count=document.createElement("span"); count.className="tl-count"; count.textContent=`(${cat.items.length})`;
+    head.appendChild(count);
+    const addItemBtn=document.createElement("button");
+    addItemBtn.className="tl-icon-btn"; addItemBtn.title="Add task to this category"; addItemBtn.textContent="＋";
+    addItemBtn.onclick=()=>jlAddItem(cat.id);
+    head.appendChild(addItemBtn);
+    const delCatBtn=document.createElement("button");
+    delCatBtn.className="tl-icon-btn tl-del"; delCatBtn.title="Delete category"; delCatBtn.textContent="🗑";
+    delCatBtn.onclick=()=>jlDeleteCategory(cat.id);
+    head.appendChild(delCatBtn);
+    _jlWireCatDrag(head,cat);
+    block.appendChild(head);
+
+    if(!collapsed){
+      cat.items.forEach((item,idx)=>{
+        const row=document.createElement("div");
+        row.className="tl-row tl-job-item";
+        const grip=document.createElement("span"); grip.className="tl-grip"; grip.title="Drag to reorder within this category — sub-tasks come with it"; grip.textContent="⠿";
+        row.appendChild(grip);
+        const gname=document.createElement("input");
+        gname.className="tl-name"; gname.value=item.name;
+        gname.onchange=()=>jlRename(cat.id,item.id,null,gname.value);
+        row.appendChild(gname);
+        if(item.subs&&item.subs.length){ const c=document.createElement("span"); c.className="tl-count"; c.textContent=`(${item.subs.length})`; row.appendChild(c); }
+        const pills=document.createElement("div"); pills.innerHTML=_jlPills(cat.id,item.id,null,item.tag); row.appendChild(pills.firstChild);
+        const addSubBtn=document.createElement("button");
+        addSubBtn.className="tl-icon-btn"; addSubBtn.title="Add sub-task"; addSubBtn.textContent="＋↳";
+        addSubBtn.onclick=()=>jlAddSub(cat.id,item.id);
+        row.appendChild(addSubBtn);
+        if(idx>0){
+          const foldBtn=document.createElement("button");
+          foldBtn.className="tl-icon-btn"; foldBtn.title="Convert to a sub-task of the task above"; foldBtn.textContent="⤵";
+          foldBtn.onclick=()=>jlFoldIntoAbove(cat.id,item.id);
+          row.appendChild(foldBtn);
+        }
+        const del=document.createElement("button");
+        del.className="tl-icon-btn tl-del"; del.title="Delete task"; del.textContent="🗑";
+        del.onclick=()=>jlDeleteItem(cat.id,item.id);
+        row.appendChild(del);
+        _jlWireItemDrag(row,cat.id,item);
+        block.appendChild(row);
+
+        (item.subs||[]).forEach(s=>{
+          const sr=document.createElement("div");
+          sr.className="tl-row tl-subsub";
+          const sgrip=document.createElement("span"); sgrip.className="tl-grip"; sgrip.title="Drag to reorder within this task"; sgrip.textContent="⠿";
+          sr.appendChild(sgrip);
+          const sname=document.createElement("input");
+          sname.className="tl-name"; sname.value=s.name;
+          sname.onchange=()=>jlRename(cat.id,item.id,s.id,sname.value);
+          sr.appendChild(sname);
+          const spills=document.createElement("div"); spills.innerHTML=_jlPills(cat.id,item.id,s.id,s.tag); sr.appendChild(spills.firstChild);
+          const outdentBtn=document.createElement("button");
+          outdentBtn.className="tl-icon-btn"; outdentBtn.title="Make this a standalone task"; outdentBtn.textContent="↰";
+          outdentBtn.onclick=()=>jlOutdentSub(cat.id,item.id,s.id);
+          sr.appendChild(outdentBtn);
+          const sdel=document.createElement("button");
+          sdel.className="tl-icon-btn tl-del"; sdel.title="Delete sub-task"; sdel.textContent="🗑";
+          sdel.onclick=()=>jlDeleteSub(cat.id,item.id,s.id);
+          sr.appendChild(sdel);
+          _jlWireSubDrag(sr,cat.id,item.id,s);
+          block.appendChild(sr);
+        });
+      });
+    }
+    root.appendChild(block);
+  });
+}
+
+/* ---------- DISPLAY VIEW: Job Checklist tab ---------- */
+function _jobColStats(col){
+  let total=0,done=0;
+  jtCats.forEach(cat=>{
+    cat.items.filter(i=>_jtAppliesTo(i.tag,col)).forEach(item=>{
+      total++; if(_jtIsDone(item.id,col)) done++;
+      (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>{ total++; if(_jtIsDone(s.id,col)) done++; });
+    });
+  });
+  return {total,done};
+}
+
+let _jobCelebrated={ft:false,pt:false};
+
+function renderJobChecklist(){
+  const root=document.getElementById("jobCols");
+  if(!root) return;
+  root.innerHTML="";
+  JOB_COLS.forEach(col=>{
+    const meta=JOB_COL_META[col];
+    const stats=_jobColStats(col);
+    const pct=stats.total?Math.round(stats.done/stats.total*100):0;
+
+    const colEl=document.createElement("div"); colEl.className="job-col";
+    let catsHTML="";
+    jtCats.forEach(cat=>{
+      const items=cat.items.filter(i=>_jtAppliesTo(i.tag,col));
+      if(!items.length) return;
+      let rows="";
+      items.forEach(item=>{
+        const done=_jtIsDone(item.id,col);
+        rows+=`<div class="job-item lvl1${done?' job-done':''}" onclick="jtToggle('${item.id}',null,'${col}')">
+          <span class="job-item-cb" style="${done?`background:var(${meta.accentVar})`:''}">${done?'✓':''}</span>
+          <span class="job-item-label">${_esc(item.name)}</span></div>`;
+        (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>{
+          const sdone=_jtIsDone(s.id,col);
+          rows+=`<div class="job-item lvl2${sdone?' job-done':''}" onclick="event.stopPropagation();jtToggle('${item.id}','${s.id}','${col}')">
+            <span class="job-item-cb" style="${sdone?`background:var(${meta.accentVar})`:''}">${sdone?'✓':''}</span>
+            <span class="job-item-label">${_esc(s.name)}</span></div>`;
+        });
+      });
+      catsHTML+=`<div class="job-cat"><div class="job-cat-title">${cat.name}</div>${rows}</div>`;
+    });
+    colEl.innerHTML=`<div class="job-col-header"><span class="job-col-title" style="color:var(${meta.accentVar})">${meta.label}</span><span class="job-col-count">${stats.done}/${stats.total}</span></div>
+      <div class="job-col-progress"><div class="job-col-progress-fill" style="width:${pct}%;background:var(${meta.accentVar})"></div></div>
+      ${catsHTML||'<div class="job-empty">No tasks tagged for this list yet</div>'}`;
+    root.appendChild(colEl);
+
+    if(stats.total>0 && stats.done===stats.total){
+      if(!_jobCelebrated[col] && window._celebrationsArmed){
+        _jobCelebrated[col]=true;
+        fireConfetti(col==="ft"?["#4cad7c","#5ec99a","#4caf50","#2196f3"]:["#d4935a","#e09050","#ff9800","#f44336"]);
+        showToast(meta.doneMsg);
+      }
+    } else {
+      _jobCelebrated[col]=false;
+    }
+  });
+}
+
+function jobBoardResetAll(){
+  if(!confirm("Uncheck both FT and PT?")) return;
+  jtDone={}; jtSaveDone(jtDone); renderJobChecklist();
+}
+
+function jobBoardPrint(){
+  let bodyHTML='<div class="grid">';
+  JOB_COLS.forEach(col=>{
+    const meta=JOB_COL_META[col];
+    bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
+    jtCats.forEach(cat=>{
+      const items=cat.items.filter(i=>_jtAppliesTo(i.tag,col));
+      if(!items.length) return;
+      bodyHTML+=`<div class="item level-0">${cat.name}</div>`;
+      items.forEach(item=>{
+        bodyHTML+=`<div class="item level-1"><div class="cb"></div><span>${item.name}</span></div>`;
+        (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>{
+          bodyHTML+=`<div class="item level-2"><div class="cb"></div><span>${s.name}</span></div>`;
+        });
+      });
+    });
+    bodyHTML+='</div>';
+  });
+  bodyHTML+='</div>';
+  openPrint(buildPrintDoc('Job Checklist','FT · PT',bodyHTML,'#2a8f8f'));
+}
+
+/* ============================================================
+   TASK LIBRARY (WYCH) + WYCH — imported as-is from WYCH.html
+   Same storage keys as WYCH.html (WYCH_TASKLIB_V1 etc.) so all
+   existing data carries over untouched. This is a separate task
+   pool from the Task Library / After you come Home tabs above —
+   nothing here reads or writes TASKLIB_V1 / TASKLIB_DONE_V1.
+   Functions/vars are prefixed wtl/_wychB to avoid clashing with
+   the tlXxx / ahtmlXxx names already used above for the other
+   pair of tabs.
+   ============================================================ */
+const WTL_KEY      = "WYCH_TASKLIB_V1";
+const WTL_DONE_KEY = "WYCH_TASKLIB_DONE_V1";
+const WTL_SEED_KEY = "WYCH_TASKLIB_SEEDED_V1";
+const WTL_OWNERS   = ["K","R","E"];
+const WTL_OWNER_META = {
+  K:{label:"Kalyan", cls:"on-k", doneMsg:"🏡 All done — you're fully settled in!", confetti:["#2a9d6a","#5ecb96","#4caf50","#2196f3","#9c27b0"]},
+  R:{label:"Rohan",  cls:"on-r", doneMsg:"🎉 Amazing work Rohan — all done!",      confetti:["#4a90d9","#7ab8f0","#4caf50","#f44336","#ff9800"]},
+  E:{label:"Esha",   cls:"on-e", doneMsg:"🎉 Brilliant work Esha — all done!",     confetti:["#b06aa0","#d49fcc","#4caf50","#f44336","#ff9800"]},
+};
+
+function wtlLoad(){ try{ const v=_cget(WTL_KEY); return v?JSON.parse(v):[]; }catch(e){ return []; } }
+function wtlSave(t){ _cset(WTL_KEY, JSON.stringify(t)); }
+function wtlLoadDone(){ try{ const v=_cget(WTL_DONE_KEY); return v?JSON.parse(v):{}; }catch(e){ return {}; } }
+function wtlSaveDone(d){ _cset(WTL_DONE_KEY, JSON.stringify(d)); }
+
+/* one-time seed — only fires if WYCH_TASKLIB_SEEDED_V1 was never set.
+   If WYCH.html already ran this (normal case, since it's the file this
+   was imported from), _cget(WTL_SEED_KEY) is already "1" and this is a
+   no-op — all existing WYCH data loads untouched. */
+function wtlSeedOnce(){
+  if(_cget(WTL_SEED_KEY)==="1") return;
+  const mk=(name,subs)=>({id:_tlId(), name, owners:[], subs:(subs||[]).map(n=>({id:_tlId(), name:n}))});
+  const seed=[
+    mk("Take the toupee off", ["Peel its stickers and put it on the stand"]),
+    mk("Stow", ["Shoes to shoe rack","Soiled clothes to laundry room","Keys, Wallet, ID card to designated spots","Backpack to shoes room"]),
+    mk("Have something to eat/drink"),
+    mk("Run EoD checklist/Wind down/Go to bed"),
+    mk("Remove shoes and socks"),
+    mk("Change to home clothes"),
+    mk("Put clothes and socks for washing"),
+    mk("Wash hands and face"),
+    mk("Have something to eat"),
+    mk("1 hour break"),
+    mk("1 hour school or education activities"),
+    mk("Help parents in home activities"),
+    mk("Bath and get ready"),
+    mk("Do we need to trim nails?"),
+    mk("Bag ready", ["Shoes","Socks","Water bottle","Lunch","School uniform"]),
+    mk("Any assignments/Homeworks?"),
+    mk("Shoes to shoe stand"),
+    mk("Socks and uniform to laundry"),
+    mk("Wash hands/Eat something"),
+    mk("What happened in the school?"),
+    mk("Bath"),
+    mk("Pack bag for next day"),
+    mk("Organise school clothes and socks"),
+    mk("Need to go early to school? Inform dad."),
+    mk("Lunch — needs to be ordered?"),
+    mk("Pack bag/Pack Lunch"),
+    mk("Ask dad if he can teach or help in anything"),
+  ];
+  wtlSave(seed);
+  _cset(WTL_SEED_KEY,"1");
+}
+
+/* cascade: does this owner have every sub of task t checked? null if no subs */
+function _wtlAllSubsDone(t,owner){
+  if(!t.subs||!t.subs.length) return null;
+  const d=wtlLoadDone();
+  return t.subs.every(s=>!!d[_tlDoneId(s.id,owner)]);
+}
+
+/* ---------- TASK LIBRARY (WYCH) admin view ---------- */
+let _wtlCollapsed = new Set();
+let _wtlFirstRender = true;
+let _wtlSelected = null; // null | {type:"task", id} | {type:"sub", parentId, subId}
+
+function renderWtl(){
+  const tasks=wtlLoad();
+  const bankRoot=document.getElementById("wtlBankContent");
+  if(!bankRoot) return;
+  if(_wtlFirstRender){
+    tasks.forEach(t=>{ if(t.subs && t.subs.length) _wtlCollapsed.add(t.id); });
+    _wtlFirstRender=false;
+  }
+  let maxLen=0;
+  tasks.forEach(t=>{
+    maxLen=Math.max(maxLen,(t.name||"").length);
+    (t.subs||[]).forEach(s=>maxLen=Math.max(maxLen,(s.name||"").length));
+  });
+  bankRoot.style.setProperty("--tb-name-w", (maxLen?maxLen+5:20)+"ch");
+  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="wtlAddTaskBtn" title="Adds to top of list, or right beneath the selected task/sub-task">＋ Add task</button></div>';
+  html+='<div class="tb-table" id="wtlTable">';
+  tasks.forEach((t,idx)=>{
+    const hasSubs = t.subs && t.subs.length>0;
+    const canIndent = idx>0 && !hasSubs;
+    const collapsed = hasSubs && _wtlCollapsed.has(t.id);
+    const isSelTask = _wtlSelected && _wtlSelected.type==="task" && _wtlSelected.id===t.id;
+    html+=`<div class="tb-row${isSelTask?" tb-row-selected":""}" draggable="true" data-idx="${idx}" data-id="${t.id}">`
+        +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
+        +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-collapse":""}">${hasSubs?(collapsed?"▶":"▼"):""}</span>`
+        +`<span class="tb-name" data-act="rename" title="Click to select, double-click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
+        +_wtlCircleRow(t)
+        +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
+        +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
+        +`</div>`;
+    if(!collapsed){
+      (t.subs||[]).forEach((s,sidx)=>{
+        const isSelSub = _wtlSelected && _wtlSelected.type==="sub" && _wtlSelected.subId===s.id;
+        html+=`<div class="tb-row tb-subrow${isSelSub?" tb-row-selected":""}" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
+            +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
+            +`<span class="tb-chevron tb-chevron-empty"></span>`
+            +`<span class="tb-name" data-act="rename-sub" title="Click to select, double-click to rename">${_esc(s.name)}</span>`
+            +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
+            +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
+            +`</div>`;
+      });
+    }
+  });
+  html+='</div>';
+  bankRoot.innerHTML = tasks.length ? html : '<div class="tb-empty">No tasks yet — start with "＋ Add task" above.</div>';
+}
+
+function _wtlCircleRow(t){
+  const allOn = WTL_OWNERS.every(o=>t.owners && t.owners.includes(o));
+  let h='<div class="tb-circles">';
+  WTL_OWNERS.forEach(o=>{
+    const on = t.owners && t.owners.includes(o);
+    const meta=WTL_OWNER_META[o];
+    h+=`<button class="tb-circle${on?" "+meta.cls:""}" data-act="owner" data-owner="${o}" title="${on?"Remove from ":"Assign to "}${meta.label}">${o}</button>`;
+  });
+  h+=`<button class="tb-circle-all${allOn?" on-all":""}" data-act="all" title="${allOn?"Clear all owners":"Assign to Kalyan, Rohan and Esha"}">A</button>`;
+  h+='</div>';
+  return h;
+}
+
+(function wireWtl(){
+  const root=document.getElementById("wtlBankContent");
+  if(!root) return;
+
+  root.addEventListener("click", e=>{
+    if(e.target.closest("#wtlAddTaskBtn")){
+      const name=prompt("New task name:"); if(!name||!name.trim()) return;
+      const tasks=wtlLoad();
+      const newId=_tlId();
+      if(_wtlSelected && _wtlSelected.type==="sub"){
+        const p=tasks.find(x=>x.id===_wtlSelected.parentId);
+        if(p){
+          p.subs=p.subs||[];
+          const sIdx=p.subs.findIndex(s=>s.id===_wtlSelected.subId);
+          const newSub={id:newId, name:name.trim()};
+          if(sIdx>-1) p.subs.splice(sIdx+1,0,newSub); else p.subs.push(newSub);
+          wtlSave(tasks); _wtlSelected={type:"sub", parentId:p.id, subId:newId}; renderWtl(); showToast("✓ Sub-task added");
+          return;
+        }
+      }
+      const newTask={id:newId, name:name.trim(), owners:[], subs:[]};
+      if(_wtlSelected && _wtlSelected.type==="task"){
+        const idx=tasks.findIndex(x=>x.id===_wtlSelected.id);
+        if(idx>-1){ tasks.splice(idx+1,0,newTask); } else { tasks.unshift(newTask); }
+      } else {
+        tasks.unshift(newTask);
+      }
+      wtlSave(tasks); _wtlSelected={type:"task", id:newId}; renderWtl(); showToast("✓ Task added");
+      return;
+    }
+    const allBtn=e.target.closest("[data-act='all']");
+    if(allBtn){
+      const row=allBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const allOn = WTL_OWNERS.every(o=>t.owners && t.owners.includes(o));
+      t.owners = allOn ? [] : WTL_OWNERS.slice();
+      wtlSave(tasks); renderWtl(); renderWychBoard();
+      return;
+    }
+    const circleBtn=e.target.closest(".tb-circle");
+    if(circleBtn){
+      const row=circleBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const o=circleBtn.dataset.owner;
+      t.owners=t.owners||[];
+      const i=t.owners.indexOf(o);
+      i>-1 ? t.owners.splice(i,1) : t.owners.push(o);
+      wtlSave(tasks); renderWtl(); renderWychBoard();
+      return;
+    }
+    const chevron=e.target.closest("[data-act='toggle-collapse']");
+    if(chevron){
+      const row=chevron.closest(".tb-row"); const id=row.dataset.id;
+      if(_wtlCollapsed.has(id)) _wtlCollapsed.delete(id); else _wtlCollapsed.add(id);
+      renderWtl();
+      return;
+    }
+    const delBtn=e.target.closest("[data-act='delete']");
+    if(delBtn){
+      const row=delBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks0=wtlLoad(); const t0=tasks0.find(x=>x.id===id);
+      const hasSubs=!!(t0 && t0.subs && t0.subs.length);
+      if(!confirm("Delete this task"+(hasSubs?" and all its sub-tasks":"")+"?")) return;
+      const tasks=tasks0.filter(x=>x.id!==id);
+      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("🗑 Deleted");
+      return;
+    }
+    const delSub=e.target.closest("[data-act='delete-sub']");
+    if(delSub){
+      const row=delSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      if(!confirm("Delete this sub-task?")) return;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs) return;
+      t.subs.splice(sidx,1); wtlSave(tasks); renderWtl(); renderWychBoard();
+      return;
+    }
+    const indentBtn=e.target.closest("[data-act='indent']");
+    if(indentBtn){
+      if(indentBtn.disabled) return;
+      const row=indentBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=wtlLoad();
+      const idx=tasks.findIndex(x=>x.id===id); if(idx<1) return;
+      const t=tasks[idx];
+      if(t.subs && t.subs.length){ showToast("Can't indent — this task already has sub-tasks"); return; }
+      const parent=tasks[idx-1];
+      tasks.splice(idx,1);
+      parent.subs=parent.subs||[];
+      parent.subs.push({id:t.id, name:t.name});
+      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("↳ Made a sub-task of \u201c"+parent.name+"\u201d");
+      return;
+    }
+    const outdentBtn=e.target.closest("[data-act='outdent']");
+    if(outdentBtn){
+      const row=outdentBtn.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=wtlLoad(); const pidx=tasks.findIndex(x=>x.id===pid); if(pidx<0) return;
+      const t=tasks[pidx]; if(!t.subs||!t.subs[sidx]) return;
+      const sub=t.subs.splice(sidx,1)[0];
+      tasks.splice(pidx+1,0,{id:sub.id, name:sub.name, owners:[], subs:[]});
+      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("↰ Made a top-level task");
+      return;
+    }
+    const subRow=e.target.closest(".tb-subrow");
+    if(subRow){
+      const pid=subRow.dataset.parent, sidx=+subRow.dataset.subidx;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); const sub=t&&t.subs&&t.subs[sidx];
+      if(!sub) return;
+      if(_wtlSelected && _wtlSelected.type==="sub" && _wtlSelected.subId===sub.id) _wtlSelected=null;
+      else _wtlSelected={type:"sub", parentId:pid, subId:sub.id};
+      renderWtl();
+      return;
+    }
+    const topRow=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(topRow){
+      const id=topRow.dataset.id;
+      if(_wtlSelected && _wtlSelected.type==="task" && _wtlSelected.id===id) _wtlSelected=null;
+      else _wtlSelected={type:"task", id};
+      renderWtl();
+      return;
+    }
+  });
+
+  root.addEventListener("dblclick", e=>{
+    const renameBtn=e.target.closest("[data-act='rename']");
+    if(renameBtn){
+      const row=renameBtn.closest(".tb-row"); const id=row.dataset.id;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
+      const name=prompt("Rename task:", t.name); if(name===null||!name.trim()) return;
+      t.name=name.trim(); wtlSave(tasks); renderWtl(); renderWychBoard();
+      return;
+    }
+    const renameSub=e.target.closest("[data-act='rename-sub']");
+    if(renameSub){
+      const row=renameSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
+      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
+      const name=prompt("Rename sub-task:", t.subs[sidx].name); if(name===null||!name.trim()) return;
+      t.subs[sidx].name=name.trim(); wtlSave(tasks); renderWtl(); renderWychBoard();
+      return;
+    }
+  });
+
+  let dragFromId=null, dragFromSub=null;
+  root.addEventListener("dragstart", e=>{
+    const subRow=e.target.closest(".tb-subrow");
+    if(subRow){ dragFromSub={parent:subRow.dataset.parent, subidx:+subRow.dataset.subidx}; dragFromId=null; e.dataTransfer.effectAllowed="move"; return; }
+    const row=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(!row){ e.preventDefault(); return; }
+    dragFromId=row.dataset.id; dragFromSub=null;
+    e.dataTransfer.effectAllowed="move";
+  });
+  root.addEventListener("dragover", e=>{ if(e.target.closest(".tb-row")) e.preventDefault(); });
+  root.addEventListener("dragend", ()=>{ dragFromId=null; dragFromSub=null; });
+
+  root.addEventListener("drop", e=>{
+    const subRow=e.target.closest(".tb-subrow");
+
+    if(subRow){
+      e.preventDefault();
+      const toParent=subRow.dataset.parent, toSubidx=+subRow.dataset.subidx;
+
+      if(dragFromSub){
+        const tasks=wtlLoad();
+        const fromParent=tasks.find(x=>x.id===dragFromSub.parent);
+        if(!fromParent || !fromParent.subs || !fromParent.subs[dragFromSub.subidx]){ dragFromSub=null; return; }
+        if(toParent===dragFromSub.parent && toSubidx===dragFromSub.subidx){ dragFromSub=null; return; }
+        const toParentTask=tasks.find(x=>x.id===toParent); if(!toParentTask){ dragFromSub=null; return; }
+        const moved=fromParent.subs.splice(dragFromSub.subidx,1)[0];
+        toParentTask.subs=toParentTask.subs||[];
+        const insertAt=(toParent===dragFromSub.parent && toSubidx>dragFromSub.subidx) ? toSubidx-1 : toSubidx;
+        toParentTask.subs.splice(insertAt,0,moved);
+        wtlSave(tasks); renderWtl(); renderWychBoard();
+        dragFromSub=null;
+        return;
+      }
+
+      if(dragFromId){
+        const tasks=wtlLoad();
+        const idx=tasks.findIndex(x=>x.id===dragFromId);
+        if(idx<0){ dragFromId=null; return; }
+        const t=tasks[idx];
+        if(t.subs && t.subs.length){
+          showToast("Can't nest — this task already has its own sub-tasks");
+          dragFromId=null; return;
+        }
+        tasks.splice(idx,1);
+        const parent=tasks.find(x=>x.id===toParent);
+        if(!parent){ tasks.splice(idx,0,t); wtlSave(tasks); dragFromId=null; return; }
+        parent.subs=parent.subs||[];
+        parent.subs.splice(Math.min(toSubidx,parent.subs.length),0,{id:t.id, name:t.name});
+        wtlSave(tasks); renderWtl(); renderWychBoard();
+        showToast("↳ Made a sub-task of \u201c"+parent.name+"\u201d");
+        dragFromId=null;
+        return;
+      }
+      return;
+    }
+
+    const row=e.target.closest(".tb-row:not(.tb-subrow)");
+    if(!row) return;
+    e.preventDefault();
+    const toId=row.dataset.id;
+
+    if(dragFromId){
+      if(toId!==dragFromId){
+        const tasks=wtlLoad();
+        const fromIdx=tasks.findIndex(x=>x.id===dragFromId), toIdx=tasks.findIndex(x=>x.id===toId);
+        if(fromIdx>-1 && toIdx>-1){
+          const moved=tasks.splice(fromIdx,1)[0];
+          tasks.splice(toIdx,0,moved);
+          wtlSave(tasks); renderWtl();
+        }
+      }
+      dragFromId=null;
+      return;
+    }
+
+    if(dragFromSub){
+      const tasks=wtlLoad();
+      const parent=tasks.find(x=>x.id===dragFromSub.parent);
+      if(!parent || !parent.subs || !parent.subs[dragFromSub.subidx]){ dragFromSub=null; return; }
+      const sub=parent.subs.splice(dragFromSub.subidx,1)[0];
+      const toIdx=tasks.findIndex(x=>x.id===toId);
+      const insertAt = toIdx>-1 ? toIdx : tasks.length;
+      tasks.splice(insertAt,0,{id:sub.id, name:sub.name, owners:[], subs:[]});
+      wtlSave(tasks); renderWtl(); renderWychBoard();
+      showToast("↰ Made a top-level task");
+      dragFromSub=null;
+      return;
+    }
+  });
+})();
+
+/* ---------- WYCH board — pure render + checkbox, fed from Task Library (WYCH) ---------- */
+let _wychBCelebrated={K:false,R:false,E:false};
+
+function _wychBOwnerStats(owner){
+  const tasks=wtlLoad();
+  const d=wtlLoadDone();
+  let total=0,done=0;
+  tasks.filter(t=>t.owners&&t.owners.includes(owner)).forEach(t=>{
+    total++; if(d[_tlDoneId(t.id,owner)]) done++;
+    (t.subs||[]).forEach(s=>{ total++; if(d[_tlDoneId(s.id,owner)]) done++; });
+  });
+  return {total,done};
+}
+
+function _wychBRenderCheckItem(t, owner, doneMap){
+  const pid=_tlDoneId(t.id,owner);
+  const checked=!!doneMap[pid];
+  let h=`<div class="tb-item${checked?" tb-done":""}" data-id="${t.id}" data-owner="${owner}">`
+      +`<span class="tb-checkbox">${checked?"✓":""}</span>`
+      +`<span class="tb-item-label">${_esc(t.name)}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
+  (t.subs||[]).forEach(s=>{
+    const sid=_tlDoneId(s.id,owner);
+    const sc=!!doneMap[sid];
+    h+=`<div class="tb-item tb-sub${sc?" tb-done":""}" data-id="${t.id}" data-subid="${s.id}" data-owner="${owner}">`
+      +`<span class="tb-checkbox">${sc?"✓":""}</span>`
+      +`<span class="tb-item-label">${_esc(s.name)}</span></div>`;
+  });
+  return h;
+}
+
+function renderWychBoard(){
+  const root=document.getElementById("wychCols");
+  if(!root) return;
+  const tasks=wtlLoad();
+  const doneMap=wtlLoadDone();
+  root.innerHTML="";
+  WTL_OWNERS.forEach(owner=>{
+    const meta=WTL_OWNER_META[owner];
+    const stats=_wychBOwnerStats(owner);
+    const pct=stats.total?Math.round(stats.done/stats.total*100):0;
+    const accentVar = owner==="K"?"--kal-accent":owner==="R"?"--roh-accent":"--esh-accent";
+
+    const col=document.createElement("div"); col.className="wych-col";
+    let inner=`<div class="wych-col-header"><span class="wych-col-title" style="color:var(${accentVar})">${meta.label}</span><span class="wych-col-count">${stats.done}/${stats.total}</span></div>`
+      +`<div class="wych-col-progress"><div class="wych-col-progress-fill" style="width:${pct}%;background:var(${accentVar})"></div></div>`;
+    const ownerTasks=tasks.filter(t=>t.owners&&t.owners.includes(owner));
+    if(!ownerTasks.length){
+      inner+='<div class="tb-empty">No tasks assigned yet</div>';
+    } else {
+      ownerTasks.forEach(t=>{ inner+=_wychBRenderCheckItem(t, owner, doneMap); });
+    }
+    col.innerHTML=inner;
+    root.appendChild(col);
+
+    if(stats.total>0 && stats.done===stats.total){
+      if(!_wychBCelebrated[owner] && window._celebrationsArmed){
+        _wychBCelebrated[owner]=true;
+        fireConfetti(meta.confetti);
+        showToast(meta.doneMsg);
+      }
+    } else {
+      _wychBCelebrated[owner]=false;
+    }
+  });
+}
+
+(function wireWychBoard(){
+  const root=document.getElementById("wychCols");
+  if(!root) return;
+  root.addEventListener("click", e=>{
+    const row=e.target.closest(".tb-item"); if(!row) return;
+    const taskId=row.dataset.id, subId=row.dataset.subid, owner=row.dataset.owner;
+    const tasks=wtlLoad(); const t=tasks.find(x=>x.id===taskId); if(!t) return;
+    const d=wtlLoadDone();
+    if(subId){
+      const key=_tlDoneId(subId,owner);
+      d[key]=!d[key];
+      wtlSaveDone(d);
+      const allDone=_wtlAllSubsDone(t,owner);
+      if(allDone!==null){
+        const parentKey=_tlDoneId(t.id,owner);
+        d[parentKey]=allDone;
+        wtlSaveDone(d);
+      }
+    } else {
+      const key=_tlDoneId(t.id,owner);
+      const nowDone=!d[key];
+      d[key]=nowDone;
+      (t.subs||[]).forEach(s=>{ d[_tlDoneId(s.id,owner)]=nowDone; });
+      wtlSaveDone(d);
+    }
+    renderWychBoard();
+  });
+})();
+
+function wychBoardResetAll(){
+  if(!confirm("Uncheck every task for Kalyan, Rohan and Esha on the WYCH board?")) return;
+  wtlSaveDone({});
+  renderWychBoard();
+  if(activeTab==="wych") switchTab("wych");
+  showToast("↺ All checked-off tasks cleared");
+}
+
+function wychBoardPrint(){
+  const tasks=wtlLoad();
+  const win=window.open("","_blank");
+  const now=new Date().toLocaleDateString('en-AU',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let bodyHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">';
+  WTL_OWNERS.forEach(owner=>{
+    const meta=WTL_OWNER_META[owner];
+    bodyHTML+=`<div style="border:2px solid #000;border-radius:6px;overflow:hidden;"><div style="font-size:15px;font-weight:800;background:#eee;border-bottom:2px solid #000;padding:8px 12px;">${meta.label}</div>`;
+    tasks.filter(t=>t.owners&&t.owners.includes(owner)).forEach(t=>{
+      bodyHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid #ccc;font-size:14px;font-weight:700;"><div style="width:16px;height:16px;border:2px solid #000;border-radius:3px;flex-shrink:0;"></div><span>${_esc(t.name)}</span></div>`;
+      (t.subs||[]).forEach(s=>{
+        bodyHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 12px 6px 30px;border-bottom:1px solid #ccc;font-size:13px;font-weight:600;"><div style="width:14px;height:14px;border:2px solid #000;border-radius:3px;flex-shrink:0;"></div><span>${_esc(s.name)}</span></div>`;
+      });
+    });
+    bodyHTML+='</div>';
+  });
+  bodyHTML+='</div>';
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WYCH</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Georgia,serif;padding:20px;color:#111;background:#fff;}@page{size:A4 landscape;margin:14mm 12mm;}h1{font-family:Georgia,serif;font-size:22px;margin-bottom:4px;}
+    .sub{color:#777;font-size:11px;margin-bottom:16px;}</style></head><body>
+    <h1>When You Come Home</h1><div class="sub">Printed ${now}</div>${bodyHTML}</body></html>`);
+  win.document.close();
+  win.print();
 }
 
 /* ============================================================
@@ -1967,14 +3403,14 @@ function trvPrintColor(sel){
 /* ── single smart print dispatcher — shows list selection popup ── */
 const _printFns = {
   ft:  { bw: ftPrint,  color: ftPrintColor,  getSections: ()=>ftSECTIONS,  getData: ()=>ftData  },
-  hom: { bw: homPrint, color: homPrintColor, getSections: ()=>homSECTIONS, getData: ()=>homData },
   pt:  { bw: ptPrint,  color: ptPrintColor,  getSections: ()=>ptSECTIONS,  getData: ()=>ptData  },
-  roh: { bw: rohPrint, color: rohPrintColor, getSections: ()=>rohSECTIONS, getData: ()=>rohData },
-  esh: { bw: eshPrint, color: eshPrintColor, getSections: ()=>eshSECTIONS, getData: ()=>eshData },
   kal: { bw: kalPrint, color: kalPrintColor, getSections: ()=>kalSECTIONS, getData: ()=>kalData },
   trv: { bw: trvPrint, color: trvPrintColor, getSections: ()=>trvSECTIONS, getData: ()=>trvData },
 };
-const _TAB_LABELS = {ft:'🏢 FT Job',hom:'🏠 Come Home',pt:'💼 PT Job',roh:'🎒 Rohan',esh:'🌸 Esha',kal:'🏠 Kalyan',trv:'✈️ Travel'};
+/* tasklib has no completion state to print, and ahtml prints via its own
+   single-button ahtmlPrint() (no section picker) — neither goes through
+   the smart print modal, so neither appears here. */
+const _TAB_LABELS = {ft:'🏢 FT Job',pt:'💼 PT Job',kal:'🏠 Kalyan',trv:'✈️ Travel',tasklib:'🗂️ Task Library',ahtml:'🏡 After you come Home'};
 
 let _printCurrentTab = null;
 
@@ -2055,39 +3491,32 @@ let _printCurrentTab = null;
 /* ============================================================
    FOOTER ADD/SEND dispatch maps — wired once tabs exist
    ============================================================ */
-const TAB_ADD  = {ft:ftAddList,  hom:homAddList,  pt:ptAddList,  roh:rohAddList,  esh:eshAddList,  kal:kalAddList,  trv:trvAddList};
-const TAB_SEND = {ft:ftSendToday,hom:homSendToday,pt:ptSendToday,roh:rohSendToday,esh:eshSendToday,kal:kalSendToday, trv:trvSendToday};
+const TAB_ADD  = {kal:kalAddList,  trv:trvAddList};
+const TAB_SEND = {kal:kalSendToday, trv:trvSendToday};
 const TAB_CFGS = {
-  get ft(){return ftCfg();}, get hom(){return homCfg();}, get pt(){return ptCfg();},
-  get roh(){return rohCfg();}, get esh(){return eshCfg();}, get kal(){return kalCfg();}, get trv(){return trvCfg();}
+  get kal(){return kalCfg();}, get trv(){return trvCfg();}
 };
+/* tasklib, ahtml, wtl, wych, job and joblib are intentionally absent from
+   TAB_ADD/TAB_SEND/TAB_CFGS — they use their own admin/display render
+   functions and panel-header controls instead of the shared footer +
+   SECTIONS-shaped renderChecklist engine. ftCfg/ptCfg and the old FT/PT
+   data functions are left in place (unused) so historical FT and PT
+   role-checklist data isn't touched, but nothing calls them anymore. */
 
 /* ============================================================
    MASTER UNCHECK ALL — clears every item across every tab
    ============================================================ */
 function masterUncheckAll(){
   if(!confirm("Uncheck everything across all tabs?")) return;
-  // FT
-  ftSECTIONS.forEach(s=>{
-    var ids=s.split?[s.split.left.id,s.split.right.id]:[s.id];
-    ids.forEach(function(id){if(ftData[id])ftData[id].forEach(function(t){t.done=false;});});
-  });
-  ftSaveData(ftData);
-  // Come Home
-  homSECTIONS.forEach(function(s){if(homData[s.id])homData[s.id].forEach(function(t){t.done=false;});});
-  homSaveData(homData);
-  // PT
-  ptSECTIONS.forEach(s=>{
-    var ids=s.split?[s.split.left.id,s.split.right.id]:[s.id];
-    ids.forEach(function(id){if(ptData[id])ptData[id].forEach(function(t){t.done=false;});});
-  });
-  ptSaveData(ptData);
-  // Rohan
-  rohSECTIONS.forEach(function(s){if(rohData[s.id])rohData[s.id].forEach(function(t){t.done=false;});});
-  rohSaveData(rohData);
-  // Esha
-  eshSECTIONS.forEach(function(s){if(eshData[s.id])eshData[s.id].forEach(function(t){t.done=false;});});
-  eshSaveData(eshData);
+  // Job Checklist — clears the shared doneMap for both FT and PT.
+  jtDone={};
+  jtSaveDone(jtDone);
+  // Task Library — clears the shared doneMap for all three owners (Kalyan,
+  // Rohan, Esha), fully resetting the After you come Home display tab.
+  tlDone={};
+  tlSaveDone(tlDone);
+  // Task Library (WYCH) — same reset, for the imported WYCH board tab.
+  wtlSaveDone({});
   // Kalyan
   kalSECTIONS.forEach(function(s){if(kalData[s.id])kalData[s.id].forEach(function(t){t.done=false;});});
   kalSaveData(kalData);
@@ -2095,13 +3524,13 @@ function masterUncheckAll(){
   trvSECTIONS.forEach(function(s){if(trvData[s.id])trvData[s.id].forEach(function(t){t.done=false;});});
   trvSaveData(trvData);
   // Re-render all tabs
-  renderChecklist(ftCfg());
-  renderChecklist(homCfg());
-  renderChecklist(ptCfg());
-  renderChecklist(rohCfg());
-  renderChecklist(eshCfg());
   renderChecklist(kalCfg());
   renderChecklist(trvCfg());
+  renderTasklib();
+  renderAhtml();
+  renderWtl();
+  renderWychBoard();
+  renderJobChecklist();
   showToast("↺ All checklists cleared across every tab");
 }
 window.masterUncheckAll = masterUncheckAll;
@@ -2120,15 +3549,13 @@ async function bootstrapChecklists(){
   _clBooted = true;
   _otCache = await OT.getAll();   // real Drive data (or the mirror, if there's no Drive)
   // Load every tab's sections/items from the now-authoritative cache.
-  ftSECTIONS=ftLoadSections(); ftData=ftLoadData();
-  flattenSplits(ftSECTIONS, ftData, ftSaveSections, ftSaveData);
-  homSECTIONS=homLoadSections(); homData=homLoadData();
-  ptSECTIONS=ptLoadSections(); ptData=ptLoadData();
-  if(migrateLunchboxSplit(ptSECTIONS, ptData, "lunchbox","lunchbox_extras","lunchbox_snacks","Hot/Extras","Snacks & Veg","🍳","🥕",2)){ ptSaveSections(); ptSaveData(ptData); }
-  rohSECTIONS=rohLoadSections(); rohData=rohLoadData();
-  eshSECTIONS=eshLoadSections(); eshData=eshLoadData();
   kalSECTIONS=kalLoadSections(); kalData=kalLoadData();
   trvSECTIONS=trvLoadSections(); trvData=trvLoadData();
+  tlSeedOnce();
+  tlTasks=tlLoad(); tlDone=tlLoadDone();
+  wtlSeedOnce();
+  jtSeedOnce();
+  jtCats=jtLoad(); jtDone=jtLoadDone();
   // Apply dark mode, accent, font scale from file
   const savedDark = _cget(DARK_KEY);
   darkMode = savedDark !== null ? savedDark === "1" : sysDark();
@@ -2136,15 +3563,21 @@ async function bootstrapChecklists(){
   applySettingsAccent();
   applySettingsFontScale();
   // Re-read active tab from file
-  activeTab = (_cget("CL_ACTIVE_TAB")||"ft");
+  activeTab = (_cget("CL_ACTIVE_TAB")||"job");
   // Render all tabs then switch
-  renderChecklist(ftCfg());
-  renderChecklist(homCfg());
-  renderChecklist(ptCfg());
-  renderChecklist(rohCfg());
-  renderChecklist(eshCfg());
   renderChecklist(kalCfg());
   renderChecklist(trvCfg());
+  renderTasklib();
+  renderAhtml();
+  renderWtl();
+  renderWychBoard();
+  renderJobLib();
+  renderJobChecklist();
+  applyTabCustomizations();
+  const _deletedAtBoot=_tabDeletedList();
+  if(_deletedAtBoot.includes(activeTab)){
+    activeTab=Object.keys(TAB_META).find(id=>!_deletedAtBoot.includes(id))||activeTab;
+  }
   _hideDriveWait();
   switchTab(activeTab);
   setTimeout(function(){ _celebrationsArmed = true; }, 0); /* arm after initial paint */
@@ -2170,17 +3603,19 @@ OT.onReady(async () => {
       if(!_clBooted){ await bootstrapChecklists(); return; }
       // Later hand-over (e.g. a re-sync) — re-hydrate and repaint the active tab.
       _otCache = await OT.getAll();
-      ftSECTIONS=ftLoadSections(); ftData=ftLoadData();
-      flattenSplits(ftSECTIONS, ftData, ftSaveSections, ftSaveData);
-      homSECTIONS=homLoadSections(); homData=homLoadData();
-      ptSECTIONS=ptLoadSections(); ptData=ptLoadData();
-      rohSECTIONS=rohLoadSections(); rohData=rohLoadData();
-      eshSECTIONS=eshLoadSections(); eshData=eshLoadData();
       kalSECTIONS=kalLoadSections(); kalData=kalLoadData();
       trvSECTIONS=trvLoadSections(); trvData=trvLoadData();
-      renderChecklist(ftCfg()); renderChecklist(homCfg()); renderChecklist(ptCfg());
-      renderChecklist(rohCfg()); renderChecklist(eshCfg()); renderChecklist(kalCfg());
-      renderChecklist(trvCfg());
+      tlTasks=tlLoad(); tlDone=tlLoadDone();
+      jtCats=jtLoad(); jtDone=jtLoadDone();
+      renderChecklist(kalCfg()); renderChecklist(trvCfg());
+      renderTasklib(); renderAhtml();
+      renderWtl(); renderWychBoard();
+      renderJobLib(); renderJobChecklist();
+      applyTabCustomizations();
+      const _deletedOnSync=_tabDeletedList();
+      if(_deletedOnSync.includes(activeTab)){
+        activeTab=Object.keys(TAB_META).find(id=>!_deletedOnSync.includes(id))||activeTab;
+      }
       switchTab(activeTab);
     });
   } else {

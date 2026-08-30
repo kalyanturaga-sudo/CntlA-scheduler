@@ -487,6 +487,10 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;min-height:90px;}
 .tb-box-solo{max-width:520px;}
 .tb-box-reserved{background:transparent;border-style:dashed;}
+.tb-box-glance{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+.tb-box-glance .tb-box-title{margin-bottom:2px;}
+.tb-glance-stat{font-family:'DM Serif Display',serif;font-size:28px;color:var(--accent);margin:4px 0;}
+.tb-glance-sub{font-size:12px;color:var(--text3);}
 .tb-box-title{font-family:'DM Serif Display',serif;font-size:14px;color:var(--accent);margin-bottom:10px;}
 .tb-box-title-sub{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;color:var(--text3);margin-left:4px;}
 .tb-box-body{display:flex;flex-direction:column;}
@@ -2312,11 +2316,43 @@ function _wireTBChecks(containerId, renderFn){
   });
 }
 
+/* ── shared stats: total/done across the whole board, used by both the
+   top progress bar and the "This week at a glance" tile ── */
+function _tbComputeStats(){
+  const tasks=loadTaskBank();
+  const dayTasks=tasks.filter(t=>t.bucket==="day");
+  const done=loadTBDone(TB_DONE_WK_KEY);
+  const doneF=loadTBDone(TB_DONE_F1_KEY);
+  const doneM=loadTBDone(TB_DONE_MO_KEY);
+  let total=0, doneCount=0, whTotal=0, whDone=0;
+  const tally=(id,d,inWh)=>{ total++; if(inWh) whTotal++; if(d[id]){ doneCount++; if(inWh) whDone++; } };
+  _weeklyBoxOrder().forEach(day=>{
+    dayTasks.filter(t=>t.days&&t.days.includes(day)).forEach(t=>{
+      tally(_tbDoneId(t.id,day),done,false);
+      (t.subs||[]).forEach(s=>tally(_tbDoneId(s.id,day),done,false));
+    });
+  });
+  _tbWheneverList(tasks).forEach(t=>{
+    tally(_tbDoneId(t.id,"Whenever"),done,true);
+    (t.subs||[]).forEach(s=>tally(_tbDoneId(s.id,"Whenever"),done,true));
+  });
+  tasks.filter(t=>t.bucket==="f1"||t.bucket==="f2").forEach(t=>{
+    tally(t.id,doneF,false);
+    (t.subs||[]).forEach(s=>tally(s.id,doneF,false));
+  });
+  tasks.filter(t=>t.bucket==="month").forEach(t=>{
+    tally(t.id,doneM,false);
+    (t.subs||[]).forEach(s=>tally(s.id,doneM,false));
+  });
+  const pct= total? Math.round(doneCount/total*100):0;
+  return {total, doneCount, pct, whTotal, whOpen: whTotal-whDone};
+}
+
 /* ── Weekly: 3×4 grid (12 cells, 11 used). Row1-3 col1: today-leads 7-day
    rotation (unchanged). Row3 col2/3: F1 / F2 (fixed). Row4 col1: Monthly
-   (fixed). Row4 col2: reserved/blank. Row4 col3: Whenever (fixed).
-   Whenever is now an independent checkbox (t.whenever) — a task can be
-   scheduled on a day AND flagged Whenever at the same time. A task with
+   (fixed). Row4 col2: "This week at a glance" stats. Row4 col3: Whenever
+   (fixed). Whenever is an independent checkbox (t.whenever) — a task can
+   be scheduled on a day AND flagged Whenever at the same time. A task with
    bucket "day" and no days picked still falls into Whenever by default. ── */
 function _tbWheneverList(tasks){
   return tasks.filter(t=> t.whenever || (t.bucket==="day" && (!t.days||!t.days.length)));
@@ -2330,6 +2366,7 @@ function renderTBWeekly(){
   const days=_weeklyBoxOrder();
   const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2"), mo=tasks.filter(t=>t.bucket==="month");
   const wh=_tbWheneverList(tasks);
+  const stats=_tbComputeStats();
   let html='<div class="tb-grid">';
   days.forEach(day=>{
     const items=dayTasks.filter(t=>t.days&&t.days.includes(day));
@@ -2345,7 +2382,11 @@ function renderTBWeekly(){
   html+='<div class="tb-box"><div class="tb-box-title">Monthly</div><div class="tb-box-body">';
   html += mo.length ? mo.map(t=>_tbRenderCheckItem(t,null,doneM,TB_DONE_MO_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
   html+='</div></div>';
-  html+='<div class="tb-box tb-box-reserved"></div>';
+  html+='<div class="tb-box tb-box-glance"><div class="tb-box-title">This week</div>'
+      +`<div class="tb-glance-stat">${stats.pct}%</div>`
+      +`<div class="tb-glance-sub">${stats.doneCount} of ${stats.total} done</div>`
+      +`<div class="tb-glance-sub">${stats.whOpen} open in Whenever</div>`
+      +'</div>';
   html+='<div class="tb-box"><div class="tb-box-title">Whenever</div><div class="tb-box-body">';
   html += wh.length ? wh.map(t=>_tbRenderCheckItem(t,"Whenever",done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
   html+='</div></div>';
@@ -2380,26 +2421,11 @@ function renderTBMonth(){
 
 /* ── shared progress bar for the 3 display tabs ── */
 function updateTBProgress(){
-  let flags=[];
-  if(activeMode==="weekly"){
-    const tasks=loadTaskBank();
-    const dayTasks=tasks.filter(t=>t.bucket==="day");
-    const done=loadTBDone(TB_DONE_WK_KEY);
-    const doneF=loadTBDone(TB_DONE_F1_KEY);
-    const doneM=loadTBDone(TB_DONE_MO_KEY);
-    _weeklyBoxOrder().forEach(day=>{
-      const list=dayTasks.filter(t=>t.days&&t.days.includes(day));
-      list.forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,day)]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,day)])); });
-    });
-    _tbWheneverList(tasks).forEach(t=>{ flags.push(!!done[_tbDoneId(t.id,"Whenever")]); (t.subs||[]).forEach(s=>flags.push(!!done[_tbDoneId(s.id,"Whenever")])); });
-    tasks.filter(t=>t.bucket==="f1"||t.bucket==="f2").forEach(t=>{ flags.push(!!doneF[t.id]); (t.subs||[]).forEach(s=>flags.push(!!doneF[s.id])); });
-    tasks.filter(t=>t.bucket==="month").forEach(t=>{ flags.push(!!doneM[t.id]); (t.subs||[]).forEach(s=>flags.push(!!doneM[s.id])); });
-  } else return;
-  const total=flags.length, doneCount=flags.filter(Boolean).length;
-  const pct= total? Math.round(doneCount/total*100):0;
+  if(activeMode!=="weekly") return;
+  const s=_tbComputeStats();
   const fill=document.getElementById("overallFill"), pctEl=document.getElementById("overallPct");
-  if(fill) fill.style.width=pct+"%";
-  if(pctEl) pctEl.textContent=pct+"%";
+  if(fill) fill.style.width=s.pct+"%";
+  if(pctEl) pctEl.textContent=s.pct+"%";
 }
 
 /* ── print: builds the same {routines,data,title} shape printRoutinesBW/Color
@@ -2475,7 +2501,7 @@ function _tbCircleRow(t){
     const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
     h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
   });
-  h+=`<button class="tb-circle${t.whenever?" on":""}" data-act="whenever" title="Whenever — independent of day/F1/F2/Monthly, can be checked alongside anything else">?</button>`;
+  h+=`<button class="tb-circle tb-circle-wide${t.whenever?" on":""}" data-act="whenever" title="Whenever — independent of day/F1/F2/Monthly, can be checked alongside anything else">Wh</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f1"?" on":""}" data-act="bucket" data-bucket="f1" title="Fortnightly — List 1">F1</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f2"?" on":""}" data-act="bucket" data-bucket="f2" title="Fortnightly — List 2">F2</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="month"?" on":""}" data-act="bucket" data-bucket="month" title="Monthly">Mo</button>`;
