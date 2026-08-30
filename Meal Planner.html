@@ -364,6 +364,27 @@ body.nav-is-collapsed.has-vrail .panels { left: var(--vrail-width) !important; }
   .vtab { font-size: 12px; padding: 7px 8px; }
 }
 @media print { .vrail { display: none !important; } }
+
+/* Manage tabs (meal-planner sub-pages) */
+.btn-manage-tabs{font-size:11px;padding:5px 10px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-manage-tabs:hover{color:var(--text);background:var(--accent-soft);}
+.manage-tabs-pop{position:fixed;z-index:9998;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-hover);padding:12px;width:280px;font-family:'DM Sans',sans-serif;max-height:70vh;overflow-y:auto;}
+.manage-tabs-pop .lsp-h{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:11px;}
+.manage-tabs-pop .lsp-h:first-child{margin-top:0;}
+.mtab-row{display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid var(--border);}
+.mtab-row:last-child{border-bottom:none;}
+.mtab-name{flex:1;font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mtab-rename,.mtab-del{font-size:11px;padding:4px 7px;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;flex-shrink:0;}
+.mtab-rename{border:1px solid var(--border);background:var(--surface2);color:var(--text2);}
+.mtab-rename:hover{color:var(--text);background:var(--accent-soft);}
+.mtab-del{border:1px solid rgba(232,92,92,0.3);background:rgba(232,92,92,0.08);color:#c05050;}
+.mtab-del:hover{background:#e85c5c;color:#fff;}
+.mtab-del:disabled,.mtab-hide-cb:disabled{opacity:.3;cursor:default;}
+.mtab-deleted-note{font-size:11px;color:var(--text3);flex-shrink:0;}
+.mtab-protected-note{font-size:10px;color:var(--text3);flex-shrink:0;font-style:italic;}
+.mtab-hide-toggle{display:flex;align-items:center;flex-shrink:0;cursor:pointer;}
+.mtab-hide-cb{width:14px;height:14px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;}
+.mtab-row-hidden .mtab-name{opacity:.5;font-style:italic;}
 </style>
 </head>
 <body>
@@ -390,7 +411,7 @@ body.nav-is-collapsed.has-vrail .panels { left: var(--vrail-width) !important; }
 <div class="topbar">
   <div class="topbar-logo">✦ Meal Planner</div>
   <div class="tab-strip" id="tabStrip"></div>
-  <div class="topbar-right"></div>
+  <div class="topbar-right"><button class="btn-manage-tabs" id="manageTabsBtn" title="Rename, hide, or delete tabs">⚙️ Manage tabs</button></div>
 </div>
 
 <!-- ===== VERTICAL SUB-TAB RAIL (meal planner) ===== -->
@@ -839,6 +860,7 @@ _onAuth(async () => {
   const ACTIVE_KEY    = "WEEKLY_PLANNERS_TAB_ACTIVE";
   const SUB_ORDER_KEY = "WEEKLY_PLANNERS_SUB_ORDER_V2";
   const LABELS_KEY    = "WEEKLY_PLANNERS_TAB_LABELS";
+  const TAB_DELETED_KEY = "WEEKLY_PLANNERS_TAB_DELETED";
 
   const DEFAULT_SUBS = [
     { id: "meal",   label: "📅 Planner" },
@@ -851,14 +873,29 @@ _onAuth(async () => {
   ];
   const ALL_SUB_IDS = DEFAULT_SUBS.map(t => t.id);
 
+  /* Storage this tab's data lives in, for the "Delete permanently" backup.
+     "simple" keys are standalone; "master" fields live inside MASTER_KEY
+     (read/written via window.MP.loadMaster/saveMaster, shared with fridge,
+     pantry, veg, rec, brek & snk's own scripts). "meal" (Planner) is never
+     deletable or hideable — it's the page's core view. */
+  const TAB_DATA_KEYS = {
+    fridge: { simple: ["MEALPLAN_FRIDGE_V1"] },
+    pantry: { simple: ["MEALPLAN_PANTRY_V1"], master: ["pantry"] },
+    veg:    { master: ["veggies", "veggieGroups"] },
+    rec:    { master: ["recipes", "recCategories"] },
+    brek:   { master: ["breakfast"] },
+    snk:    { master: ["snacks"] }
+  };
+
   let customLabels = {};
   let subOrder     = ALL_SUB_IDS.slice();
+  let deletedIds   = [];
   let activeId     = "meal";   // active PANEL id
 
   const subLabel = id => customLabels[id] || (DEFAULT_SUBS.find(t => t.id === id) || {}).label || id;
 
   function activate(id) {
-    if (ALL_SUB_IDS.indexOf(id) < 0) id = "meal";  /* also coerces legacy "exer" value */
+    if (ALL_SUB_IDS.indexOf(id) < 0 || subOrder.indexOf(id) < 0) id = "meal";
     activeId = id;
     window._activeWeeklyTab = id;
     _cset(ACTIVE_KEY, id);
@@ -880,12 +917,23 @@ _onAuth(async () => {
     }
   }
 
+  /* Shared hide/show toggle. subOrder membership IS visibility here —
+     removing an id hides it, adding it back (at the end) shows it again. */
+  function _setHidden(id, hide) {
+    if (id === "meal") return; // protected, never hidden
+    if (hide) {
+      subOrder = subOrder.filter(x => x !== id);
+    } else if (subOrder.indexOf(id) < 0 && deletedIds.indexOf(id) < 0) {
+      subOrder.push(id);
+    }
+    _cset(SUB_ORDER_KEY, JSON.stringify(subOrder));
+    if (hide && activeId === id) activate(subOrder[0] || "meal"); else render();
+  }
+
   function hideSub(id) {
     if (id === "meal") { alert("The Planner page can't be hidden."); return; }
-    if (!confirm('Hide "' + subLabel(id) + '"? (Data is kept — reset the tab order to bring it back.)')) return;
-    subOrder = subOrder.filter(x => x !== id);
-    _cset(SUB_ORDER_KEY, JSON.stringify(subOrder));
-    if (activeId === id) activate(subOrder[0] || "meal"); else render();
+    if (!confirm('Hide "' + subLabel(id) + '"? (Data is kept — you can bring it back from Manage tabs.)')) return;
+    _setHidden(id, true);
   }
 
   function render() {
@@ -947,10 +995,129 @@ _onAuth(async () => {
     });
   }
 
+  /* ============================================================
+     MANAGE TABS — popover with rename, hide-via-checkbox, and
+     permanent delete (with a JSON backup downloaded first). The
+     Planner ("meal") tab is always protected: it can't be hidden
+     or deleted, so at least one tab is always visible.
+     ============================================================ */
+  function _esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function _downloadJSON(filename,obj){
+    const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  function showTabToast(msg){
+    const el=document.createElement("div");el.textContent=msg;
+    Object.assign(el.style,{position:"fixed",bottom:"70px",left:"50%",transform:"translateX(-50%)",
+      background:"#1a1714",color:"#fff",padding:"8px 18px",borderRadius:"40px",
+      fontSize:"12px",zIndex:"99999",opacity:"1",transition:"opacity 0.4s",
+      fontFamily:"'DM Sans',sans-serif",pointerEvents:"none"});
+    document.body.appendChild(el);
+    setTimeout(()=>{el.style.opacity="0";setTimeout(()=>el.remove(),400);},1600);
+  }
+
+  function tabToggleHidden(id, hide){
+    if (id === "meal") { showTabToast("The Planner page can't be hidden"); _renderManageTabs(); return; }
+    _setHidden(id, hide);
+    _renderManageTabs();
+    showTabToast(hide ? `Hidden "${subLabel(id)}"` : `Shown "${subLabel(id)}"`);
+  }
+
+  function tabDeleteWithBackup(id){
+    if (id === "meal") { showTabToast("The Planner page can't be deleted"); return; }
+    const label = subLabel(id);
+    if (!confirm(`Delete "${label}" permanently?\n\nA backup file will download first — that file is the only way to get this tab's data back. This cannot be undone from within OneTrack.`)) return;
+
+    const cfg = TAB_DATA_KEYS[id] || {};
+    const backup = { tabId:id, label, exportedAt:new Date().toISOString(), data:{} };
+    (cfg.simple||[]).forEach(k => { backup.data[k] = _cget(k); });
+    let m = null;
+    if ((cfg.master||[]).length && window.MP){
+      m = MP.loadMaster();
+      (cfg.master||[]).forEach(f => { backup.data["master."+f] = m ? m[f] : undefined; });
+    }
+    _downloadJSON(`onetrack-backup-${id}-${Date.now()}.json`, backup);
+
+    (cfg.simple||[]).forEach(k => { _cset(k, JSON.stringify([])); });
+    if (m){
+      (cfg.master||[]).forEach(f => { m[f] = []; });
+      MP.saveMaster(m);
+    }
+
+    if (deletedIds.indexOf(id) < 0){ deletedIds.push(id); _cset(TAB_DELETED_KEY, JSON.stringify(deletedIds)); }
+    subOrder = subOrder.filter(x => x !== id);
+    _cset(SUB_ORDER_KEY, JSON.stringify(subOrder));
+    if (activeId === id) activate(subOrder[0] || "meal"); else render();
+    _renderManageTabs();
+    showTabToast(`✓ "${label}" deleted — backup downloaded`);
+  }
+
+  function _closeManageTabs(){
+    document.querySelectorAll(".manage-tabs-pop").forEach(p=>p.remove());
+    document.removeEventListener("pointerdown",_mtabOutside,true);
+  }
+  function _mtabOutside(e){
+    if(!e.target.closest(".manage-tabs-pop") && !e.target.closest("#manageTabsBtn")) _closeManageTabs();
+  }
+  function _renderManageTabs(){
+    const pop=document.querySelector(".manage-tabs-pop"); if(!pop) return;
+    const visible = ALL_SUB_IDS.filter(id => deletedIds.indexOf(id) < 0);
+    let html='<div class="lsp-h">Manage tabs</div>';
+    html+=visible.map(id=>{
+      const isProtected = id === "meal";
+      const isHidden = subOrder.indexOf(id) < 0;
+      const cb = isProtected
+        ? `<input type="checkbox" class="mtab-hide-cb" disabled>`
+        : `<input type="checkbox" class="mtab-hide-cb" data-id="${id}" ${isHidden?"checked":""}>`;
+      const delBtn = isProtected
+        ? `<span class="mtab-protected-note">always on</span>`
+        : `<button class="mtab-del" data-id="${id}" title="Delete permanently">🗑️ Delete</button>`;
+      return `<div class="mtab-row${isHidden?" mtab-row-hidden":""}" data-id="${id}"><label class="mtab-hide-toggle" title="${isProtected?"Can't be hidden":"Hide tab"}">${cb}</label><span class="mtab-name">${_esc(subLabel(id))}</span><button class="mtab-rename" data-id="${id}" title="Rename">✏️ Rename</button>${delBtn}</div>`;
+    }).join("");
+    if (deletedIds.length){
+      html+='<div class="lsp-h" style="margin-top:11px;">Deleted</div>';
+      html+=deletedIds.map(id=>`<div class="mtab-row"><span class="mtab-name" style="opacity:.55;">${_esc(subLabel(id))}</span><span class="mtab-deleted-note">gone — see backup file</span></div>`).join("");
+    }
+    pop.innerHTML=html;
+    pop.querySelectorAll(".mtab-hide-cb:not(:disabled)").forEach(cb=>cb.onchange=()=>tabToggleHidden(cb.dataset.id, cb.checked));
+    pop.querySelectorAll(".mtab-rename").forEach(b=>b.onclick=()=>renameTab(b.dataset.id, subLabel(b.dataset.id), () => { render(); _renderManageTabs(); }));
+    pop.querySelectorAll(".mtab-del").forEach(b=>b.onclick=()=>tabDeleteWithBackup(b.dataset.id));
+  }
+  function _openManageTabs(){
+    _closeManageTabs();
+    const btn=document.getElementById("manageTabsBtn"); if(!btn) return;
+    const pop=document.createElement("div");
+    pop.className="manage-tabs-pop";
+    document.body.appendChild(pop);
+    _renderManageTabs();
+    const r=btn.getBoundingClientRect();
+    let left=r.right-pop.offsetWidth, top=r.bottom+6;
+    left=Math.max(8,Math.min(left,window.innerWidth-pop.offsetWidth-8));
+    if(top+pop.offsetHeight>window.innerHeight-8) top=Math.max(8,r.top-pop.offsetHeight-6);
+    pop.style.left=left+"px"; pop.style.top=top+"px";
+    setTimeout(()=>document.addEventListener("pointerdown",_mtabOutside,true),0);
+  }
+  (function wireManageTabsBtn(){
+    const btn=document.getElementById("manageTabsBtn");
+    if(!btn) return;
+    btn.addEventListener("click",e=>{
+      e.stopPropagation();
+      if(document.querySelector(".manage-tabs-pop")) _closeManageTabs();
+      else _openManageTabs();
+    });
+  })();
+
   _onAuth(async () => {
     if (!Object.keys(_otCache).length) _otCache = await OT.getAll();
 
     try { customLabels = JSON.parse(_cget(LABELS_KEY) || "{}"); } catch (e) { customLabels = {}; }
+    try {
+      const d = JSON.parse(_cget(TAB_DELETED_KEY) || "[]");
+      deletedIds = Array.isArray(d) ? d.filter(id => ALL_SUB_IDS.indexOf(id) >= 0 && id !== "meal") : [];
+    } catch (e) { deletedIds = []; }
 
     try {
       const saved = JSON.parse(_cget(SUB_ORDER_KEY));
@@ -959,8 +1126,9 @@ _onAuth(async () => {
       }
     } catch (e) {}
     if (!subOrder.length) subOrder = ALL_SUB_IDS.slice();
-    /* make sure any brand-new sub-page ids show up */
-    ALL_SUB_IDS.forEach(id => { if (subOrder.indexOf(id) < 0) subOrder.push(id); });
+    subOrder = subOrder.filter(id => deletedIds.indexOf(id) < 0);   // never show a deleted tab
+    /* make sure any brand-new sub-page ids show up (but not deleted ones) */
+    ALL_SUB_IDS.forEach(id => { if (subOrder.indexOf(id) < 0 && deletedIds.indexOf(id) < 0) subOrder.push(id); });
 
     activate(_cget(ACTIVE_KEY) || "meal");
   });
