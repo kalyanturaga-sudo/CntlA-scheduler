@@ -2954,6 +2954,10 @@ async function bootstrapChecklists(){
   applySettingsFontScale();
   // Re-read active tab from file
   activeTab = (_cget("CL_ACTIVE_TAB")||"job");
+  // Guard against a stale/obsolete tab id (e.g. left over from a removed
+  // tab like the old Travel/WYCH pair) — without this, switchTab() silently
+  // matches nothing and every panel stays inactive, blanking the whole page.
+  if(!TAB_META[activeTab]) activeTab="job";
   // Render all tabs then switch
   renderChecklist(kalCfg());
   renderTasklib();
@@ -2962,8 +2966,8 @@ async function bootstrapChecklists(){
   renderJobChecklist();
   applyTabCustomizations();
   const _deletedAtBoot=_tabDeletedList(), _hiddenAtBoot=_tabHiddenList();
-  if(_deletedAtBoot.includes(activeTab) || _hiddenAtBoot.includes(activeTab)){
-    activeTab=Object.keys(TAB_META).find(id=>!_deletedAtBoot.includes(id) && !_hiddenAtBoot.includes(id))||activeTab;
+  if(!TAB_META[activeTab] || _deletedAtBoot.includes(activeTab) || _hiddenAtBoot.includes(activeTab)){
+    activeTab=Object.keys(TAB_META).find(id=>!_deletedAtBoot.includes(id) && !_hiddenAtBoot.includes(id))||"job";
   }
   _hideDriveWait();
   switchTab(activeTab);
@@ -2998,8 +3002,8 @@ OT.onReady(async () => {
       renderJobLib(); renderJobChecklist();
       applyTabCustomizations();
       const _deletedOnSync=_tabDeletedList(), _hiddenOnSync=_tabHiddenList();
-      if(_deletedOnSync.includes(activeTab) || _hiddenOnSync.includes(activeTab)){
-        activeTab=Object.keys(TAB_META).find(id=>!_deletedOnSync.includes(id) && !_hiddenOnSync.includes(id))||activeTab;
+      if(!TAB_META[activeTab] || _deletedOnSync.includes(activeTab) || _hiddenOnSync.includes(activeTab)){
+        activeTab=Object.keys(TAB_META).find(id=>!_deletedOnSync.includes(id) && !_hiddenOnSync.includes(id))||"job";
       }
       switchTab(activeTab);
     });
