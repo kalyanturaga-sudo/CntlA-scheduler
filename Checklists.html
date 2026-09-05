@@ -21,8 +21,7 @@
   --roh-accent:#4a90d9; --roh-soft:rgba(74,144,217,0.12);
   --esh-accent:#b06aa0; --esh-soft:rgba(176,106,160,0.12);
   --kal-accent:#2a9d6a; --kal-soft:rgba(42,157,106,0.12);
-  --trv-accent:#1a7fbf;
-  --rtn-accent: #c17b3f; --rtn-soft: rgba(193,123,63,0.12); --trv-soft:rgba(26,127,191,0.12);
+  --rtn-accent: #c17b3f; --rtn-soft: rgba(193,123,63,0.12);
   --hom-accent:#e07040;  --hom-soft:rgba(224,112,64,0.12);
   --tasklib-accent:#6a6a8a; --tasklib-soft:rgba(106,106,138,0.12);
   --job-accent:#2a8f8f; --job-soft:rgba(42,143,143,0.12);
@@ -79,7 +78,6 @@
   --pt-accent:#d4935a;  --pt-soft:rgba(212,147,90,0.14);
   --roh-accent:#6aaee8; --roh-soft:rgba(106,174,232,0.14);
   --esh-accent:#cc88bc; --esh-soft:rgba(204,136,188,0.14);
-  --trv-accent:#4da8e0; --trv-soft:rgba(77,168,224,0.14);
   --hom-accent:#f08850;  --hom-soft:rgba(240,136,80,0.14);
   --tasklib-accent:#9a9ac0; --tasklib-soft:rgba(154,154,192,0.14);
   --job-accent:#4cc9c9; --job-soft:rgba(76,201,201,0.14);
@@ -126,11 +124,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tab-btn.active-job{color:var(--job-accent);border-bottom-color:var(--job-accent);}
 .tab-btn.active-joblib{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
 .tab-btn.active-kal{color:var(--kal-accent);border-bottom-color:var(--kal-accent);}
-.tab-btn.active-trv{color:var(--trv-accent);border-bottom-color:var(--trv-accent);}
 .tab-btn.active-tasklib{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
 .tab-btn.active-ahtml{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
-.tab-btn.active-wtl{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
-.tab-btn.active-wych{color:var(--tasklib-accent);border-bottom-color:var(--tasklib-accent);}
 .tab-btn.active-rtn{color:var(--rtn-accent);border-bottom-color:var(--rtn-accent);}
 .tab-btn.tab-dragging{opacity:.3;cursor:grabbing;}
 .tab-btn.tab-drop-before::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--pt-accent);border-radius:2px;}
@@ -434,14 +429,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .tb-empty{font-size:12px;color:var(--text3);font-style:italic;padding:14px;}
 
 /* ====== WYCH-imported: WYCH board (display, 3 columns) ====== */
-.wych-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;}
-@media(max-width:900px){.wych-cols{grid-template-columns:1fr;}}
-.wych-col{border-radius:var(--radius-md);border:1px solid var(--border);box-shadow:var(--shadow);padding:16px;background:var(--surface);}
-.wych-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.wych-col-title{font-family:'DM Serif Display',serif;font-size:16px;}
-.wych-col-count{font-size:11px;font-weight:600;color:var(--text3);}
-.wych-col-progress{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:14px;}
-.wych-col-progress-fill{height:100%;border-radius:3px;transition:width .4s cubic-bezier(.4,0,.2,1);}
 .tb-item{display:flex;align-items:center;padding:5px 0;cursor:pointer;user-select:none;}
 .tb-item.tb-sub{padding-left:22px;}
 .tb-checkbox{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:1.5px solid var(--border);border-radius:4px;flex-shrink:0;margin-right:9px;font-size:11px;color:#fff;background:var(--surface);}
@@ -451,27 +438,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 
 /* Travel section colours */
 :root{
-  --trv-carry-from:#f8f4ee; --trv-carry-to:#faf7f2;
-  --trv-todo-from:#f8f4ee;  --trv-todo-to:#faf7f2;
-  --trv-c-from:#f8f4ee;     --trv-c-to:#faf7f2;
-  --trv-d-from:#f8f4ee;     --trv-d-to:#faf7f2;
-  --trv-e-from:#f8f4ee;     --trv-e-to:#faf7f2;
-  --trv-f-from:#f8f4ee;     --trv-f-to:#faf7f2;
 }
 [data-theme="dark"]{
-  --trv-carry-from:#201c16; --trv-carry-to:#1c1912;
-  --trv-todo-from:#201c16;  --trv-todo-to:#1c1912;
-  --trv-c-from:#201c16;     --trv-c-to:#1c1912;
-  --trv-d-from:#201c16;     --trv-d-to:#1c1912;
-  --trv-e-from:#201c16;     --trv-e-to:#1c1912;
-  --trv-f-from:#201c16;     --trv-f-to:#1c1912;
 }
-.trv-slot-carry{background:linear-gradient(160deg,var(--trv-carry-from),var(--trv-carry-to) 80%);}
-.trv-slot-todo {background:linear-gradient(160deg,var(--trv-todo-from), var(--trv-todo-to)  80%);}
-.trv-slot-c    {background:linear-gradient(160deg,var(--trv-c-from),    var(--trv-c-to)     80%);}
-.trv-slot-d    {background:linear-gradient(160deg,var(--trv-d-from),    var(--trv-d-to)     80%);}
-.trv-slot-e    {background:linear-gradient(160deg,var(--trv-e-from),    var(--trv-e-to)     80%);}
-.trv-slot-f    {background:linear-gradient(160deg,var(--trv-f-from),    var(--trv-f-to)     80%);}
 
 .kal-slot-cleaning{background:linear-gradient(160deg,var(--kal-cleaning-from),var(--kal-cleaning-to) 80%);}
 .kal-slot-outdoor{background:linear-gradient(160deg,var(--kal-outdoor-from),var(--kal-outdoor-to) 80%);}
@@ -658,14 +627,11 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <!-- TAB BAR -->
   <div class="tab-bar">
     <div class="tab-group" id="tabGroup">
-      <button class="tab-btn active-job"  id="tabJob"    draggable="true" data-tab="job"    >🧳 Job Checklist</button>
-      <button class="tab-btn"            id="tabJoblib" draggable="true" data-tab="joblib" >🗂️ Task (Jobs) Library</button>
-      <button class="tab-btn"            id="tabTasklib" draggable="true" data-tab="tasklib">🗂️ Task Library</button>
-      <button class="tab-btn"            id="tabAhtml"  draggable="true" data-tab="ahtml"  >🏡 After you come Home</button>
-      <button class="tab-btn"            id="tabWtl"    draggable="true" data-tab="wtl"    >🗂️ Task Library</button>
-      <button class="tab-btn"            id="tabWych"   draggable="true" data-tab="wych"   >🏡 WYCH</button>
+      <button class="tab-btn active-job"  id="tabJob"    draggable="true" data-tab="job"    >PT/FT</button>
+      <button class="tab-btn"            id="tabJoblib" draggable="true" data-tab="joblib" >PT/FT-Lib</button>
+      <button class="tab-btn"            id="tabTasklib" draggable="true" data-tab="tasklib">Home-Lib</button>
+      <button class="tab-btn"            id="tabAhtml"  draggable="true" data-tab="ahtml"  >Home</button>
       <button class="tab-btn"            id="tabKal"    draggable="true" data-tab="kal"    >🏠 Kalyan</button>
-      <button class="tab-btn"            id="tabTrv" draggable="true" data-tab="trv">✈️ Travel</button>
     </div>
     <div class="tab-right">
       <button class="btn-manage-tabs" id="manageTabsBtn" title="Rename or delete tabs">⚙️ Manage tabs</button>
@@ -729,32 +695,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <div class="ahtml-cols" id="ahtmlCols"></div>
   </div>
 
-  <!-- ========== TASK LIBRARY (WYCH) PANEL — imported as-is from WYCH.html, same storage keys ========== -->
-  <div class="panel" id="panelWtl">
-    <div class="panel-header">
-      <div>
-        <h2 style="color:var(--tasklib-accent)">🗂️ Task Library</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Imported from WYCH.html — shared tasks, tagged by owner (K/R/E)</div>
-      </div>
-    </div>
-    <div id="wtlBankContent"></div>
-  </div>
-
-  <!-- ========== WYCH PANEL — imported as-is from WYCH.html, same storage keys ========== -->
-  <div class="panel" id="panelWych">
-    <div class="panel-header">
-      <div>
-        <h2 style="color:var(--tasklib-accent)">🏡 WYCH</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">Imported from WYCH.html — filtered live from the Task Library above</div>
-      </div>
-      <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="wychBoardResetAll()" title="Uncheck everyone's tasks">↺ Reset all</button>
-        <button class="btn btn-ghost" onclick="wychBoardPrint()" title="Print all three columns">🖨 Print</button>
-      </div>
-    </div>
-    <div class="wych-cols" id="wychCols"></div>
-  </div>
-
   <!-- ========== KALYAN PANEL ========== -->
   <div class="panel" id="panelKal">
     <div class="panel-header">
@@ -774,24 +714,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     <div class="grid" id="kalGrid"></div>
   </div>
 
-  <!-- ========== TRAVEL PANEL ========== -->
-  <div class="panel" id="panelTrv">
-    <div class="panel-header">
-      <div>
-        <h2 style="color:var(--trv-accent)">✈️ Travel Checklist</h2>
-        <div style="font-size:13px;color:var(--text3);margin-top:3px;">To carry &amp; to do — before, during, and after travel</div>
-      </div>
-      <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="checklistPrintSmart('trv')" title="Print — style set in Settings">🖨 Print</button>
-      </div>
-    </div>
-    <div class="overall-progress">
-      <span class="progress-label" style="color:var(--trv-accent)">✦ Travel ready</span>
-      <div class="progress-track"><div class="progress-bar-fill" id="trvFill" style="width:0%;background:linear-gradient(90deg,var(--trv-accent),#5ab0e8)"></div></div>
-      <span class="progress-pct" id="trvPct" style="color:var(--trv-accent)">0%</span>
-    </div>
-    <div class="grid" id="trvGrid"></div>
-  </div>
 
 </div><!-- /main -->
 
@@ -979,7 +901,7 @@ _showDriveWait();
    ⚠ NOT STRIPPED LIKE OTHER PAGES — KEPT ON PURPOSE.
    This page has its own per-section accent variables
    (--ft-accent, --pt-accent, --roh-accent, --esh-accent,
-   --kal-accent, --trv-accent) that the generic centralized
+   --kal-accent) that the generic centralized
    theme module in storage.js won't know about. Removing this
    would make every checklist section lose its colour theming.
    When storage.js is built, it needs a hook to call
@@ -1002,8 +924,8 @@ function applySettingsAccent(){
   const soft = isDark ? (_cget("ONETRACK_ACCENT_DARK_SOFT")||"rgba(212,147,90,0.14)") : (_cget("ONETRACK_ACCENT_SOFT")||"rgba(193,123,63,0.12)");
   htmlEl.style.setProperty("--accent", hex);
   htmlEl.style.setProperty("--accent-soft", soft);
-  ["--ft-accent","--pt-accent","--roh-accent","--esh-accent","--kal-accent","--trv-accent"].forEach(v=>htmlEl.style.setProperty(v,hex));
-  ["--ft-soft","--pt-soft","--roh-soft","--esh-soft","--trv-soft"].forEach(v=>htmlEl.style.setProperty(v,soft));
+  ["--ft-accent","--pt-accent","--roh-accent","--esh-accent","--kal-accent"].forEach(v=>htmlEl.style.setProperty(v,hex));
+  ["--ft-soft","--pt-soft","--roh-soft","--esh-soft"].forEach(v=>htmlEl.style.setProperty(v,soft));
 }
 function applySettingsFontScale(){
   const fs = parseFloat(_cget("ONETRACK_FONT_SCALE")||"1");
@@ -1524,24 +1446,24 @@ function openPrint(html){ const w=window.open('','_blank'); w.document.write(htm
 /* ============================================================
    TAB SYSTEM — draggable, order persisted
    ============================================================ */
-const TAB_ACTIVE_CLS = {job:'active-job',joblib:'active-joblib',kal:'active-kal',trv:'active-trv',tasklib:'active-tasklib',ahtml:'active-ahtml',wtl:'active-wtl',wych:'active-wych'};
+const TAB_ACTIVE_CLS = {job:'active-job',joblib:'active-joblib',kal:'active-kal',tasklib:'active-tasklib',ahtml:'active-ahtml'};
 const TAB_ORDER_KEY  = "CL_TAB_ORDER";
 let activeTab = (()=>{ const t=_cget("CL_ACTIVE_TAB"); return (t&&t!=="rtn")?t:"job"; })();
 
 function switchTab(tab){
   window._activeChecklistTab = tab;
-  var _tl={job:'Job Checklist',joblib:'Task (Jobs) Library',kal:'Kalyan',trv:'Travel',tasklib:'Task Library',ahtml:'After you come Home',wtl:'Task Library (WYCH)',wych:'WYCH'};
+  var _tl={job:'PT/FT',joblib:'PT/FT-Lib',kal:'Kalyan',tasklib:'Home-Lib',ahtml:'Home'};
   if(OT&&typeof OT.setTitle==="function")OT.setTitle(_tl[tab]||tab);else document.title=_tl[tab]||tab;
   activeTab=tab;
   _cset("CL_ACTIVE_TAB",tab);
-  ["job","joblib","kal","trv","tasklib","ahtml","wtl","wych"].forEach(id=>{
+  ["job","joblib","kal","tasklib","ahtml"].forEach(id=>{
     document.getElementById("panel"+id.charAt(0).toUpperCase()+id.slice(1)).classList.toggle("active",id===tab);
   });
   /* swap footer buttons — Task Library, After you come Home, the two
      imported WYCH tabs, and the Job Checklist pair all have their own
      add/print controls in the panel header, not the shared footer */
   const addBtn=document.getElementById("addListBtn");
-  if(tab==="tasklib"||tab==="ahtml"||tab==="wtl"||tab==="wych"||tab==="job"||tab==="joblib"){
+  if(tab==="tasklib"||tab==="ahtml"||tab==="job"||tab==="joblib"){
     addBtn.style.display="none";
   } else {
     addBtn.style.display="";
@@ -1571,17 +1493,6 @@ function switchTab(tab){
   if(tab==="joblib"){
     const n=jtCats.reduce((n,c)=>n+c.items.length,0);
     document.getElementById("footerStats").textContent=n?`${n} task(s) in library`:"";
-    return;
-  }
-  if(tab==="wtl"){
-    const wtlTasks=wtlLoad();
-    document.getElementById("footerStats").textContent=wtlTasks.length?`${wtlTasks.length} task(s) in library`:"";
-    return;
-  }
-  if(tab==="wych"){
-    const totals=WTL_OWNERS.map(_wychBOwnerStats);
-    const done=totals.reduce((n,s)=>n+s.done,0), total=totals.reduce((n,s)=>n+s.total,0);
-    document.getElementById("footerStats").textContent=total?`${done} / ${total} items`:"";
     return;
   }
   const cfg = TAB_CFGS[tab]; if(!cfg)return;
@@ -1620,14 +1531,11 @@ const TAB_LABELS_KEY  = "CL_TAB_LABELS";   // {tabId: customLabel}
 const TAB_DELETED_KEY = "CL_TAB_DELETED";  // [tabId, ...]
 const TAB_HIDDEN_KEY  = "CL_TAB_HIDDEN";   // [tabId, ...] — hidden, not deleted; data kept
 const TAB_META = {
-  job:     {defaultLabel:"🧳 Job Checklist",        keys:[]},
-  joblib:  {defaultLabel:"🗂️ Task (Jobs) Library", keys:["JOB_TASKLIB_V1","JOB_TASKLIB_DONE_V1","JOB_TASKLIB_SEEDED_V1"]},
-  tasklib: {defaultLabel:"🗂️ Task Library",        keys:["TASKLIB_V1","TASKLIB_DONE_V1","TASKLIB_SEEDED_V1"]},
-  ahtml:   {defaultLabel:"🏡 After you come Home", keys:[]},
-  wtl:     {defaultLabel:"🗂️ Task Library",        keys:["WYCH_TASKLIB_V1","WYCH_TASKLIB_DONE_V1","WYCH_TASKLIB_SEEDED_V1"]},
-  wych:    {defaultLabel:"🏡 WYCH",                 keys:[]},
-  kal:     {defaultLabel:"🏠 Kalyan",               keys:["KALYAN_CHORES_V1","KALYAN_CHORES_SECTIONS_V1"]},
-  trv:     {defaultLabel:"✈️ Travel",               keys:["TRAVEL_CHECKLIST_V1","TRAVEL_CHECKLIST_SECTIONS_V1"]}
+  job:     {defaultLabel:"PT/FT",       keys:[]},
+  joblib:  {defaultLabel:"PT/FT-Lib",   keys:["JOB_TASKLIB_V1","JOB_TASKLIB_DONE_V1","JOB_TASKLIB_SEEDED_V1"]},
+  tasklib: {defaultLabel:"Home-Lib",    keys:["TASKLIB_V1","TASKLIB_DONE_V1","TASKLIB_SEEDED_V1"]},
+  ahtml:   {defaultLabel:"Home",        keys:[]},
+  kal:     {defaultLabel:"🏠 Kalyan",  keys:["KALYAN_CHORES_V1","KALYAN_CHORES_SECTIONS_V1"]}
 };
 function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
 function _tabDeletedList(){ try{ const a=JSON.parse(_cget(TAB_DELETED_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
@@ -2661,7 +2569,7 @@ function _jlWireSubDrag(row,catId,itemId,sub){
 
 function _jlPills(catId,itemId,subId,tag){
   const mk=(val,label,cls)=>`<button class="tl-pill ${cls}${tag===val?' on':''}" onclick="jlSetTag('${catId}','${itemId}',${subId?`'${subId}'`:'null'},'${val}')">${label}</button>`;
-  return `<div class="tl-owner-pills">${mk('ft','FT','tl-pill-jft')}${mk('pt','PT','tl-pill-jpt')}${mk('both','BOTH','tl-pill-jboth')}</div>`;
+  return `<div class="tl-owner-pills">${mk('ft','FT','tl-pill-jft')}${mk('pt','PT','tl-pill-jpt')}${mk('both','B','tl-pill-jboth')}</div>`;
 }
 
 function renderJobLib(){
@@ -2844,499 +2752,6 @@ function jobBoardPrint(){
   openPrint(buildPrintDoc('Job Checklist','FT · PT',bodyHTML,'#2a8f8f'));
 }
 
-/* ============================================================
-   TASK LIBRARY (WYCH) + WYCH — imported as-is from WYCH.html
-   Same storage keys as WYCH.html (WYCH_TASKLIB_V1 etc.) so all
-   existing data carries over untouched. This is a separate task
-   pool from the Task Library / After you come Home tabs above —
-   nothing here reads or writes TASKLIB_V1 / TASKLIB_DONE_V1.
-   Functions/vars are prefixed wtl/_wychB to avoid clashing with
-   the tlXxx / ahtmlXxx names already used above for the other
-   pair of tabs.
-   ============================================================ */
-const WTL_KEY      = "WYCH_TASKLIB_V1";
-const WTL_DONE_KEY = "WYCH_TASKLIB_DONE_V1";
-const WTL_SEED_KEY = "WYCH_TASKLIB_SEEDED_V1";
-const WTL_OWNERS   = ["K","R","E"];
-const WTL_OWNER_META = {
-  K:{label:"Kalyan", cls:"on-k", doneMsg:"🏡 All done — you're fully settled in!", confetti:["#2a9d6a","#5ecb96","#4caf50","#2196f3","#9c27b0"]},
-  R:{label:"Rohan",  cls:"on-r", doneMsg:"🎉 Amazing work Rohan — all done!",      confetti:["#4a90d9","#7ab8f0","#4caf50","#f44336","#ff9800"]},
-  E:{label:"Esha",   cls:"on-e", doneMsg:"🎉 Brilliant work Esha — all done!",     confetti:["#b06aa0","#d49fcc","#4caf50","#f44336","#ff9800"]},
-};
-
-function wtlLoad(){ try{ const v=_cget(WTL_KEY); return v?JSON.parse(v):[]; }catch(e){ return []; } }
-function wtlSave(t){ _cset(WTL_KEY, JSON.stringify(t)); }
-function wtlLoadDone(){ try{ const v=_cget(WTL_DONE_KEY); return v?JSON.parse(v):{}; }catch(e){ return {}; } }
-function wtlSaveDone(d){ _cset(WTL_DONE_KEY, JSON.stringify(d)); }
-
-/* one-time seed — only fires if WYCH_TASKLIB_SEEDED_V1 was never set.
-   If WYCH.html already ran this (normal case, since it's the file this
-   was imported from), _cget(WTL_SEED_KEY) is already "1" and this is a
-   no-op — all existing WYCH data loads untouched. */
-function wtlSeedOnce(){
-  if(_cget(WTL_SEED_KEY)==="1") return;
-  const mk=(name,subs)=>({id:_tlId(), name, owners:[], subs:(subs||[]).map(n=>({id:_tlId(), name:n}))});
-  const seed=[
-    mk("Take the toupee off", ["Peel its stickers and put it on the stand"]),
-    mk("Stow", ["Shoes to shoe rack","Soiled clothes to laundry room","Keys, Wallet, ID card to designated spots","Backpack to shoes room"]),
-    mk("Have something to eat/drink"),
-    mk("Run EoD checklist/Wind down/Go to bed"),
-    mk("Remove shoes and socks"),
-    mk("Change to home clothes"),
-    mk("Put clothes and socks for washing"),
-    mk("Wash hands and face"),
-    mk("Have something to eat"),
-    mk("1 hour break"),
-    mk("1 hour school or education activities"),
-    mk("Help parents in home activities"),
-    mk("Bath and get ready"),
-    mk("Do we need to trim nails?"),
-    mk("Bag ready", ["Shoes","Socks","Water bottle","Lunch","School uniform"]),
-    mk("Any assignments/Homeworks?"),
-    mk("Shoes to shoe stand"),
-    mk("Socks and uniform to laundry"),
-    mk("Wash hands/Eat something"),
-    mk("What happened in the school?"),
-    mk("Bath"),
-    mk("Pack bag for next day"),
-    mk("Organise school clothes and socks"),
-    mk("Need to go early to school? Inform dad."),
-    mk("Lunch — needs to be ordered?"),
-    mk("Pack bag/Pack Lunch"),
-    mk("Ask dad if he can teach or help in anything"),
-  ];
-  wtlSave(seed);
-  _cset(WTL_SEED_KEY,"1");
-}
-
-/* cascade: does this owner have every sub of task t checked? null if no subs */
-function _wtlAllSubsDone(t,owner){
-  if(!t.subs||!t.subs.length) return null;
-  const d=wtlLoadDone();
-  return t.subs.every(s=>!!d[_tlDoneId(s.id,owner)]);
-}
-
-/* ---------- TASK LIBRARY (WYCH) admin view ---------- */
-let _wtlCollapsed = new Set();
-let _wtlFirstRender = true;
-let _wtlSelected = null; // null | {type:"task", id} | {type:"sub", parentId, subId}
-
-function renderWtl(){
-  const tasks=wtlLoad();
-  const bankRoot=document.getElementById("wtlBankContent");
-  if(!bankRoot) return;
-  if(_wtlFirstRender){
-    tasks.forEach(t=>{ if(t.subs && t.subs.length) _wtlCollapsed.add(t.id); });
-    _wtlFirstRender=false;
-  }
-  let maxLen=0;
-  tasks.forEach(t=>{
-    maxLen=Math.max(maxLen,(t.name||"").length);
-    (t.subs||[]).forEach(s=>maxLen=Math.max(maxLen,(s.name||"").length));
-  });
-  bankRoot.style.setProperty("--tb-name-w", (maxLen?maxLen+5:20)+"ch");
-  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="wtlAddTaskBtn" title="Adds to top of list, or right beneath the selected task/sub-task">＋ Add task</button></div>';
-  html+='<div class="tb-table" id="wtlTable">';
-  tasks.forEach((t,idx)=>{
-    const hasSubs = t.subs && t.subs.length>0;
-    const canIndent = idx>0 && !hasSubs;
-    const collapsed = hasSubs && _wtlCollapsed.has(t.id);
-    const isSelTask = _wtlSelected && _wtlSelected.type==="task" && _wtlSelected.id===t.id;
-    html+=`<div class="tb-row${isSelTask?" tb-row-selected":""}" draggable="true" data-idx="${idx}" data-id="${t.id}">`
-        +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
-        +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-collapse":""}">${hasSubs?(collapsed?"▶":"▼"):""}</span>`
-        +`<span class="tb-name" data-act="rename" title="Click to select, double-click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
-        +_wtlCircleRow(t)
-        +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
-        +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
-        +`</div>`;
-    if(!collapsed){
-      (t.subs||[]).forEach((s,sidx)=>{
-        const isSelSub = _wtlSelected && _wtlSelected.type==="sub" && _wtlSelected.subId===s.id;
-        html+=`<div class="tb-row tb-subrow${isSelSub?" tb-row-selected":""}" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
-            +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
-            +`<span class="tb-chevron tb-chevron-empty"></span>`
-            +`<span class="tb-name" data-act="rename-sub" title="Click to select, double-click to rename">${_esc(s.name)}</span>`
-            +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
-            +`<button class="tb-icon-btn" data-act="delete-sub" title="Delete sub-task">🗑</button>`
-            +`</div>`;
-      });
-    }
-  });
-  html+='</div>';
-  bankRoot.innerHTML = tasks.length ? html : '<div class="tb-empty">No tasks yet — start with "＋ Add task" above.</div>';
-}
-
-function _wtlCircleRow(t){
-  const allOn = WTL_OWNERS.every(o=>t.owners && t.owners.includes(o));
-  let h='<div class="tb-circles">';
-  WTL_OWNERS.forEach(o=>{
-    const on = t.owners && t.owners.includes(o);
-    const meta=WTL_OWNER_META[o];
-    h+=`<button class="tb-circle${on?" "+meta.cls:""}" data-act="owner" data-owner="${o}" title="${on?"Remove from ":"Assign to "}${meta.label}">${o}</button>`;
-  });
-  h+=`<button class="tb-circle-all${allOn?" on-all":""}" data-act="all" title="${allOn?"Clear all owners":"Assign to Kalyan, Rohan and Esha"}">A</button>`;
-  h+='</div>';
-  return h;
-}
-
-(function wireWtl(){
-  const root=document.getElementById("wtlBankContent");
-  if(!root) return;
-
-  root.addEventListener("click", e=>{
-    if(e.target.closest("#wtlAddTaskBtn")){
-      const name=prompt("New task name:"); if(!name||!name.trim()) return;
-      const tasks=wtlLoad();
-      const newId=_tlId();
-      if(_wtlSelected && _wtlSelected.type==="sub"){
-        const p=tasks.find(x=>x.id===_wtlSelected.parentId);
-        if(p){
-          p.subs=p.subs||[];
-          const sIdx=p.subs.findIndex(s=>s.id===_wtlSelected.subId);
-          const newSub={id:newId, name:name.trim()};
-          if(sIdx>-1) p.subs.splice(sIdx+1,0,newSub); else p.subs.push(newSub);
-          wtlSave(tasks); _wtlSelected={type:"sub", parentId:p.id, subId:newId}; renderWtl(); showToast("✓ Sub-task added");
-          return;
-        }
-      }
-      const newTask={id:newId, name:name.trim(), owners:[], subs:[]};
-      if(_wtlSelected && _wtlSelected.type==="task"){
-        const idx=tasks.findIndex(x=>x.id===_wtlSelected.id);
-        if(idx>-1){ tasks.splice(idx+1,0,newTask); } else { tasks.unshift(newTask); }
-      } else {
-        tasks.unshift(newTask);
-      }
-      wtlSave(tasks); _wtlSelected={type:"task", id:newId}; renderWtl(); showToast("✓ Task added");
-      return;
-    }
-    const allBtn=e.target.closest("[data-act='all']");
-    if(allBtn){
-      const row=allBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
-      const allOn = WTL_OWNERS.every(o=>t.owners && t.owners.includes(o));
-      t.owners = allOn ? [] : WTL_OWNERS.slice();
-      wtlSave(tasks); renderWtl(); renderWychBoard();
-      return;
-    }
-    const circleBtn=e.target.closest(".tb-circle");
-    if(circleBtn){
-      const row=circleBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
-      const o=circleBtn.dataset.owner;
-      t.owners=t.owners||[];
-      const i=t.owners.indexOf(o);
-      i>-1 ? t.owners.splice(i,1) : t.owners.push(o);
-      wtlSave(tasks); renderWtl(); renderWychBoard();
-      return;
-    }
-    const chevron=e.target.closest("[data-act='toggle-collapse']");
-    if(chevron){
-      const row=chevron.closest(".tb-row"); const id=row.dataset.id;
-      if(_wtlCollapsed.has(id)) _wtlCollapsed.delete(id); else _wtlCollapsed.add(id);
-      renderWtl();
-      return;
-    }
-    const delBtn=e.target.closest("[data-act='delete']");
-    if(delBtn){
-      const row=delBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks0=wtlLoad(); const t0=tasks0.find(x=>x.id===id);
-      const hasSubs=!!(t0 && t0.subs && t0.subs.length);
-      if(!confirm("Delete this task"+(hasSubs?" and all its sub-tasks":"")+"?")) return;
-      const tasks=tasks0.filter(x=>x.id!==id);
-      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("🗑 Deleted");
-      return;
-    }
-    const delSub=e.target.closest("[data-act='delete-sub']");
-    if(delSub){
-      const row=delSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
-      if(!confirm("Delete this sub-task?")) return;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs) return;
-      t.subs.splice(sidx,1); wtlSave(tasks); renderWtl(); renderWychBoard();
-      return;
-    }
-    const indentBtn=e.target.closest("[data-act='indent']");
-    if(indentBtn){
-      if(indentBtn.disabled) return;
-      const row=indentBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks=wtlLoad();
-      const idx=tasks.findIndex(x=>x.id===id); if(idx<1) return;
-      const t=tasks[idx];
-      if(t.subs && t.subs.length){ showToast("Can't indent — this task already has sub-tasks"); return; }
-      const parent=tasks[idx-1];
-      tasks.splice(idx,1);
-      parent.subs=parent.subs||[];
-      parent.subs.push({id:t.id, name:t.name});
-      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("↳ Made a sub-task of \u201c"+parent.name+"\u201d");
-      return;
-    }
-    const outdentBtn=e.target.closest("[data-act='outdent']");
-    if(outdentBtn){
-      const row=outdentBtn.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
-      const tasks=wtlLoad(); const pidx=tasks.findIndex(x=>x.id===pid); if(pidx<0) return;
-      const t=tasks[pidx]; if(!t.subs||!t.subs[sidx]) return;
-      const sub=t.subs.splice(sidx,1)[0];
-      tasks.splice(pidx+1,0,{id:sub.id, name:sub.name, owners:[], subs:[]});
-      wtlSave(tasks); renderWtl(); renderWychBoard(); showToast("↰ Made a top-level task");
-      return;
-    }
-    const subRow=e.target.closest(".tb-subrow");
-    if(subRow){
-      const pid=subRow.dataset.parent, sidx=+subRow.dataset.subidx;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); const sub=t&&t.subs&&t.subs[sidx];
-      if(!sub) return;
-      if(_wtlSelected && _wtlSelected.type==="sub" && _wtlSelected.subId===sub.id) _wtlSelected=null;
-      else _wtlSelected={type:"sub", parentId:pid, subId:sub.id};
-      renderWtl();
-      return;
-    }
-    const topRow=e.target.closest(".tb-row:not(.tb-subrow)");
-    if(topRow){
-      const id=topRow.dataset.id;
-      if(_wtlSelected && _wtlSelected.type==="task" && _wtlSelected.id===id) _wtlSelected=null;
-      else _wtlSelected={type:"task", id};
-      renderWtl();
-      return;
-    }
-  });
-
-  root.addEventListener("dblclick", e=>{
-    const renameBtn=e.target.closest("[data-act='rename']");
-    if(renameBtn){
-      const row=renameBtn.closest(".tb-row"); const id=row.dataset.id;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===id); if(!t) return;
-      const name=prompt("Rename task:", t.name); if(name===null||!name.trim()) return;
-      t.name=name.trim(); wtlSave(tasks); renderWtl(); renderWychBoard();
-      return;
-    }
-    const renameSub=e.target.closest("[data-act='rename-sub']");
-    if(renameSub){
-      const row=renameSub.closest(".tb-subrow"); const pid=row.dataset.parent, sidx=+row.dataset.subidx;
-      const tasks=wtlLoad(); const t=tasks.find(x=>x.id===pid); if(!t||!t.subs||!t.subs[sidx]) return;
-      const name=prompt("Rename sub-task:", t.subs[sidx].name); if(name===null||!name.trim()) return;
-      t.subs[sidx].name=name.trim(); wtlSave(tasks); renderWtl(); renderWychBoard();
-      return;
-    }
-  });
-
-  let dragFromId=null, dragFromSub=null;
-  root.addEventListener("dragstart", e=>{
-    const subRow=e.target.closest(".tb-subrow");
-    if(subRow){ dragFromSub={parent:subRow.dataset.parent, subidx:+subRow.dataset.subidx}; dragFromId=null; e.dataTransfer.effectAllowed="move"; return; }
-    const row=e.target.closest(".tb-row:not(.tb-subrow)");
-    if(!row){ e.preventDefault(); return; }
-    dragFromId=row.dataset.id; dragFromSub=null;
-    e.dataTransfer.effectAllowed="move";
-  });
-  root.addEventListener("dragover", e=>{ if(e.target.closest(".tb-row")) e.preventDefault(); });
-  root.addEventListener("dragend", ()=>{ dragFromId=null; dragFromSub=null; });
-
-  root.addEventListener("drop", e=>{
-    const subRow=e.target.closest(".tb-subrow");
-
-    if(subRow){
-      e.preventDefault();
-      const toParent=subRow.dataset.parent, toSubidx=+subRow.dataset.subidx;
-
-      if(dragFromSub){
-        const tasks=wtlLoad();
-        const fromParent=tasks.find(x=>x.id===dragFromSub.parent);
-        if(!fromParent || !fromParent.subs || !fromParent.subs[dragFromSub.subidx]){ dragFromSub=null; return; }
-        if(toParent===dragFromSub.parent && toSubidx===dragFromSub.subidx){ dragFromSub=null; return; }
-        const toParentTask=tasks.find(x=>x.id===toParent); if(!toParentTask){ dragFromSub=null; return; }
-        const moved=fromParent.subs.splice(dragFromSub.subidx,1)[0];
-        toParentTask.subs=toParentTask.subs||[];
-        const insertAt=(toParent===dragFromSub.parent && toSubidx>dragFromSub.subidx) ? toSubidx-1 : toSubidx;
-        toParentTask.subs.splice(insertAt,0,moved);
-        wtlSave(tasks); renderWtl(); renderWychBoard();
-        dragFromSub=null;
-        return;
-      }
-
-      if(dragFromId){
-        const tasks=wtlLoad();
-        const idx=tasks.findIndex(x=>x.id===dragFromId);
-        if(idx<0){ dragFromId=null; return; }
-        const t=tasks[idx];
-        if(t.subs && t.subs.length){
-          showToast("Can't nest — this task already has its own sub-tasks");
-          dragFromId=null; return;
-        }
-        tasks.splice(idx,1);
-        const parent=tasks.find(x=>x.id===toParent);
-        if(!parent){ tasks.splice(idx,0,t); wtlSave(tasks); dragFromId=null; return; }
-        parent.subs=parent.subs||[];
-        parent.subs.splice(Math.min(toSubidx,parent.subs.length),0,{id:t.id, name:t.name});
-        wtlSave(tasks); renderWtl(); renderWychBoard();
-        showToast("↳ Made a sub-task of \u201c"+parent.name+"\u201d");
-        dragFromId=null;
-        return;
-      }
-      return;
-    }
-
-    const row=e.target.closest(".tb-row:not(.tb-subrow)");
-    if(!row) return;
-    e.preventDefault();
-    const toId=row.dataset.id;
-
-    if(dragFromId){
-      if(toId!==dragFromId){
-        const tasks=wtlLoad();
-        const fromIdx=tasks.findIndex(x=>x.id===dragFromId), toIdx=tasks.findIndex(x=>x.id===toId);
-        if(fromIdx>-1 && toIdx>-1){
-          const moved=tasks.splice(fromIdx,1)[0];
-          tasks.splice(toIdx,0,moved);
-          wtlSave(tasks); renderWtl();
-        }
-      }
-      dragFromId=null;
-      return;
-    }
-
-    if(dragFromSub){
-      const tasks=wtlLoad();
-      const parent=tasks.find(x=>x.id===dragFromSub.parent);
-      if(!parent || !parent.subs || !parent.subs[dragFromSub.subidx]){ dragFromSub=null; return; }
-      const sub=parent.subs.splice(dragFromSub.subidx,1)[0];
-      const toIdx=tasks.findIndex(x=>x.id===toId);
-      const insertAt = toIdx>-1 ? toIdx : tasks.length;
-      tasks.splice(insertAt,0,{id:sub.id, name:sub.name, owners:[], subs:[]});
-      wtlSave(tasks); renderWtl(); renderWychBoard();
-      showToast("↰ Made a top-level task");
-      dragFromSub=null;
-      return;
-    }
-  });
-})();
-
-/* ---------- WYCH board — pure render + checkbox, fed from Task Library (WYCH) ---------- */
-let _wychBCelebrated={K:false,R:false,E:false};
-
-function _wychBOwnerStats(owner){
-  const tasks=wtlLoad();
-  const d=wtlLoadDone();
-  let total=0,done=0;
-  tasks.filter(t=>t.owners&&t.owners.includes(owner)).forEach(t=>{
-    total++; if(d[_tlDoneId(t.id,owner)]) done++;
-    (t.subs||[]).forEach(s=>{ total++; if(d[_tlDoneId(s.id,owner)]) done++; });
-  });
-  return {total,done};
-}
-
-function _wychBRenderCheckItem(t, owner, doneMap){
-  const pid=_tlDoneId(t.id,owner);
-  const checked=!!doneMap[pid];
-  let h=`<div class="tb-item${checked?" tb-done":""}" data-id="${t.id}" data-owner="${owner}">`
-      +`<span class="tb-checkbox">${checked?"✓":""}</span>`
-      +`<span class="tb-item-label">${_esc(t.name)}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
-  (t.subs||[]).forEach(s=>{
-    const sid=_tlDoneId(s.id,owner);
-    const sc=!!doneMap[sid];
-    h+=`<div class="tb-item tb-sub${sc?" tb-done":""}" data-id="${t.id}" data-subid="${s.id}" data-owner="${owner}">`
-      +`<span class="tb-checkbox">${sc?"✓":""}</span>`
-      +`<span class="tb-item-label">${_esc(s.name)}</span></div>`;
-  });
-  return h;
-}
-
-function renderWychBoard(){
-  const root=document.getElementById("wychCols");
-  if(!root) return;
-  const tasks=wtlLoad();
-  const doneMap=wtlLoadDone();
-  root.innerHTML="";
-  WTL_OWNERS.forEach(owner=>{
-    const meta=WTL_OWNER_META[owner];
-    const stats=_wychBOwnerStats(owner);
-    const pct=stats.total?Math.round(stats.done/stats.total*100):0;
-    const accentVar = owner==="K"?"--kal-accent":owner==="R"?"--roh-accent":"--esh-accent";
-
-    const col=document.createElement("div"); col.className="wych-col";
-    let inner=`<div class="wych-col-header"><span class="wych-col-title" style="color:var(${accentVar})">${meta.label}</span><span class="wych-col-count">${stats.done}/${stats.total}</span></div>`
-      +`<div class="wych-col-progress"><div class="wych-col-progress-fill" style="width:${pct}%;background:var(${accentVar})"></div></div>`;
-    const ownerTasks=tasks.filter(t=>t.owners&&t.owners.includes(owner));
-    if(!ownerTasks.length){
-      inner+='<div class="tb-empty">No tasks assigned yet</div>';
-    } else {
-      ownerTasks.forEach(t=>{ inner+=_wychBRenderCheckItem(t, owner, doneMap); });
-    }
-    col.innerHTML=inner;
-    root.appendChild(col);
-
-    if(stats.total>0 && stats.done===stats.total){
-      if(!_wychBCelebrated[owner] && window._celebrationsArmed){
-        _wychBCelebrated[owner]=true;
-        fireConfetti(meta.confetti);
-        showToast(meta.doneMsg);
-      }
-    } else {
-      _wychBCelebrated[owner]=false;
-    }
-  });
-}
-
-(function wireWychBoard(){
-  const root=document.getElementById("wychCols");
-  if(!root) return;
-  root.addEventListener("click", e=>{
-    const row=e.target.closest(".tb-item"); if(!row) return;
-    const taskId=row.dataset.id, subId=row.dataset.subid, owner=row.dataset.owner;
-    const tasks=wtlLoad(); const t=tasks.find(x=>x.id===taskId); if(!t) return;
-    const d=wtlLoadDone();
-    if(subId){
-      const key=_tlDoneId(subId,owner);
-      d[key]=!d[key];
-      wtlSaveDone(d);
-      const allDone=_wtlAllSubsDone(t,owner);
-      if(allDone!==null){
-        const parentKey=_tlDoneId(t.id,owner);
-        d[parentKey]=allDone;
-        wtlSaveDone(d);
-      }
-    } else {
-      const key=_tlDoneId(t.id,owner);
-      const nowDone=!d[key];
-      d[key]=nowDone;
-      (t.subs||[]).forEach(s=>{ d[_tlDoneId(s.id,owner)]=nowDone; });
-      wtlSaveDone(d);
-    }
-    renderWychBoard();
-  });
-})();
-
-function wychBoardResetAll(){
-  if(!confirm("Uncheck every task for Kalyan, Rohan and Esha on the WYCH board?")) return;
-  wtlSaveDone({});
-  renderWychBoard();
-  if(activeTab==="wych") switchTab("wych");
-  showToast("↺ All checked-off tasks cleared");
-}
-
-function wychBoardPrint(){
-  const tasks=wtlLoad();
-  const win=window.open("","_blank");
-  const now=new Date().toLocaleDateString('en-AU',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  let bodyHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">';
-  WTL_OWNERS.forEach(owner=>{
-    const meta=WTL_OWNER_META[owner];
-    bodyHTML+=`<div style="border:2px solid #000;border-radius:6px;overflow:hidden;"><div style="font-size:15px;font-weight:800;background:#eee;border-bottom:2px solid #000;padding:8px 12px;">${meta.label}</div>`;
-    tasks.filter(t=>t.owners&&t.owners.includes(owner)).forEach(t=>{
-      bodyHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;border-bottom:1px solid #ccc;font-size:14px;font-weight:700;"><div style="width:16px;height:16px;border:2px solid #000;border-radius:3px;flex-shrink:0;"></div><span>${_esc(t.name)}</span></div>`;
-      (t.subs||[]).forEach(s=>{
-        bodyHTML+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 12px 6px 30px;border-bottom:1px solid #ccc;font-size:13px;font-weight:600;"><div style="width:14px;height:14px;border:2px solid #000;border-radius:3px;flex-shrink:0;"></div><span>${_esc(s.name)}</span></div>`;
-      });
-    });
-    bodyHTML+='</div>';
-  });
-  bodyHTML+='</div>';
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>WYCH</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Georgia,serif;padding:20px;color:#111;background:#fff;}@page{size:A4 landscape;margin:14mm 12mm;}h1{font-family:Georgia,serif;font-size:22px;margin-bottom:4px;}
-    .sub{color:#777;font-size:11px;margin-bottom:16px;}</style></head><body>
-    <h1>When You Come Home</h1><div class="sub">Printed ${now}</div>${bodyHTML}</body></html>`);
-  win.document.close();
-  win.print();
-}
 
 /* ============================================================
    KALYAN — storage: KALYAN_CHORES_V1 / KALYAN_CHORES_SECTIONS_V1
@@ -3386,57 +2801,16 @@ function kalPrintColor(sel){
   openPrint(buildPrintDoc("Kalyan's Chores",'Household & personal','<div class="grid">'+sh+'</div>','#2a9d6a'));
 }
 
-/* ============================================================
-   TRAVEL — storage: TRAVEL_CHECKLIST_V1 / TRAVEL_CHECKLIST_SECTIONS_V1
-   ============================================================ */
-const TRV_KEY      = "TRAVEL_CHECKLIST_V1";
-const TRV_META_KEY = "TRAVEL_CHECKLIST_SECTIONS_V1";
-const TRV_EXTRA_CLS   = ["trv-slot-c","trv-slot-d","trv-slot-e","trv-slot-f","trv-slot-carry","trv-slot-todo"];
-const TRV_EXTRA_ICONS = ["🧳","✈️","🗺️","📋","🏨","💳","🔑","🪪","🌏","⭐"];
-const TRV_DEFAULT_SECTIONS=[
-  {id:"carry",  label:"To Carry",   icon:"🧳", cls:"trv-slot-carry"},
-  {id:"todo",   label:"To Do",      icon:"📋", cls:"trv-slot-todo"},
-];
-const TRV_DEFAULT_ITEMS={
-  carry:[],
-  todo:[],
-};
-function trvLoadSections(){const r=_cget(TRV_META_KEY);return r?JSON.parse(r):JSON.parse(JSON.stringify(TRV_DEFAULT_SECTIONS));}
-function trvSaveSections(){_cset(TRV_META_KEY,JSON.stringify(trvSECTIONS));}
-function trvLoadData(){const r=_cget(TRV_KEY);if(r)return JSON.parse(r);const d=JSON.parse(JSON.stringify(TRV_DEFAULT_ITEMS));if(_authoritative()) trvSaveData(d);return d;}
-function trvSaveData(d){_cset(TRV_KEY,JSON.stringify(d));UndoManager.push('trv');}
-let trvSECTIONS=[], trvData={};
-UndoManager.register('trv',
-  ()=>({data:JSON.parse(JSON.stringify(trvData)),sections:JSON.parse(JSON.stringify(trvSECTIONS))}),
-  (snap)=>{trvData=snap.data;trvSECTIONS=snap.sections;renderChecklist(trvCfg());}
-);
-const trvCfg=()=>({gridId:"trvGrid",SECTIONS:trvSECTIONS,data:trvData,saveData:trvSaveData,saveSections:trvSaveSections,fillId:"trvFill",pctId:"trvPct",statsId:"footerStats",doneMsg:"🛫 All packed and ready — bon voyage!",confettiColors:["#1a7fbf","#5ab0e8","#4caf50","#f44336","#ff9800"],tabId:"trv",extraCls:TRV_EXTRA_CLS});
-function trvAddList(){const label=prompt("Name for new list:","New List");if(!label||!label.trim())return;const icon=TRV_EXTRA_ICONS[Math.floor(Math.random()*TRV_EXTRA_ICONS.length)];const cls=TRV_EXTRA_CLS[trvSECTIONS.length%TRV_EXTRA_CLS.length];const id="trv_custom_"+Date.now();trvSECTIONS.push({id,label:label.trim(),icon,cls});trvSaveSections();if(!trvData[id])trvData[id]=[];trvSaveData(trvData);renderChecklist(trvCfg());setTimeout(()=>{const inp=document.querySelectorAll("#trvGrid .add-input");inp[inp.length-1]?.focus();},50);}
-function trvSendToday(){const unc=trvSECTIONS.flatMap(s=>(trvData[s.id]||[]).filter(t=>!t.done));if(!unc.length){showToast("✓ Everything is checked — have a great trip!");return;}let today=JSON.parse(_cget(TODAY_KEY))||Object.fromEntries(["pre-9","9-12","12-3","3-6","6-9","post-9"].map(s=>[s,[]]));unc.forEach(t=>today["pre-9"].push({text:t.text,done:false,sub:false,priority:"none",mins:""}));_cset(TODAY_KEY,JSON.stringify(today));showToast(`✓ ${unc.length} item(s) added to Today`);}
-function trvPrint(sel){
-  const secs=sel?trvSECTIONS.filter(s=>sel.includes(s.id)):trvSECTIONS;
-  let bodyHTML='<div class="grid">';
-  secs.forEach(sec=>{bodyHTML+=`<div class="block"><div class="block-title">${sec.icon} ${sec.label}</div>`;(trvData[sec.id]||[]).forEach(item=>{bodyHTML+=`<div class="item level-${item.level||0}"><div class="cb"></div><span>${item.text}</span></div>`;});bodyHTML+=`</div>`;});
-  bodyHTML+='</div>';
-  openPrint(buildPrintDoc('Travel Checklist','To carry & to do',bodyHTML,'#1a7fbf'));
-}
-function trvPrintColor(sel){
-  const secs=sel?trvSECTIONS.filter(s=>sel.includes(s.id)):trvSECTIONS;
-  let sh=''; secs.forEach(sec=>{const items=trvData[sec.id]||[];if(!items.length)return;sh+=colorBlock(sec.icon,sec.label,buildPrintRows(items,false),'#1a7fbf','#f5f0e8','rgba(26,127,191,0.16)');});
-  openPrint(buildPrintDoc('Travel Checklist','To carry & to do','<div class="grid">'+sh+'</div>','#1a7fbf'));
-}
-
 /* ── single smart print dispatcher — shows list selection popup ── */
 const _printFns = {
   ft:  { bw: ftPrint,  color: ftPrintColor,  getSections: ()=>ftSECTIONS,  getData: ()=>ftData  },
   pt:  { bw: ptPrint,  color: ptPrintColor,  getSections: ()=>ptSECTIONS,  getData: ()=>ptData  },
   kal: { bw: kalPrint, color: kalPrintColor, getSections: ()=>kalSECTIONS, getData: ()=>kalData },
-  trv: { bw: trvPrint, color: trvPrintColor, getSections: ()=>trvSECTIONS, getData: ()=>trvData },
 };
 /* tasklib has no completion state to print, and ahtml prints via its own
    single-button ahtmlPrint() (no section picker) — neither goes through
    the smart print modal, so neither appears here. */
-const _TAB_LABELS = {ft:'🏢 FT Job',pt:'💼 PT Job',kal:'🏠 Kalyan',trv:'✈️ Travel',tasklib:'🗂️ Task Library',ahtml:'🏡 After you come Home'};
+const _TAB_LABELS = {ft:'🏢 FT Job',pt:'💼 PT Job',kal:'🏠 Kalyan',tasklib:'Home-Lib',ahtml:'Home'};
 
 let _printCurrentTab = null;
 
@@ -3517,12 +2891,12 @@ let _printCurrentTab = null;
 /* ============================================================
    FOOTER ADD/SEND dispatch maps — wired once tabs exist
    ============================================================ */
-const TAB_ADD  = {kal:kalAddList,  trv:trvAddList};
-const TAB_SEND = {kal:kalSendToday, trv:trvSendToday};
+const TAB_ADD  = {kal:kalAddList};
+const TAB_SEND = {kal:kalSendToday};
 const TAB_CFGS = {
-  get kal(){return kalCfg();}, get trv(){return trvCfg();}
+  get kal(){return kalCfg();}
 };
-/* tasklib, ahtml, wtl, wych, job and joblib are intentionally absent from
+/* tasklib, ahtml, job and joblib are intentionally absent from
    TAB_ADD/TAB_SEND/TAB_CFGS — they use their own admin/display render
    functions and panel-header controls instead of the shared footer +
    SECTIONS-shaped renderChecklist engine. ftCfg/ptCfg and the old FT/PT
@@ -3541,21 +2915,13 @@ function masterUncheckAll(){
   // Rohan, Esha), fully resetting the After you come Home display tab.
   tlDone={};
   tlSaveDone(tlDone);
-  // Task Library (WYCH) — same reset, for the imported WYCH board tab.
-  wtlSaveDone({});
   // Kalyan
   kalSECTIONS.forEach(function(s){if(kalData[s.id])kalData[s.id].forEach(function(t){t.done=false;});});
   kalSaveData(kalData);
-  // Travel
-  trvSECTIONS.forEach(function(s){if(trvData[s.id])trvData[s.id].forEach(function(t){t.done=false;});});
-  trvSaveData(trvData);
   // Re-render all tabs
   renderChecklist(kalCfg());
-  renderChecklist(trvCfg());
   renderTasklib();
   renderAhtml();
-  renderWtl();
-  renderWychBoard();
   renderJobChecklist();
   showToast("↺ All checklists cleared across every tab");
 }
@@ -3576,10 +2942,8 @@ async function bootstrapChecklists(){
   _otCache = await OT.getAll();   // real Drive data (or the mirror, if there's no Drive)
   // Load every tab's sections/items from the now-authoritative cache.
   kalSECTIONS=kalLoadSections(); kalData=kalLoadData();
-  trvSECTIONS=trvLoadSections(); trvData=trvLoadData();
   tlSeedOnce();
   tlTasks=tlLoad(); tlDone=tlLoadDone();
-  wtlSeedOnce();
   jtSeedOnce();
   jtCats=jtLoad(); jtDone=jtLoadDone();
   // Apply dark mode, accent, font scale from file
@@ -3592,11 +2956,8 @@ async function bootstrapChecklists(){
   activeTab = (_cget("CL_ACTIVE_TAB")||"job");
   // Render all tabs then switch
   renderChecklist(kalCfg());
-  renderChecklist(trvCfg());
   renderTasklib();
   renderAhtml();
-  renderWtl();
-  renderWychBoard();
   renderJobLib();
   renderJobChecklist();
   applyTabCustomizations();
@@ -3630,12 +2991,10 @@ OT.onReady(async () => {
       // Later hand-over (e.g. a re-sync) — re-hydrate and repaint the active tab.
       _otCache = await OT.getAll();
       kalSECTIONS=kalLoadSections(); kalData=kalLoadData();
-      trvSECTIONS=trvLoadSections(); trvData=trvLoadData();
       tlTasks=tlLoad(); tlDone=tlLoadDone();
       jtCats=jtLoad(); jtDone=jtLoadDone();
-      renderChecklist(kalCfg()); renderChecklist(trvCfg());
+      renderChecklist(kalCfg());
       renderTasklib(); renderAhtml();
-      renderWtl(); renderWychBoard();
       renderJobLib(); renderJobChecklist();
       applyTabCustomizations();
       const _deletedOnSync=_tabDeletedList(), _hiddenOnSync=_tabHiddenList();
@@ -3659,6 +3018,26 @@ OT.onReady(async () => {
 ═══════════════════════════════════════════════════════════════════
   VERSION HISTORY — 91. Checklists.html
 ═══════════════════════════════════════════════════════════════════
+  v4  · 05 Sep 2026
+      - Renamed tabs for clarity: Job Checklist → PT/FT, Task (Jobs)
+        Library → PT/FT-Lib, Task Library → Home-Lib, After you come
+        Home → Home
+      - Removed the ✈️ Travel tab entirely (source-level removal —
+        panel, storage keys, TRV_* functions, TAB_ACTIVE_CLS/TAB_META/
+        TAB_ADD/TAB_SEND/TAB_CFGS/_printFns/_TAB_LABELS entries, and
+        all trv references in masterUncheckAll/bootstrapChecklists/
+        OT.onSync). Superseded by Trip_Planners.html.
+      - Removed the imported "Task Library (WYCH)" + "WYCH" tab pair
+        entirely (source-level removal — panels, WTL_*/WYCH_* storage
+        keys, wtl*/_wychB*/renderWychBoard functions, and all
+        wtl/wych references in the tab system). This pair duplicated
+        the Task Library → After you come Home pair and was left over
+        from importing WYCH.html.
+      - Renamed the FT/PT/Both owner-tag pill in the Task (Jobs)
+        Library from "BOTH" to "B"
+      - No storage keys shared with any other project file were
+        affected; Kalyan's chores tab (kal) is untouched
+
   v3  · 27 Mar 2026
       - Removed ↑ / ↓ up/down arrow buttons from all task items
         (drag-and-drop handle already covers reordering; keeps UI
