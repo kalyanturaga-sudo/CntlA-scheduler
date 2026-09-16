@@ -2757,52 +2757,70 @@ function jobBoardResetAll(){
 
 const JOB_COL_PRINT_ACCENT = {ft:'#2a6db5', pt:'#c17b3f'};
 
+/* flatten a category's items (respecting FT/PT tagging) into {text,level} rows */
+function _jobCatFlatRows(cat,col){
+  const flat=[];
+  cat.items.filter(i=>_jtAppliesTo(i.tag,col)).forEach(item=>{
+    flat.push({text:item.name,level:0});
+    (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>flat.push({text:s.name,level:1}));
+  });
+  return flat;
+}
+
 function jobBoardPrint(cols){
   cols = cols || JOB_COLS;
-  let bodyHTML='<div class="grid">';
+  let outerHTML='';
   cols.forEach(col=>{
     const meta=JOB_COL_META[col];
-    bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
+    const accent=JOB_COL_PRINT_ACCENT[col]||'#2a8f8f';
+    let cardsHTML='';
     jtCats.forEach(cat=>{
-      const items=cat.items.filter(i=>_jtAppliesTo(i.tag,col));
-      if(!items.length) return;
-      bodyHTML+=`<div class="item level-0">${cat.name}</div>`;
-      items.forEach(item=>{
-        bodyHTML+=`<div class="item level-1"><div class="cb"></div><span>${item.name}</span></div>`;
-        (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>{
-          bodyHTML+=`<div class="item level-2"><div class="cb"></div><span>${s.name}</span></div>`;
-        });
-      });
+      const flat=_jobCatFlatRows(cat,col);
+      if(!flat.length) return;
+      const rowsHTML=flat.map(row=>{
+        const indent=row.level?'padding-left:30px;':'';
+        return `<div style="display:flex;align-items:center;padding:6px 12px;border-bottom:1px solid #eee;${indent}"><span style="display:inline-block;width:15px;height:15px;border:1.75px solid #333;border-radius:3px;margin-right:9px;flex-shrink:0;background:#fff;"></span><span style="font-size:${row.level?'12.5px':'13.5px'};font-weight:${row.level?'500':'700'};color:#111;">${_esc(row.text)}</span></div>`;
+      }).join('');
+      cardsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;">
+        <div style="padding:9px 12px 7px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
+          <span style="font-size:13.5px;font-weight:700;">${_esc(cat.name)}</span>
+          <span style="font-size:11px;color:#888;">${flat.length} item${flat.length===1?'':'s'}</span>
+        </div>
+        <div>${rowsHTML}</div>
+      </div>`;
     });
-    bodyHTML+='</div>';
+    if(!cardsHTML) return;
+    outerHTML+=`<div style="margin-bottom:20px;">
+      <div style="font-size:15px;font-weight:700;color:${accent};margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid ${accent};">${meta.label}</div>
+      <div class="grid">${cardsHTML}</div>
+    </div>`;
   });
-  bodyHTML+='</div>';
   const subtitle = cols.length===2 ? 'FT · PT' : JOB_COL_META[cols[0]].label;
-  openPrint(buildPrintDoc('Job Checklist',subtitle,bodyHTML,'#2a8f8f'));
+  openPrint(buildPrintDoc('Job Checklist',subtitle,outerHTML,'#2a8f8f'));
 }
 
 function jobBoardPrintColor(cols){
   cols = cols || JOB_COLS;
-  let sh='';
+  let outerHTML='';
   cols.forEach(col=>{
     const meta=JOB_COL_META[col];
     const accent=JOB_COL_PRINT_ACCENT[col]||'#2a8f8f';
-    let rows='';
+    const bg=col==='ft'?'#eef4fb':'#f5f0e8';
+    const hdrBg=col==='ft'?'rgba(42,109,181,0.16)':'rgba(193,123,63,0.16)';
+    let cardsHTML='';
     jtCats.forEach(cat=>{
-      const items=cat.items.filter(i=>_jtAppliesTo(i.tag,col));
-      if(!items.length) return;
-      const flat=[];
-      items.forEach(item=>{
-        flat.push({text:item.name,level:0});
-        (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>flat.push({text:s.name,level:1}));
-      });
-      rows+=buildPrintRows(flat,false);
+      const flat=_jobCatFlatRows(cat,col);
+      if(!flat.length) return;
+      cardsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${accent};border-radius:6px;overflow:hidden;background:${bg};"><div style="font-size:15px;font-weight:800;color:${accent};background:${hdrBg};border-bottom:2px solid ${accent};padding:8px 12px;">${_esc(cat.name)}</div>${buildPrintRows(flat,false)}</div>`;
     });
-    if(!rows) return;
-    sh+=colorBlock(col==='ft'?'🏢':'💼', meta.label, rows, accent, col==='ft'?'#eef4fb':'#f5f0e8', `rgba(${col==='ft'?'42,109,181':'193,123,63'},0.16)`);
+    if(!cardsHTML) return;
+    outerHTML+=`<div style="margin-bottom:20px;">
+      <div style="font-size:15px;font-weight:700;color:${accent};margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid ${accent};">${meta.label}</div>
+      <div class="grid">${cardsHTML}</div>
+    </div>`;
   });
   const subtitle = cols.length===2 ? 'FT · PT' : JOB_COL_META[cols[0]].label;
-  openPrint(buildPrintDoc('Job Checklist',subtitle,'<div class="grid">'+sh+'</div>','#2a8f8f'));
+  openPrint(buildPrintDoc('Job Checklist',subtitle,outerHTML,'#2a8f8f'));
 }
 
 function jobBoardPrintSmart(){
