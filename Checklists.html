@@ -647,7 +647,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       </div>
       <div class="panel-header-right">
         <button class="btn btn-ghost" onclick="jobBoardResetAll()" title="Uncheck FT and PT">↺ Reset all</button>
-        <button class="btn btn-ghost" onclick="jobBoardPrint()" title="Print both columns">🖨 Print</button>
+        <button class="btn btn-ghost" onclick="jobBoardPrintSmart()" title="Print — choose FT, PT, or both">🖨 Print</button>
       </div>
     </div>
     <div class="job-cols" id="jobCols"></div>
@@ -741,6 +741,31 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <button class="btn btn-ghost" id="printModalCancel">Cancel</button>
       <button class="btn btn-ghost" id="printModalBW" style="border-color:var(--border);">B&W</button>
       <button class="btn" id="printModalColor" style="background:var(--accent);color:#fff;">🎨 Colour</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOB BOARD PRINT MODAL (FT / PT / both) -->
+<div class="modal-overlay" id="jobPrintModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.38);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(0,0,0,0.22);width:340px;max-width:92vw;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--text);margin-bottom:6px;">🖨 Print</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:6px;">Job checklist</p>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Which list</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;">
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--accent-soft);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);">
+        <input type="checkbox" id="jobPrintFT" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+        <span>🏢 FT job</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--accent-soft);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);">
+        <input type="checkbox" id="jobPrintPT" checked style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+        <span>💼 PT job</span>
+      </label>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Style</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="jobPrintModalCancel">Cancel</button>
+      <button class="btn btn-ghost" id="jobPrintModalBW" style="border-color:var(--border);">B&W</button>
+      <button class="btn" id="jobPrintModalColor" style="background:var(--accent);color:#fff;">🎨 Colour</button>
     </div>
   </div>
 </div>
@@ -2730,9 +2755,12 @@ function jobBoardResetAll(){
   jtDone={}; jtSaveDone(jtDone); renderJobChecklist();
 }
 
-function jobBoardPrint(){
+const JOB_COL_PRINT_ACCENT = {ft:'#2a6db5', pt:'#c17b3f'};
+
+function jobBoardPrint(cols){
+  cols = cols || JOB_COLS;
   let bodyHTML='<div class="grid">';
-  JOB_COLS.forEach(col=>{
+  cols.forEach(col=>{
     const meta=JOB_COL_META[col];
     bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
     jtCats.forEach(cat=>{
@@ -2749,8 +2777,68 @@ function jobBoardPrint(){
     bodyHTML+='</div>';
   });
   bodyHTML+='</div>';
-  openPrint(buildPrintDoc('Job Checklist','FT · PT',bodyHTML,'#2a8f8f'));
+  const subtitle = cols.length===2 ? 'FT · PT' : JOB_COL_META[cols[0]].label;
+  openPrint(buildPrintDoc('Job Checklist',subtitle,bodyHTML,'#2a8f8f'));
 }
+
+function jobBoardPrintColor(cols){
+  cols = cols || JOB_COLS;
+  let sh='';
+  cols.forEach(col=>{
+    const meta=JOB_COL_META[col];
+    const accent=JOB_COL_PRINT_ACCENT[col]||'#2a8f8f';
+    let rows='';
+    jtCats.forEach(cat=>{
+      const items=cat.items.filter(i=>_jtAppliesTo(i.tag,col));
+      if(!items.length) return;
+      const flat=[];
+      items.forEach(item=>{
+        flat.push({text:item.name,level:0});
+        (item.subs||[]).filter(s=>_jtAppliesTo(s.tag,col)).forEach(s=>flat.push({text:s.name,level:1}));
+      });
+      rows+=buildPrintRows(flat,false);
+    });
+    if(!rows) return;
+    sh+=colorBlock(col==='ft'?'🏢':'💼', meta.label, rows, accent, col==='ft'?'#eef4fb':'#f5f0e8', `rgba(${col==='ft'?'42,109,181':'193,123,63'},0.16)`);
+  });
+  const subtitle = cols.length===2 ? 'FT · PT' : JOB_COL_META[cols[0]].label;
+  openPrint(buildPrintDoc('Job Checklist',subtitle,'<div class="grid">'+sh+'</div>','#2a8f8f'));
+}
+
+function jobBoardPrintSmart(){
+  document.getElementById('jobPrintFT').checked=true;
+  document.getElementById('jobPrintPT').checked=true;
+  document.getElementById('jobPrintModal').style.display='flex';
+}
+
+(function setupJobPrintModal(){
+  const modal=document.getElementById('jobPrintModal');
+  const cbFT=document.getElementById('jobPrintFT');
+  const cbPT=document.getElementById('jobPrintPT');
+  const btnCancel=document.getElementById('jobPrintModalCancel');
+  const btnBW=document.getElementById('jobPrintModalBW');
+  const btnColor=document.getElementById('jobPrintModalColor');
+
+  function getSelectedCols(){
+    const cols=[];
+    if(cbFT.checked) cols.push('ft');
+    if(cbPT.checked) cols.push('pt');
+    return cols;
+  }
+
+  btnCancel.onclick=()=>modal.style.display='none';
+  modal.onclick=e=>{ if(e.target===modal) modal.style.display='none'; };
+
+  function doPrint(useColor){
+    const cols=getSelectedCols();
+    if(!cols.length){ showToast('⚠ Select FT, PT, or both'); return; }
+    modal.style.display='none';
+    useColor ? jobBoardPrintColor(cols) : jobBoardPrint(cols);
+  }
+
+  btnBW.onclick=()=>doPrint(false);
+  btnColor.onclick=()=>doPrint(true);
+})();
 
 
 /* ============================================================
