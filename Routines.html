@@ -471,8 +471,10 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-circle:hover{border-color:var(--accent);}
 .tb-circle.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .tb-circle-wide{width:34px;border-radius:15px;font-size:11px;}
-.tb-circle-essential.on{background:#d6483f;border-color:#d6483f;color:#fff;}
-.tb-essential-mark{color:#d6483f;font-weight:800;margin-left:2px;}
+.tb-circle-essential.on{background:#e8821e;border-color:#e8821e;color:#fff;}
+.tb-essential-mark{color:#e8821e;font-weight:800;margin-left:2px;}
+.tb-circle-priority.on{background:#d6483f;border-color:#d6483f;color:#fff;}
+.tb-priority-mark{color:#d6483f;font-weight:800;margin-left:2px;}
 .tb-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:4px 6px;border-radius:6px;flex-shrink:0;}
 .tb-icon-btn:hover{color:#c0392b;background:var(--surface2);}
 .tb-icon-btn[data-act="indent"],.tb-icon-btn[data-act="outdent"]{color:var(--text2);font-size:15px;}
@@ -2357,6 +2359,7 @@ const TB_SEED_KEY    = "ONETRACK_TASKBANK_SEEDED_V1";   // "1" once seeded, neve
 const TB_DONE_WK_KEY = "ONETRACK_TASKBANK_DONE_WEEKLY_V1";
 const TB_DONE_F1_KEY = "ONETRACK_TASKBANK_DONE_FORT_V1";   // shared by F1 + F2 (ids are unique)
 const TB_DONE_MO_KEY = "ONETRACK_TASKBANK_DONE_MONTH_V1";
+const TB_DONE_PRIORITY_KEY = "ONETRACK_TASKBANK_DONE_PRIORITY_V1"; // own checkbox state for the Priority tasks box
 
 const TB_DAY_LABELS = ["M","T","W","T","F","S","S"];
 const TB_DAY_VALUES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -2437,7 +2440,7 @@ function _tbRenderCheckItem(t, ctx, doneMap, doneKey){
   const checked=!!doneMap[pid];
   let h=`<div class="tb-item${checked?" tb-done":""}" data-id="${pid}" data-donekey="${doneKey}">`
       +`<span class="tb-checkbox">${checked?"✓":""}</span>`
-      +`<span class="tb-item-label">${_esc(t.name)}${t.essential?` <span class="tb-essential-mark" title="Essential — cannot be missed">*</span>`:""}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
+      +`<span class="tb-item-label">${_esc(t.name)}${t.priority?` <span class="tb-priority-mark" title="Priority">●</span>`:""}${t.essential?` <span class="tb-essential-mark" title="Essential — cannot be missed">*</span>`:""}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
   (t.subs||[]).forEach(s=>{
     const sid=_tbDoneId(s.id,ctx);
     const sc=!!doneMap[sid];
@@ -2495,10 +2498,13 @@ function _tbComputeStats(){
 
 /* ── Weekly: 3×4 grid (12 cells, 11 used). Row1-3 col1: today-leads 7-day
    rotation (unchanged). Row3 col2/3: F1 / F2 (fixed). Row4 col1: Monthly
-   (fixed). Row4 col2: "This week at a glance" stats. Row4 col3: Whenever
-   (fixed). Whenever is an independent checkbox (t.whenever) — a task can
-   be scheduled on a day AND flagged Whenever at the same time. A task with
-   bucket "day" and no days picked still falls into Whenever by default. ── */
+   (fixed). Row4 col2: Priority tasks — every task flagged priority (the red
+   P circle in Task bank), regardless of which bucket/day it also lives in,
+   with its own checkbox state (TB_DONE_PRIORITY_KEY) independent of that
+   task's other boxes. Row4 col3: Whenever (fixed). Whenever is an
+   independent checkbox (t.whenever) — a task can be scheduled on a day AND
+   flagged Whenever at the same time. A task with bucket "day" and no days
+   picked still falls into Whenever by default. ── */
 function _tbWheneverList(tasks){
   return tasks.filter(t=> t.whenever || (t.bucket==="day" && (!t.days||!t.days.length)));
 }
@@ -2511,7 +2517,8 @@ function renderTBWeekly(){
   const days=_weeklyBoxOrder();
   const f1=tasks.filter(t=>t.bucket==="f1"), f2=tasks.filter(t=>t.bucket==="f2"), mo=tasks.filter(t=>t.bucket==="month");
   const wh=_tbWheneverList(tasks);
-  const stats=_tbComputeStats();
+  const donePri=loadTBDone(TB_DONE_PRIORITY_KEY);
+  const priTasks=tasks.filter(t=>t.priority);
   let html='<div class="tb-grid">';
   days.forEach(day=>{
     const items=dayTasks.filter(t=>t.days&&t.days.includes(day));
@@ -2527,11 +2534,9 @@ function renderTBWeekly(){
   html+='<div class="tb-box"><div class="tb-box-title">Monthly</div><div class="tb-box-body">';
   html += mo.length ? mo.map(t=>_tbRenderCheckItem(t,null,doneM,TB_DONE_MO_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
   html+='</div></div>';
-  html+='<div class="tb-box tb-box-glance"><div class="tb-box-title">This week</div>'
-      +`<div class="tb-glance-stat">${stats.pct}%</div>`
-      +`<div class="tb-glance-sub">${stats.doneCount} of ${stats.total} done</div>`
-      +`<div class="tb-glance-sub">${stats.whOpen} open in Whenever</div>`
-      +'</div>';
+  html+='<div class="tb-box"><div class="tb-box-title">Priority tasks</div><div class="tb-box-body">';
+  html += priTasks.length ? priTasks.map(t=>_tbRenderCheckItem(t,"Priority",donePri,TB_DONE_PRIORITY_KEY)).join("") : '<div class="tb-empty">No priority tasks — tap the red P circle in Task bank</div>';
+  html+='</div></div>';
   html+='<div class="tb-box"><div class="tb-box-title">Whenever</div><div class="tb-box-body">';
   html += wh.length ? wh.map(t=>_tbRenderCheckItem(t,"Whenever",done,TB_DONE_WK_KEY)).join("") : '<div class="tb-empty">No tasks yet</div>';
   html+='</div></div>';
@@ -2639,12 +2644,14 @@ function _tbSetBucketDay(t, day){
 }
 function _tbToggleWhenever(t){ t.whenever = !t.whenever; }
 function _tbToggleEssential(t){ t.essential = !t.essential; }
+function _tbTogglePriority(t){ t.priority = !t.priority; }
 function _tbSetOther(t,bucket){ t.bucket=bucket; t.days=[]; }
 
 function _tbCircleRow(t){
   let h='<div class="tb-circles">';
   TB_DAY_LABELS.forEach((lbl,i)=>{
     if(i===0){
+      h+=`<button class="tb-circle tb-circle-priority${t.priority?" on":""}" data-act="priority" title="Priority — shown in the Priority tasks box">P</button>`;
       h+=`<button class="tb-circle tb-circle-essential${t.essential?" on":""}" data-act="essential" title="Essential — cannot be missed">E</button>`;
     }
     const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
@@ -2739,6 +2746,7 @@ function renderTaskBank(){
       const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
       const act=circleBtn.dataset.act;
       if(act==="day") _tbSetBucketDay(t, circleBtn.dataset.day);
+      else if(act==="priority") _tbTogglePriority(t);
       else if(act==="essential") _tbToggleEssential(t);
       else if(act==="whenever") _tbToggleWhenever(t);
       else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
@@ -2967,7 +2975,7 @@ const TAB_DELETED_KEY = "RTN_TAB_DELETED";  // [modeId, ...]
 const TAB_HIDDEN_KEY  = "RTN_TAB_HIDDEN";   // [modeId, ...] — hidden, not deleted; data kept
 const TAB_META = {
   daily:    { defaultLabel:"☀️ Daily",    keys:[ROUTINES_KEY,CUSTOM_KEY,NAMES_KEY,ORDER_KEY,SEED_KEY,TODAY_DATE_KEY,ACTIVE_KEY,SECHDR_KEY] },
-  weekly:   { defaultLabel:"📅 Weekly",   keys:["ONETRACK_WEEKLY_V2","ONETRACK_WEEKLY_ORDER_V1","ONETRACK_WEEKLY_ACTIVE_V1","ONETRACK_FORTNIGHT_BOARD_V1",TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY] },
+  weekly:   { defaultLabel:"📅 Weekly",   keys:["ONETRACK_WEEKLY_V2","ONETRACK_WEEKLY_ORDER_V1","ONETRACK_WEEKLY_ACTIVE_V1","ONETRACK_FORTNIGHT_BOARD_V1",TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY,TB_DONE_PRIORITY_KEY] },
   taskbank: { defaultLabel:"🗂 Task bank", keys:[TB_KEY,TB_SEED_KEY] }
 };
 function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
@@ -3119,8 +3127,8 @@ document.getElementById("btnResetAll").addEventListener("click", ()=>{
     Object.keys(d).forEach(id=>{ if(d[id]&&d[id].items) d[id].items.forEach(it=>{ if(!it.isHeader) it.done=false; }); });
     saveData(d); render(); showToast("↺ All routines reset");
   } else if(activeMode==="weekly"){
-    if(!confirm("Uncheck every task on the Weekly board (days, F1, F2, Monthly, Whenever)?")) return;
-    saveTBDone(TB_DONE_WK_KEY, {}); saveTBDone(TB_DONE_F1_KEY, {}); saveTBDone(TB_DONE_MO_KEY, {});
+    if(!confirm("Uncheck every task on the Weekly board (days, F1, F2, Monthly, Whenever, Priority)?")) return;
+    saveTBDone(TB_DONE_WK_KEY, {}); saveTBDone(TB_DONE_F1_KEY, {}); saveTBDone(TB_DONE_MO_KEY, {}); saveTBDone(TB_DONE_PRIORITY_KEY, {});
     renderTBWeekly(); showToast("↺ Weekly board reset");
   }
 });
