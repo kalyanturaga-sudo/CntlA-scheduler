@@ -2298,36 +2298,75 @@ const AHTML_PRINT_ACCENT={
 function _ahtmlSubtitle(owners){
   return owners.length===TASKLIB_OWNERS.length ? 'Kalyan · Rohan · Esha' : owners.map(o=>TASKLIB_OWNER_META[o].label).join(' · ');
 }
+/* Column count follows how many people are actually being printed — one
+   person gets the full page width instead of being stranded in a narrow
+   auto-fill column with the rest of the sheet left blank. */
+function _ahtmlColumnsForCount(n){ return Math.max(1, Math.min(3, n||1)); }
+/* Rough px estimate of a block's printed height from its item count, just
+   enough to tell whether the page has slack to grow into. */
+function _ahtmlEstimateHeight(itemCount){ return 40 + itemCount*20 + 16; }
+function _ahtmlScale(itemCounts){
+  const maxH=Math.max.apply(null, itemCounts.length?itemCounts.map(_ahtmlEstimateHeight):[1]) || 1;
+  return Math.min(1.35, Math.max(1, 940/maxH));
+}
+function _ahtmlRowsHTML(rows, scale){
+  if(!rows.length) return `<div style="font-size:${Math.round(12*scale)}px;color:#aaa;padding:${Math.round(8*scale)}px 12px;">No tasks</div>`;
+  return rows.map(item=>{
+    const indent=item.level?`padding-left:${Math.round(30*scale)}px;`:'';
+    const box=Math.round(17*scale);
+    return `<div style="display:flex;align-items:center;padding:${Math.round(6*scale)}px 12px;border-bottom:1px solid #ccc;${indent}"><span style="display:inline-block;width:${box}px;height:${box}px;border:${(2.25*scale).toFixed(2)}px solid #000;border-radius:3px;margin-right:${Math.round(10*scale)}px;flex-shrink:0;background:#fff;"></span><span style="font-size:${item.level?Math.round(13.5*scale*10)/10:Math.round(14.5*scale*10)/10}px;font-weight:${item.level?600:700};flex:1;color:#000;">${_esc(item.text)}</span></div>`;
+  }).join('');
+}
+function _ahtmlRowsHTMLColor(rows, scale, border){
+  if(!rows.length) return '';
+  return rows.map(item=>{
+    const indent=item.level?`padding-left:${Math.round(30*scale)}px;`:'';
+    const box=Math.round(17*scale);
+    return `<div style="display:flex;align-items:center;padding:${Math.round(6*scale)}px 12px;border-bottom:1px solid ${border};${indent}"><span style="display:inline-block;width:${box}px;height:${box}px;border:${(2.25*scale).toFixed(2)}px solid #000;border-radius:3px;margin-right:${Math.round(10*scale)}px;flex-shrink:0;background:#fff;"></span><span style="font-size:${item.level?Math.round(13.5*scale*10)/10:Math.round(14.5*scale*10)/10}px;font-weight:${item.level?600:700};flex:1;color:#000;">${_esc(item.text)}</span></div>`;
+  }).join('');
+}
 function ahtmlPrint(owners){
   owners = owners || TASKLIB_OWNERS;
-  let bodyHTML='<div class="grid">';
-  owners.forEach(owner=>{
-    const meta=TASKLIB_OWNER_META[owner];
-    bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
+  const groups=owners.map(owner=>{
+    const rows=[];
     tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
-      bodyHTML+=`<div class="item level-0"><div class="cb"></div><span>${t.name}</span></div>`;
-      (t.subs||[]).forEach(s=>{ bodyHTML+=`<div class="item level-1"><div class="cb"></div><span>${s.name}</span></div>`; });
+      rows.push({text:t.name,level:0});
+      (t.subs||[]).forEach(s=>rows.push({text:s.name,level:1}));
     });
-    bodyHTML+='</div>';
+    return {owner, rows};
+  });
+  const cols=_ahtmlColumnsForCount(groups.length);
+  const scale=_ahtmlScale(groups.map(g=>g.rows.length));
+  const gap=Math.round(14*scale);
+  let bodyHTML=`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:${gap}px;">`;
+  groups.forEach(g=>{
+    const meta=TASKLIB_OWNER_META[g.owner];
+    bodyHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid #000;border-radius:6px;overflow:hidden;background:#fff;"><div style="font-size:${Math.round(15*scale*10)/10}px;font-weight:800;color:#000;background:#eee;border-bottom:2px solid #000;padding:${Math.round(8*scale)}px 12px;">${meta.label}</div>${_ahtmlRowsHTML(g.rows,scale)}</div>`;
   });
   bodyHTML+='</div>';
   openPrint(buildPrintDoc('After you come Home',_ahtmlSubtitle(owners),bodyHTML,'#6a6a8a'));
 }
 function ahtmlPrintColor(owners){
   owners = owners || TASKLIB_OWNERS;
-  let sh='';
-  owners.forEach(owner=>{
-    const meta=TASKLIB_OWNER_META[owner];
-    const clr=AHTML_PRINT_ACCENT[owner];
+  const groups=owners.map(owner=>{
     const rows=[];
     tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
       rows.push({text:t.name,level:0});
       (t.subs||[]).forEach(s=>rows.push({text:s.name,level:1}));
     });
-    if(!rows.length) return;
-    sh+=colorBlock(clr.icon,meta.label,buildPrintRows(rows,false),clr.accent,clr.bg,clr.hdr);
+    return {owner, rows};
+  }).filter(g=>g.rows.length);
+  const cols=_ahtmlColumnsForCount(groups.length);
+  const scale=_ahtmlScale(groups.map(g=>g.rows.length));
+  const gap=Math.round(14*scale);
+  let sh='';
+  groups.forEach(g=>{
+    const meta=TASKLIB_OWNER_META[g.owner];
+    const clr=AHTML_PRINT_ACCENT[g.owner];
+    const rowsHTML=_ahtmlRowsHTMLColor(g.rows,scale,clr.hdr);
+    sh+=`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${clr.accent};border-radius:6px;overflow:hidden;background:${clr.bg};"><div style="font-size:${Math.round(15*scale*10)/10}px;font-weight:800;color:${clr.accent};background:${clr.hdr};border-bottom:2px solid ${clr.accent};padding:${Math.round(8*scale)}px 12px;">${clr.icon} ${meta.label}</div>${rowsHTML}</div>`;
   });
-  openPrint(buildPrintDoc('After you come Home',_ahtmlSubtitle(owners),'<div class="grid">'+sh+'</div>','#6a6a8a'));
+  openPrint(buildPrintDoc('After you come Home',_ahtmlSubtitle(owners),`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:${gap}px;">${sh}</div>`,'#6a6a8a'));
 }
 function ahtmlPrintSmart(){
   document.getElementById('ahtmlPrintK').checked=true;
