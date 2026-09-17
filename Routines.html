@@ -1995,12 +1995,13 @@ function resetDailyAll(){
 ══════════════════════════════════════════════════════════ */
 function openPrint(html){ const w=window.open("","_blank"); w.document.write(html); w.document.close(); w.onload=()=>{w.focus();w.print();}; }
 
-/* card sizing for a paginated print (see override.paginate). A single comfortable
-   size — the balancing logic below (not font-shrinking) is what keeps things fitting.
-   The cap is just a backstop against one freak section with dozens of tasks. */
+/* Baseline card sizing. Non-paginated prints (Daily, Simple sections) keep the
+   original fixed size. Paginated prints (Weekly) get their real per-page size
+   from _printScaledTier below — this baseline is only the starting point that
+   gets scaled up when a page has slack. */
 function _printCardTier(count, paginate){
   if(!paginate) return {box:17,text:14.5,textSub:13,pad:6,max:Infinity};
-  return {box:15,text:12.5,textSub:11.5,pad:4,max:20};
+  return {box:15,text:12.5,textSub:11.5,pad:4,max:20,_scale:1};
 }
 
 /* Splits cards into two groups whose total item counts are as close to equal as
@@ -2019,15 +2020,51 @@ function _printBalancedSplit(cards){
   return [cards.slice(0,bestIdx), cards.slice(bestIdx)];
 }
 
-/* Within one page's cards, greedily assigns each to whichever of two columns
-   currently carries less workload, so both columns come out roughly level. */
-function _printTwoColumns(group){
-  const col=[[],[]], colSum=[0,0];
+/* More cards on a page → more columns, so a busy page uses the full width
+   instead of stretching a couple of columns thin. */
+function _printColumnsForCount(n){
+  if(n<=1) return 1;
+  if(n<=4) return 2;
+  if(n<=9) return 3;
+  return 4;
+}
+
+/* Greedily assigns each card to whichever column currently carries the least
+   workload, so every column on a page comes out roughly level. */
+function _printAssignColumns(group, numCols){
+  const n=Math.max(1, Math.min(numCols, group.length));
+  const cols=Array.from({length:n},()=>[]), sums=new Array(n).fill(0);
   group.forEach(c=>{
-    const t=colSum[0]<=colSum[1]?0:1;
-    col[t].push(c.html); colSum[t]+=c.count;
+    let idx=0;
+    for(let i=1;i<n;i++) if(sums[i]<sums[idx]) idx=i;
+    cols[idx].push(c); sums[idx]+=c.count;
   });
-  return col;
+  return cols;
+}
+
+/* Rough px estimate of a column's printed height from its cards' item counts —
+   just enough to tell whether a page has slack, not a pixel-exact layout. */
+const PRINT_BASE_ROWH=20, PRINT_BASE_HDR=34, PRINT_BASE_CARDPAD=14, PRINT_BASE_GAP=10, PRINT_PAGE_BUDGET_PX=940;
+function _printEstimateColHeight(colCards){
+  return colCards.reduce((s,c)=>s+PRINT_BASE_HDR+c.count*PRINT_BASE_ROWH+PRINT_BASE_CARDPAD,0) + Math.max(0,colCards.length-1)*PRINT_BASE_GAP;
+}
+/* How much a page's type/spacing can grow to use its slack, based on its
+   tallest column against the printable budget. Never shrinks below 1 (the
+   balanced split already keeps every page inside one sheet at baseline size),
+   and is capped so a very light page doesn't blow up into oversized text. */
+function _printPageScale(cols){
+  const maxH=Math.max.apply(null, cols.length?cols.map(_printEstimateColHeight):[1]) || 1;
+  return Math.min(1.35, Math.max(1, PRINT_PAGE_BUDGET_PX/maxH));
+}
+function _printScaledTier(scale){
+  return {
+    box:Math.round(15*scale),
+    text:Math.round(12.5*scale*10)/10,
+    textSub:Math.round(11.5*scale*10)/10,
+    pad:Math.round(4*scale*10)/10,
+    max:20,
+    _scale:scale
+  };
 }
 
 function printRoutinesBW(selectedIds, override){
@@ -2037,55 +2074,51 @@ function printRoutinesBW(selectedIds, override){
   const titleLabel=override?override.title:"Routines";
   const paginate=!!(override&&override.paginate);
   let totalAll=0, doneAll=0;
-  routines.forEach(r=>{ const items=(d[r.id]&&d[r.id].items)||r.items.map(t=>({text:t,done:false})); const real=items.filter(it=>!it.isHeader); totalAll+=real.length; doneAll+=real.filter(t=>t.done).length; });
-  const cards=[];
+  const cardData=[];
   routines.forEach(r=>{
     const items=(d[r.id]&&d[r.id].items)||r.items.map(t=>({text:t,done:false}));
     const real=items.filter(it=>!it.isHeader);
     if(!real.length) return;
     const done=real.filter(t=>t.done).length, total=real.length;
-    const hasHeaders=items.some(it=>it.isHeader);
-    const tier=_printCardTier(total,paginate);
+    totalAll+=total; doneAll+=done;
+    cardData.push({r, items, done, total, count:total});
+  });
+  function renderRows(items, tier){
     const shownItems=paginate?items.slice(0,tier.max):items;
     const hiddenCount=paginate?Math.max(0,items.length-shownItems.length):0;
     let rowsHTML="";
-    if(hasHeaders){
-      // Render section sub-headings + their tasks
-      shownItems.forEach(item=>{
-        if(item.isHeader){
-          const label=item.text.replace(/^__room__|^__hdr__/,"");
-          rowsHTML+=`<div style="font-size:${paginate?"9.5px":"11px"};font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#000;padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid #000;margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
-        } else {
-          const strike=item.done?"text-decoration:line-through;color:#555;":"";
-          const box=item.done
-            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
-            :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
-          const text=typeof item==="string"?item:item.text;
-          const ind=item.sub?"margin-left:18px;":"";
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
-        }
-      });
-    } else {
-      shownItems.forEach(item=>{
-        const strike=item.done?"text-decoration:line-through;color:#555;":"";
-        const box=item.done
-          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
-          :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
-        const text=typeof item==="string"?item:item.text;
-        const ind=item.sub?"margin-left:18px;":"";
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
-      });
-    }
+    shownItems.forEach(item=>{
+      if(item.isHeader){
+        const label=item.text.replace(/^__room__|^__hdr__/,"");
+        rowsHTML+=`<div style="font-size:${paginate?Math.round(9.5*tier._scale*10)/10:11}px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#000;padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid #000;margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
+        return;
+      }
+      const strike=item.done?"text-decoration:line-through;color:#555;":"";
+      const box=item.done
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+        :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
+      const text=typeof item==="string"?item:item.text;
+      const ind=item.sub?"margin-left:18px;":"";
+      rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+    });
     if(hiddenCount>0) rowsHTML+=`<div style="font-size:9px;color:#777;padding:3px 0;font-style:italic;">+${hiddenCount} more</div>`;
-    cards.push({count:total, html:`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid #000;border-radius:6px;overflow:hidden;background:#fff;"><div style="padding:${paginate?"6px 9px 5px":"10px 12px 8px"};border-bottom:2px solid #000;display:flex;justify-content:space-between;align-items:center;background:#eee;"><span style="font-size:${paginate?"12px":"15px"};font-weight:800;color:#000;">${r.icon} ${r.label}</span><span style="font-size:${paginate?"10px":"12px"};font-weight:700;color:#000;">${done}/${total}</span></div><div style="padding:${paginate?"3px 9px 5px":"4px 12px 8px"};">${rowsHTML}</div></div>`});
-  });
+    return rowsHTML;
+  }
+  function renderCard(cd, tier){
+    const rowsHTML=renderRows(cd.items, tier);
+    const scale=tier._scale||1;
+    return `<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid #000;border-radius:6px;overflow:hidden;background:#fff;"><div style="padding:${paginate?Math.round(6*scale)+"px "+Math.round(9*scale)+"px "+Math.round(5*scale)+"px":"10px 12px 8px"};border-bottom:2px solid #000;display:flex;justify-content:space-between;align-items:center;background:#eee;"><span style="font-size:${paginate?Math.round(12*scale):15}px;font-weight:800;color:#000;">${cd.r.icon} ${cd.r.label}</span><span style="font-size:${paginate?Math.round(10*scale):12}px;font-weight:700;color:#000;">${cd.done}/${cd.total}</span></div><div style="padding:${paginate?Math.round(3*scale)+"px "+Math.round(9*scale)+"px "+Math.round(5*scale)+"px":"4px 12px 8px"};">${rowsHTML}</div></div>`;
+  }
   let bodyHTML;
-  if(paginate && cards.length){
-    const pageGroups=_printBalancedSplit(cards);
+  if(paginate && cardData.length){
+    const pageGroups=_printBalancedSplit(cardData);
     bodyHTML=pageGroups.map((group,i)=>{
       const isLast=i===pageGroups.length-1;
-      const cols=_printTwoColumns(group);
-      const colsHTML=cols.map(colHtml=>`<div style="display:flex;flex-direction:column;gap:10px;flex:1;min-width:0;">${colHtml.join("")}</div>`).join("");
+      const numCols=_printColumnsForCount(group.length);
+      const cols=_printAssignColumns(group,numCols);
+      const scale=_printPageScale(cols);
+      const tier=_printScaledTier(scale);
+      const colsHTML=cols.map(colCards=>`<div style="display:flex;flex-direction:column;gap:${Math.round(10*scale)}px;flex:1;min-width:0;">${colCards.map(cd=>renderCard(cd,tier)).join("")}</div>`).join("");
       return `<div style="${isLast?"":"page-break-after:always;"}max-height:273mm;overflow:hidden;display:flex;flex-direction:column;">
 <div style="flex-shrink:0;margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid #000;display:flex;justify-content:space-between;align-items:flex-end;">
 <div><div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:12px;font-weight:600;color:#333;margin-top:2px;">${now}</div></div>
@@ -2095,7 +2128,9 @@ function printRoutinesBW(selectedIds, override){
 </div>`;
     }).join("");
   } else {
-    bodyHTML=`<div style="border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#333;margin-top:3px;">${now}</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:#000;margin-top:2px;">${doneAll} / ${totalAll} done</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cards.map(c=>c.html).join("")}</div><div style="margin-top:16px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-size:10px;color:#666;font-style:italic;"><span>✦ Planner — ${titleLabel}</span><span>${todayShort}</span></div>`;
+    const baseTier=_printCardTier(0,false);
+    const cardsHtml=cardData.map(cd=>renderCard(cd,baseTier)).join("");
+    bodyHTML=`<div style="border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#333;margin-top:3px;">${now}</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:#000;margin-top:2px;">${doneAll} / ${totalAll} done</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cardsHtml}</div><div style="margin-top:16px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-size:10px;color:#666;font-style:italic;"><span>✦ Planner — ${titleLabel}</span><span>${todayShort}</span></div>`;
   }
   openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:20px 24px;}@page{size:A4;margin:14mm 12mm;}@media print{body{padding:0;}}</style></head><body>${bodyHTML}</body></html>`);
 }
@@ -2107,8 +2142,6 @@ function printRoutinesColor(selectedIds, override){
   const titleLabel=override?override.title:"Routines";
   const paginate=!!(override&&override.paginate);
   let totalAll=0, doneAll=0;
-  routines.forEach(r=>{ const items=(d[r.id]&&d[r.id].items)||[]; const real=items.filter(it=>!it.isHeader); totalAll+=real.length; doneAll+=real.filter(t=>t.done).length; });
-  const pctAll=totalAll?Math.round(doneAll/totalAll*100):0;
   const PALETTES=[
     {bg:"#fdf3e0",hdr:"#f5e4b8",accent:"#9a6a10",border:"#e0c880"},
     {bg:"#eef2fc",hdr:"#d4dff5",accent:"#2a4ea0",border:"#a8bce8"},
@@ -2117,56 +2150,55 @@ function printRoutinesColor(selectedIds, override){
     {bg:"#fde8e8",hdr:"#f5c8c8",accent:"#a02020",border:"#e8a0a0"},
     {bg:"#f3e8fe",hdr:"#dcc8f0",accent:"#6020a0",border:"#b890d8"},
   ];
-  const cards=[];
+  const cardData=[];
   routines.forEach((r,i)=>{
     const items=(d[r.id]&&d[r.id].items)||[];
     const real=items.filter(it=>!it.isHeader);
     if(!real.length) return;
     const done=real.filter(t=>t.done).length, total=real.length;
-    const pct=total?Math.round(done/total*100):0;
-    const pal=PALETTES[i%PALETTES.length];
-    const hasHeaders=items.some(it=>it.isHeader);
-    const tier=_printCardTier(total,paginate);
+    totalAll+=total; doneAll+=done;
+    cardData.push({r, items, done, total, count:total, pal:PALETTES[i%PALETTES.length]});
+  });
+  const pctAll=totalAll?Math.round(doneAll/totalAll*100):0;
+  function renderRows(items, pal, tier){
     const shownItems=paginate?items.slice(0,tier.max):items;
     const hiddenCount=paginate?Math.max(0,items.length-shownItems.length):0;
     let rowsHTML="";
-    if(hasHeaders){
-      shownItems.forEach(item=>{
-        if(item.isHeader){
-          const label=item.text.replace(/^__room__|^__hdr__/,"");
-          rowsHTML+=`<div style="font-size:${paginate?"9.5px":"11px"};font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${pal.accent};padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid ${pal.accent};margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
-        } else {
-          const text=typeof item==="string"?item:item.text;
-          const isDone=typeof item==="object"&&item.done;
-          const strike=isDone?`text-decoration:line-through;color:#555;opacity:0.7;`:"";
-          const box=isDone
-            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
-            :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
-        }
-      });
-    } else {
-      shownItems.forEach(item=>{
-        const text=typeof item==="string"?item:item.text;
-        const isDone=typeof item==="object"&&item.done;
-        const strike=isDone?`text-decoration:line-through;color:#555;opacity:0.7;`:"";
-        const box=isDone
-          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
-          :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
-      });
-    }
+    shownItems.forEach(item=>{
+      if(item.isHeader){
+        const label=item.text.replace(/^__room__|^__hdr__/,"");
+        rowsHTML+=`<div style="font-size:${paginate?Math.round(9.5*tier._scale*10)/10:11}px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${pal.accent};padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid ${pal.accent};margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
+        return;
+      }
+      const text=typeof item==="string"?item:item.text;
+      const isDone=typeof item==="object"&&item.done;
+      const strike=isDone?`text-decoration:line-through;color:#555;opacity:0.7;`:"";
+      const box=isDone
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+        :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
+      rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+    });
     if(hiddenCount>0) rowsHTML+=`<div style="font-size:9px;color:${pal.accent};opacity:.75;padding:3px 0;font-style:italic;">+${hiddenCount} more</div>`;
-    const barFill=`<div style="height:5px;background:${pal.hdr};border-radius:2px;margin:0 ${paginate?"9px 5px":"12px 8px"};overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
-    cards.push({count:total, html:`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${pal.accent};border-radius:8px;overflow:hidden;background:${pal.bg};"><div style="padding:${paginate?"6px 9px 5px":"10px 12px 8px"};border-bottom:2px solid ${pal.accent};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:${paginate?"12.5px":"15px"};font-weight:700;color:${pal.accent};">${r.icon}&nbsp;${r.label}</span><span style="font-size:${paginate?"10px":"12px"};color:${pal.accent};font-weight:800;">${done}/${total}</span></div>${barFill}<div style="padding:0 ${paginate?"9px 6px":"12px 10px"};">${rowsHTML}</div></div>`});
-  });
+    return rowsHTML;
+  }
+  function renderCard(cd, tier){
+    const pal=cd.pal;
+    const pct=cd.total?Math.round(cd.done/cd.total*100):0;
+    const rowsHTML=renderRows(cd.items, pal, tier);
+    const scale=tier._scale||1;
+    const barFill=`<div style="height:5px;background:${pal.hdr};border-radius:2px;margin:0 ${paginate?Math.round(9*scale)+"px "+Math.round(5*scale)+"px":"12px 8px"};overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
+    return `<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${pal.accent};border-radius:8px;overflow:hidden;background:${pal.bg};"><div style="padding:${paginate?Math.round(6*scale)+"px "+Math.round(9*scale)+"px "+Math.round(5*scale)+"px":"10px 12px 8px"};border-bottom:2px solid ${pal.accent};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:${paginate?Math.round(12.5*scale*10)/10:15}px;font-weight:700;color:${pal.accent};">${cd.r.icon}&nbsp;${cd.r.label}</span><span style="font-size:${paginate?Math.round(10*scale):12}px;color:${pal.accent};font-weight:800;">${cd.done}/${cd.total}</span></div>${barFill}<div style="padding:0 ${paginate?Math.round(9*scale)+"px "+Math.round(6*scale)+"px":"12px 10px"};">${rowsHTML}</div></div>`;
+  }
   let bodyHTML;
-  if(paginate && cards.length){
-    const pageGroups=_printBalancedSplit(cards);
+  if(paginate && cardData.length){
+    const pageGroups=_printBalancedSplit(cardData);
     bodyHTML=pageGroups.map((group,i)=>{
       const isLast=i===pageGroups.length-1;
-      const cols=_printTwoColumns(group);
-      const colsHTML=cols.map(colHtml=>`<div style="display:flex;flex-direction:column;gap:10px;flex:1;min-width:0;">${colHtml.join("")}</div>`).join("");
+      const numCols=_printColumnsForCount(group.length);
+      const cols=_printAssignColumns(group,numCols);
+      const scale=_printPageScale(cols);
+      const tier=_printScaledTier(scale);
+      const colsHTML=cols.map(colCards=>`<div style="display:flex;flex-direction:column;gap:${Math.round(10*scale)}px;flex:1;min-width:0;">${colCards.map(cd=>renderCard(cd,tier)).join("")}</div>`).join("");
       return `<div style="${isLast?"":"page-break-after:always;"}max-height:273mm;overflow:hidden;display:flex;flex-direction:column;">
 <div style="flex-shrink:0;background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:12px 16px 10px;margin-bottom:10px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;">
 <div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:11px;font-weight:600;color:#4a3e2c;margin-top:2px;font-style:italic;">${now}</div></div>
@@ -2176,7 +2208,9 @@ function printRoutinesColor(selectedIds, override){
 </div>`;
     }).join("");
   } else {
-    bodyHTML=`<div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#4a3e2c;margin-top:4px;font-style:italic;">${now}</div></div><div style="text-align:right;flex-shrink:0;padding-left:20px;"><div style="font-size:22px;font-family:'DM Serif Display',Georgia,serif;font-weight:700;color:#5a3f80;">${pctAll}%</div><div style="font-size:12px;font-weight:700;color:#5a4838;margin-top:1px;">${doneAll} / ${totalAll} done</div><div style="width:120px;height:7px;background:#d8c4a8;border-radius:3px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${pctAll}%;background:linear-gradient(90deg,#5a3f80,#c88030);border-radius:3px;"></div></div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cards.map(c=>c.html).join("")}</div><div style="margin-top:18px;padding-top:10px;border-top:1px solid #c8bca8;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#7a6a56;font-style:italic;">✦ Planner — ${titleLabel}</span><span style="font-size:10px;color:#7a6a56;">${todayShort}</span></div>`;
+    const baseTier=_printCardTier(0,false);
+    const cardsHtml=cardData.map(cd=>renderCard(cd,baseTier)).join("");
+    bodyHTML=`<div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#4a3e2c;margin-top:4px;font-style:italic;">${now}</div></div><div style="text-align:right;flex-shrink:0;padding-left:20px;"><div style="font-size:22px;font-family:'DM Serif Display',Georgia,serif;font-weight:700;color:#5a3f80;">${pctAll}%</div><div style="font-size:12px;font-weight:700;color:#5a4838;margin-top:1px;">${doneAll} / ${totalAll} done</div><div style="width:120px;height:7px;background:#d8c4a8;border-radius:3px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${pctAll}%;background:linear-gradient(90deg,#5a3f80,#c88030);border-radius:3px;"></div></div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cardsHtml}</div><div style="margin-top:18px;padding-top:10px;border-top:1px solid #c8bca8;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#7a6a56;font-style:italic;">✦ Planner — ${titleLabel}</span><span style="font-size:10px;color:#7a6a56;">${todayShort}</span></div>`;
   }
   openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — Colour — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:22px 26px;}@page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>${bodyHTML}</body></html>`);
 }
