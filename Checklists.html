@@ -689,7 +689,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         <div style="font-size:13px;color:var(--text3);margin-top:3px;">Kalyan, Rohan and Esha — filtered live from the Task Library</div>
       </div>
       <div class="panel-header-right">
-        <button class="btn btn-ghost" onclick="ahtmlPrint()" title="Print all three">🖨 Print</button>
+        <button class="btn btn-ghost" onclick="ahtmlPrintSmart()" title="Print — choose Kalyan, Rohan, Esha, or any combination">🖨 Print</button>
       </div>
     </div>
     <div class="ahtml-cols" id="ahtmlCols"></div>
@@ -766,6 +766,35 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <button class="btn btn-ghost" id="jobPrintModalCancel">Cancel</button>
       <button class="btn btn-ghost" id="jobPrintModalBW" style="border-color:var(--border);">B&W</button>
       <button class="btn" id="jobPrintModalColor" style="background:var(--accent);color:#fff;">🎨 Colour</button>
+    </div>
+  </div>
+</div>
+
+<!-- AFTER YOU COME HOME PRINT MODAL (Kalyan / Rohan / Esha) -->
+<div class="modal-overlay" id="ahtmlPrintModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.38);align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border-radius:16px;padding:28px 28px 22px;box-shadow:0 20px 60px rgba(0,0,0,0.22);width:340px;max-width:92vw;">
+    <h3 style="font-family:'DM Serif Display',serif;font-size:20px;font-weight:400;color:var(--text);margin-bottom:6px;">🖨 Print</h3>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:6px;">After you come Home</p>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Who to include</p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:18px;">
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--kal-accent);background:var(--kal-soft);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);">
+        <input type="checkbox" id="ahtmlPrintK" checked style="width:15px;height:15px;accent-color:var(--kal-accent);cursor:pointer;flex-shrink:0;">
+        <span>Kalyan</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--roh-accent);background:var(--roh-soft);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);">
+        <input type="checkbox" id="ahtmlPrintR" checked style="width:15px;height:15px;accent-color:var(--roh-accent);cursor:pointer;flex-shrink:0;">
+        <span>Rohan</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;border:1px solid var(--esh-accent);background:var(--esh-soft);cursor:pointer;font-size:13px;font-weight:500;color:var(--text);">
+        <input type="checkbox" id="ahtmlPrintE" checked style="width:15px;height:15px;accent-color:var(--esh-accent);cursor:pointer;flex-shrink:0;">
+        <span>Esha</span>
+      </label>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:8px;">Style</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button class="btn btn-ghost" id="ahtmlPrintModalCancel">Cancel</button>
+      <button class="btn btn-ghost" id="ahtmlPrintModalBW" style="border-color:var(--border);">B&W</button>
+      <button class="btn" id="ahtmlPrintModalColor" style="background:var(--accent);color:#fff;">🎨 Colour</button>
     </div>
   </div>
 </div>
@@ -2261,9 +2290,18 @@ function renderAhtml(){
   });
 }
 
-function ahtmlPrint(){
+const AHTML_PRINT_ACCENT={
+  K:{accent:'#2a9d6a', bg:'linear-gradient(135deg,rgba(42,157,106,0.08),rgba(94,201,154,0.04))', hdr:'rgba(42,157,106,0.16)', icon:'🏡'},
+  R:{accent:'#4a90d9', bg:'linear-gradient(135deg,rgba(74,144,217,0.08),rgba(133,183,235,0.04))', hdr:'rgba(74,144,217,0.16)', icon:'🎮'},
+  E:{accent:'#b06aa0', bg:'linear-gradient(135deg,rgba(176,106,160,0.08),rgba(212,159,204,0.04))', hdr:'rgba(176,106,160,0.16)', icon:'🎀'},
+};
+function _ahtmlSubtitle(owners){
+  return owners.length===TASKLIB_OWNERS.length ? 'Kalyan · Rohan · Esha' : owners.map(o=>TASKLIB_OWNER_META[o].label).join(' · ');
+}
+function ahtmlPrint(owners){
+  owners = owners || TASKLIB_OWNERS;
   let bodyHTML='<div class="grid">';
-  TASKLIB_OWNERS.forEach(owner=>{
+  owners.forEach(owner=>{
     const meta=TASKLIB_OWNER_META[owner];
     bodyHTML+=`<div class="block"><div class="block-title">${meta.label}</div>`;
     tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
@@ -2273,8 +2311,60 @@ function ahtmlPrint(){
     bodyHTML+='</div>';
   });
   bodyHTML+='</div>';
-  openPrint(buildPrintDoc('After you come Home','Kalyan · Rohan · Esha',bodyHTML,'#6a6a8a'));
+  openPrint(buildPrintDoc('After you come Home',_ahtmlSubtitle(owners),bodyHTML,'#6a6a8a'));
 }
+function ahtmlPrintColor(owners){
+  owners = owners || TASKLIB_OWNERS;
+  let sh='';
+  owners.forEach(owner=>{
+    const meta=TASKLIB_OWNER_META[owner];
+    const clr=AHTML_PRINT_ACCENT[owner];
+    const rows=[];
+    tlTasks.filter(t=>t.owners.includes(owner)).forEach(t=>{
+      rows.push({text:t.name,level:0});
+      (t.subs||[]).forEach(s=>rows.push({text:s.name,level:1}));
+    });
+    if(!rows.length) return;
+    sh+=colorBlock(clr.icon,meta.label,buildPrintRows(rows,false),clr.accent,clr.bg,clr.hdr);
+  });
+  openPrint(buildPrintDoc('After you come Home',_ahtmlSubtitle(owners),'<div class="grid">'+sh+'</div>','#6a6a8a'));
+}
+function ahtmlPrintSmart(){
+  document.getElementById('ahtmlPrintK').checked=true;
+  document.getElementById('ahtmlPrintR').checked=true;
+  document.getElementById('ahtmlPrintE').checked=true;
+  document.getElementById('ahtmlPrintModal').style.display='flex';
+}
+(function setupAhtmlPrintModal(){
+  const modal=document.getElementById('ahtmlPrintModal');
+  const cbK=document.getElementById('ahtmlPrintK');
+  const cbR=document.getElementById('ahtmlPrintR');
+  const cbE=document.getElementById('ahtmlPrintE');
+  const btnCancel=document.getElementById('ahtmlPrintModalCancel');
+  const btnBW=document.getElementById('ahtmlPrintModalBW');
+  const btnColor=document.getElementById('ahtmlPrintModalColor');
+
+  function getSelectedOwners(){
+    const owners=[];
+    if(cbK.checked) owners.push('K');
+    if(cbR.checked) owners.push('R');
+    if(cbE.checked) owners.push('E');
+    return owners;
+  }
+
+  btnCancel.onclick=()=>modal.style.display='none';
+  modal.onclick=e=>{ if(e.target===modal) modal.style.display='none'; };
+
+  function doPrint(useColor){
+    const owners=getSelectedOwners();
+    if(!owners.length){ showToast('⚠ Select at least one person'); return; }
+    modal.style.display='none';
+    useColor ? ahtmlPrintColor(owners) : ahtmlPrint(owners);
+  }
+
+  btnBW.onclick=()=>doPrint(false);
+  btnColor.onclick=()=>doPrint(true);
+})();
 
 /* ============================================================
    TASK (JOBS) LIBRARY + JOB CHECKLIST
@@ -2913,9 +3003,9 @@ const _printFns = {
   pt:  { bw: ptPrint,  color: ptPrintColor,  getSections: ()=>ptSECTIONS,  getData: ()=>ptData  },
   kal: { bw: kalPrint, color: kalPrintColor, getSections: ()=>kalSECTIONS, getData: ()=>kalData },
 };
-/* tasklib has no completion state to print, and ahtml prints via its own
-   single-button ahtmlPrint() (no section picker) — neither goes through
-   the smart print modal, so neither appears here. */
+/* tasklib has no completion state to print, and ahtml has its own
+   Kalyan/Rohan/Esha picker (ahtmlPrintSmart / #ahtmlPrintModal) — neither
+   goes through this ft/pt/kal smart print modal, so neither appears here. */
 const _TAB_LABELS = {ft:'🏢 FT Job',pt:'💼 PT Job',kal:'🏠 Kalyan',tasklib:'Home-Lib',ahtml:'Home'};
 
 let _printCurrentTab = null;
