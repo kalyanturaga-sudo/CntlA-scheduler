@@ -471,6 +471,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .tb-circle:hover{border-color:var(--accent);}
 .tb-circle.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .tb-circle-wide{width:34px;border-radius:15px;font-size:11px;}
+.tb-circle-essential.on{background:#d6483f;border-color:#d6483f;color:#fff;}
+.tb-essential-mark{color:#d6483f;font-weight:800;margin-left:2px;}
 .tb-icon-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--text3);padding:4px 6px;border-radius:6px;flex-shrink:0;}
 .tb-icon-btn:hover{color:#c0392b;background:var(--surface2);}
 .tb-icon-btn[data-act="indent"],.tb-icon-btn[data-act="outdent"]{color:var(--text2);font-size:15px;}
@@ -1993,51 +1995,84 @@ function resetDailyAll(){
 ══════════════════════════════════════════════════════════ */
 function openPrint(html){ const w=window.open("","_blank"); w.document.write(html); w.document.close(); w.onload=()=>{w.focus();w.print();}; }
 
+/* card sizing when a print is paginated onto a fixed grid (see override.paginate) —
+   shrinks type/row-padding as a card's item count grows, and caps how many items
+   render (with a "+N more" line) so no single card can push the layout past its page. */
+function _printCardTier(count, paginate){
+  if(!paginate) return {box:17,text:14.5,textSub:13,pad:6,max:Infinity};
+  if(count<=5)  return {box:14,text:12,  textSub:11,  pad:4,   max:5};
+  if(count<=10) return {box:12,text:10.5,textSub:9.5, pad:3,   max:10};
+  return                {box:10,text:9,  textSub:8.5, pad:2,   max:14};
+}
+
 function printRoutinesBW(selectedIds, override){
   const now=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"2-digit",month:"short",year:"numeric"});
   const todayShort=new Date().toLocaleDateString("en-AU",{day:"2-digit",month:"short",year:"numeric"});
   const d=override?override.data:loadData(), routines=(override?override.routines:getAllRoutines()).filter(r=>!selectedIds||selectedIds.includes(r.id));
   const titleLabel=override?override.title:"Routines";
+  const paginate=!!(override&&override.paginate);
+  const pageSize=(override&&override.pageSize)||6;
   let totalAll=0, doneAll=0;
   routines.forEach(r=>{ const items=(d[r.id]&&d[r.id].items)||r.items.map(t=>({text:t,done:false})); const real=items.filter(it=>!it.isHeader); totalAll+=real.length; doneAll+=real.filter(t=>t.done).length; });
-  let sectionsHTML="";
+  const cards=[];
   routines.forEach(r=>{
     const items=(d[r.id]&&d[r.id].items)||r.items.map(t=>({text:t,done:false}));
     const real=items.filter(it=>!it.isHeader);
     if(!real.length) return;
     const done=real.filter(t=>t.done).length, total=real.length;
     const hasHeaders=items.some(it=>it.isHeader);
+    const tier=_printCardTier(total,paginate);
+    const shownItems=paginate?items.slice(0,tier.max):items;
+    const hiddenCount=paginate?Math.max(0,items.length-shownItems.length):0;
     let rowsHTML="";
     if(hasHeaders){
       // Render section sub-headings + their tasks
-      items.forEach(item=>{
+      shownItems.forEach(item=>{
         if(item.isHeader){
           const label=item.text.replace(/^__room__|^__hdr__/,"");
-          rowsHTML+=`<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#000;padding:9px 0 4px;border-top:1.5px solid #000;margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
+          rowsHTML+=`<div style="font-size:${paginate?"9.5px":"11px"};font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:#000;padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid #000;margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
         } else {
           const strike=item.done?"text-decoration:line-through;color:#555;":"";
           const box=item.done
-            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:12px;line-height:1;font-weight:700;">✓</span></span>`
-            :`<span style="display:inline-block;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
+            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+            :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
           const text=typeof item==="string"?item:item.text;
           const ind=item.sub?"margin-left:18px;":"";
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?"13px":"14.5px"};font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+          rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
         }
       });
     } else {
-      items.forEach(item=>{
+      shownItems.forEach(item=>{
         const strike=item.done?"text-decoration:line-through;color:#555;":"";
         const box=item.done
-          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:12px;line-height:1;font-weight:700;">✓</span></span>`
-          :`<span style="display:inline-block;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
+          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+          :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;"></span>`;
         const text=typeof item==="string"?item:item.text;
         const ind=item.sub?"margin-left:18px;":"";
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?"13px":"14.5px"};font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+        rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid #ccc;${ind}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};color:#000;${strike}flex:1;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
       });
     }
-    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid #000;border-radius:6px;overflow:hidden;background:#fff;"><div style="padding:10px 12px 8px;border-bottom:2px solid #000;display:flex;justify-content:space-between;align-items:center;background:#eee;"><span style="font-size:15px;font-weight:800;color:#000;">${r.icon} ${r.label}</span><span style="font-size:12px;font-weight:700;color:#000;">${done}/${total}</span></div><div style="padding:4px 12px 8px;">${rowsHTML}</div></div>`;
+    if(hiddenCount>0) rowsHTML+=`<div style="font-size:9px;color:#777;padding:3px 0;font-style:italic;">+${hiddenCount} more</div>`;
+    cards.push(`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid #000;border-radius:6px;overflow:hidden;background:#fff;display:flex;flex-direction:column;height:100%;min-height:0;"><div style="padding:${paginate?"6px 9px 5px":"10px 12px 8px"};border-bottom:2px solid #000;display:flex;justify-content:space-between;align-items:center;background:#eee;flex-shrink:0;"><span style="font-size:${paginate?"12px":"15px"};font-weight:800;color:#000;">${r.icon} ${r.label}</span><span style="font-size:${paginate?"10px":"12px"};font-weight:700;color:#000;">${done}/${total}</span></div><div style="padding:${paginate?"3px 9px 5px":"4px 12px 8px"};overflow:hidden;flex:1;min-height:0;">${rowsHTML}</div></div>`);
   });
-  openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:20px 24px;}@page{size:A4;margin:14mm 12mm;}@media print{body{padding:0;}}</style></head><body><div style="border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#333;margin-top:3px;">${now}</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:#000;margin-top:2px;">${doneAll} / ${totalAll} done</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${sectionsHTML}</div><div style="margin-top:16px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-size:10px;color:#666;font-style:italic;"><span>✦ Planner — ${titleLabel}</span><span>${todayShort}</span></div></body></html>`);
+  let bodyHTML;
+  if(paginate && cards.length){
+    const pages=[]; for(let i=0;i<cards.length;i+=pageSize) pages.push(cards.slice(i,i+pageSize));
+    const cols=pageSize<=4?2:3, rows=Math.ceil(pageSize/cols);
+    bodyHTML=pages.map((pageCards,i)=>{
+      const isLast=i===pages.length-1;
+      return `<div style="${isLast?"":"page-break-after:always;"}display:flex;flex-direction:column;height:273mm;">
+<div style="flex-shrink:0;margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid #000;display:flex;justify-content:space-between;align-items:flex-end;">
+<div><div style="font-size:20px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:12px;font-weight:600;color:#333;margin-top:2px;">${now}</div></div>
+<div style="text-align:right;"><div style="font-size:12px;font-weight:800;color:#000;">${doneAll} / ${totalAll} done</div><div style="font-size:9px;color:#888;margin-top:2px;">Page ${i+1} of ${pages.length}</div></div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:10px;">${pageCards.join("")}</div>
+</div>`;
+    }).join("");
+  } else {
+    bodyHTML=`<div style="border-bottom:3px solid #000;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;color:#000;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#333;margin-top:3px;">${now}</div></div><div style="text-align:right;"><div style="font-size:13px;font-weight:800;color:#000;margin-top:2px;">${doneAll} / ${totalAll} done</div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cards.join("")}</div><div style="margin-top:16px;padding-top:8px;border-top:1px solid #999;display:flex;justify-content:space-between;font-size:10px;color:#666;font-style:italic;"><span>✦ Planner — ${titleLabel}</span><span>${todayShort}</span></div>`;
+  }
+  openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:20px 24px;}@page{size:A4;margin:14mm 12mm;}@media print{body{padding:0;}}</style></head><body>${bodyHTML}</body></html>`);
 }
 
 function printRoutinesColor(selectedIds, override){
@@ -2045,6 +2080,8 @@ function printRoutinesColor(selectedIds, override){
   const todayShort=new Date().toLocaleDateString("en-AU",{day:"2-digit",month:"short",year:"numeric"});
   const d=override?override.data:loadData(), routines=(override?override.routines:getAllRoutines()).filter(r=>!selectedIds||selectedIds.includes(r.id));
   const titleLabel=override?override.title:"Routines";
+  const paginate=!!(override&&override.paginate);
+  const pageSize=(override&&override.pageSize)||6;
   let totalAll=0, doneAll=0;
   routines.forEach(r=>{ const items=(d[r.id]&&d[r.id].items)||[]; const real=items.filter(it=>!it.isHeader); totalAll+=real.length; doneAll+=real.filter(t=>t.done).length; });
   const pctAll=totalAll?Math.round(doneAll/totalAll*100):0;
@@ -2056,7 +2093,7 @@ function printRoutinesColor(selectedIds, override){
     {bg:"#fde8e8",hdr:"#f5c8c8",accent:"#a02020",border:"#e8a0a0"},
     {bg:"#f3e8fe",hdr:"#dcc8f0",accent:"#6020a0",border:"#b890d8"},
   ];
-  let sectionsHTML="";
+  const cards=[];
   routines.forEach((r,i)=>{
     const items=(d[r.id]&&d[r.id].items)||[];
     const real=items.filter(it=>!it.isHeader);
@@ -2065,37 +2102,58 @@ function printRoutinesColor(selectedIds, override){
     const pct=total?Math.round(done/total*100):0;
     const pal=PALETTES[i%PALETTES.length];
     const hasHeaders=items.some(it=>it.isHeader);
+    const tier=_printCardTier(total,paginate);
+    const shownItems=paginate?items.slice(0,tier.max):items;
+    const hiddenCount=paginate?Math.max(0,items.length-shownItems.length):0;
     let rowsHTML="";
     if(hasHeaders){
-      items.forEach(item=>{
+      shownItems.forEach(item=>{
         if(item.isHeader){
           const label=item.text.replace(/^__room__|^__hdr__/,"");
-          rowsHTML+=`<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${pal.accent};padding:9px 0 4px;border-top:1.5px solid ${pal.accent};margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
+          rowsHTML+=`<div style="font-size:${paginate?"9.5px":"11px"};font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:${pal.accent};padding:${paginate?"6px 0 3px":"9px 0 4px"};border-top:1.5px solid ${pal.accent};margin-top:5px;">${label.replace(/</g,"&lt;")}</div>`;
         } else {
           const text=typeof item==="string"?item:item.text;
           const isDone=typeof item==="object"&&item.done;
           const strike=isDone?`text-decoration:line-through;color:#555;opacity:0.7;`:"";
           const box=isDone
-            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:12px;line-height:1;font-weight:700;">✓</span></span>`
-            :`<span style="display:inline-block;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
-          rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?"13px":"14.5px"};font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+            ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+            :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
+          rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
         }
       });
     } else {
-      items.forEach(item=>{
+      shownItems.forEach(item=>{
         const text=typeof item==="string"?item:item.text;
         const isDone=typeof item==="object"&&item.done;
         const strike=isDone?`text-decoration:line-through;color:#555;opacity:0.7;`:"";
         const box=isDone
-          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:12px;line-height:1;font-weight:700;">✓</span></span>`
-          :`<span style="display:inline-block;width:17px;height:17px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
-        rowsHTML+=`<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?"13px":"14.5px"};font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
+          ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#000;"><span style="color:#fff;font-size:${Math.round(tier.box*0.7)}px;line-height:1;font-weight:700;">✓</span></span>`
+          :`<span style="display:inline-block;width:${tier.box}px;height:${tier.box}px;border:2.25px solid #000;border-radius:3px;margin-right:10px;flex-shrink:0;background:#fff;"></span>`;
+        rowsHTML+=`<div style="display:flex;align-items:center;padding:${tier.pad}px 0;border-bottom:1px solid ${pal.border};${item.sub?"margin-left:18px;":""}">${box}<span style="font-size:${item.sub?tier.textSub:tier.text}px;font-weight:${item.sub?"600":"700"};${strike}flex:1;color:#000;">${text.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</span></div>`;
       });
     }
-    const barFill=`<div style="height:5px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
-    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${pal.accent};border-radius:8px;overflow:hidden;background:${pal.bg};"><div style="padding:10px 12px 8px;border-bottom:2px solid ${pal.accent};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:15px;font-weight:700;color:${pal.accent};">${r.icon}&nbsp;${r.label}</span><span style="font-size:12px;color:${pal.accent};font-weight:800;">${done}/${total}</span></div>${barFill}<div style="padding:0 12px 10px;">${rowsHTML}</div></div>`;
+    if(hiddenCount>0) rowsHTML+=`<div style="font-size:9px;color:${pal.accent};opacity:.75;padding:3px 0;font-style:italic;">+${hiddenCount} more</div>`;
+    const barFill=`<div style="height:5px;background:${pal.hdr};border-radius:2px;margin:0 ${paginate?"9px 5px":"12px 8px"};overflow:hidden;flex-shrink:0;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
+    cards.push(`<div style="break-inside:avoid;page-break-inside:avoid;border:2px solid ${pal.accent};border-radius:8px;overflow:hidden;background:${pal.bg};display:flex;flex-direction:column;height:100%;min-height:0;"><div style="padding:${paginate?"6px 9px 5px":"10px 12px 8px"};border-bottom:2px solid ${pal.accent};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};flex-shrink:0;"><span style="font-family:'DM Serif Display',Georgia,serif;font-size:${paginate?"12.5px":"15px"};font-weight:700;color:${pal.accent};">${r.icon}&nbsp;${r.label}</span><span style="font-size:${paginate?"10px":"12px"};color:${pal.accent};font-weight:800;">${done}/${total}</span></div>${barFill}<div style="padding:0 ${paginate?"9px 6px":"12px 10px"};overflow:hidden;flex:1;min-height:0;">${rowsHTML}</div></div>`);
   });
-  openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — Colour — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:22px 26px;}@page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body><div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#4a3e2c;margin-top:4px;font-style:italic;">${now}</div></div><div style="text-align:right;flex-shrink:0;padding-left:20px;"><div style="font-size:22px;font-family:'DM Serif Display',Georgia,serif;font-weight:700;color:#5a3f80;">${pctAll}%</div><div style="font-size:12px;font-weight:700;color:#5a4838;margin-top:1px;">${doneAll} / ${totalAll} done</div><div style="width:120px;height:7px;background:#d8c4a8;border-radius:3px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${pctAll}%;background:linear-gradient(90deg,#5a3f80,#c88030);border-radius:3px;"></div></div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${sectionsHTML}</div><div style="margin-top:18px;padding-top:10px;border-top:1px solid #c8bca8;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#7a6a56;font-style:italic;">✦ Planner — ${titleLabel}</span><span style="font-size:10px;color:#7a6a56;">${todayShort}</span></div></body></html>`);
+  let bodyHTML;
+  if(paginate && cards.length){
+    const pages=[]; for(let i=0;i<cards.length;i+=pageSize) pages.push(cards.slice(i,i+pageSize));
+    const cols=pageSize<=4?2:3, rows=Math.ceil(pageSize/cols);
+    bodyHTML=pages.map((pageCards,i)=>{
+      const isLast=i===pages.length-1;
+      return `<div style="${isLast?"":"page-break-after:always;"}display:flex;flex-direction:column;height:273mm;">
+<div style="flex-shrink:0;background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:12px 16px 10px;margin-bottom:10px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;">
+<div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:20px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:11px;font-weight:600;color:#4a3e2c;margin-top:2px;font-style:italic;">${now}</div></div>
+<div style="text-align:right;flex-shrink:0;padding-left:16px;"><div style="font-size:16px;font-family:'DM Serif Display',Georgia,serif;font-weight:700;color:#5a3f80;">${pctAll}%</div><div style="font-size:10px;font-weight:700;color:#5a4838;">${doneAll} / ${totalAll} done</div><div style="font-size:9px;color:#8a7a66;margin-top:2px;">Page ${i+1} of ${pages.length}</div></div>
+</div>
+<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(${cols},1fr);grid-template-rows:repeat(${rows},1fr);gap:10px;">${pageCards.join("")}</div>
+</div>`;
+    }).join("");
+  } else {
+    bodyHTML=`<div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:2px solid #3a2e20;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;"><div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:28px;font-weight:700;letter-spacing:-0.01em;color:#221a10;">${titleLabel}</div><div style="font-size:13px;font-weight:600;color:#4a3e2c;margin-top:4px;font-style:italic;">${now}</div></div><div style="text-align:right;flex-shrink:0;padding-left:20px;"><div style="font-size:22px;font-family:'DM Serif Display',Georgia,serif;font-weight:700;color:#5a3f80;">${pctAll}%</div><div style="font-size:12px;font-weight:700;color:#5a4838;margin-top:1px;">${doneAll} / ${totalAll} done</div><div style="width:120px;height:7px;background:#d8c4a8;border-radius:3px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${pctAll}%;background:linear-gradient(90deg,#5a3f80,#c88030);border-radius:3px;"></div></div></div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${cards.join("")}</div><div style="margin-top:18px;padding-top:10px;border-top:1px solid #c8bca8;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;color:#7a6a56;font-style:italic;">✦ Planner — ${titleLabel}</span><span style="font-size:10px;color:#7a6a56;">${todayShort}</span></div>`;
+  }
+  openPrint(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${titleLabel} — Colour — ${todayShort}</title><style>@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700;800&display=swap');*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#000;background:#fff;padding:22px 26px;}@page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>${bodyHTML}</body></html>`);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -2259,6 +2317,9 @@ function _weeklyBoxOrder(){
   const idx=all.indexOf(_todayAbbr());
   return all.slice(idx).concat(all.slice(0,idx));
 }
+/* Print always starts the week on Monday, regardless of what day it is —
+   unlike the on-screen weekly grid, which still rotates to start on today. */
+function _weeklyPrintOrder(){ return ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]; }
 
 /* ── one-time seed, from the uploaded weekly planner + fortnightly screenshot.
    Monthly starts empty on purpose. Never runs again once TB_SEED_KEY is set. ── */
@@ -2317,7 +2378,7 @@ function _tbRenderCheckItem(t, ctx, doneMap, doneKey){
   const checked=!!doneMap[pid];
   let h=`<div class="tb-item${checked?" tb-done":""}" data-id="${pid}" data-donekey="${doneKey}">`
       +`<span class="tb-checkbox">${checked?"✓":""}</span>`
-      +`<span class="tb-item-label">${_esc(t.name)}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
+      +`<span class="tb-item-label">${_esc(t.name)}${t.essential?` <span class="tb-essential-mark" title="Essential — cannot be missed">*</span>`:""}${t.subs&&t.subs.length?` <span class="tb-count">(${t.subs.length})</span>`:""}</span></div>`;
   (t.subs||[]).forEach(s=>{
     const sid=_tbDoneId(s.id,ctx);
     const sc=!!doneMap[sid];
@@ -2462,7 +2523,7 @@ function _tbBuildPrintOverride(){
     const done=loadTBDone(TB_DONE_WK_KEY);
     const doneF=loadTBDone(TB_DONE_F1_KEY);
     const doneM=loadTBDone(TB_DONE_MO_KEY);
-    const days=_weeklyBoxOrder();
+    const days=_weeklyPrintOrder();
     const routines=[]; const data={};
     days.forEach((day,i)=>{
       const list=dayTasks.filter(t=>t.days&&t.days.includes(day));
@@ -2493,7 +2554,7 @@ function _tbBuildPrintOverride(){
       (t.subs||[]).forEach(s=>whItems.push({text:s.name, done:!!done[_tbDoneId(s.id,"Whenever")], sub:true}));
     });
     routines.push({id:"wh", icon:"❓", label:"Whenever"}); data.wh={items:whItems};
-    return {routines, data, title:"Weekly"};
+    return {routines, data, title:"Weekly", paginate:true, pageSize:6};
   }
   return null;
 }
@@ -2518,6 +2579,7 @@ function _tbSetBucketDay(t, day){
   if(i>-1) t.days.splice(i,1); else t.days.push(day);
 }
 function _tbToggleWhenever(t){ t.whenever = !t.whenever; }
+function _tbToggleEssential(t){ t.essential = !t.essential; }
 function _tbSetOther(t,bucket){ t.bucket=bucket; t.days=[]; }
 
 function _tbCircleRow(t){
@@ -2525,6 +2587,9 @@ function _tbCircleRow(t){
   TB_DAY_LABELS.forEach((lbl,i)=>{
     const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
     h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
+    if(i===0){
+      h+=`<button class="tb-circle tb-circle-essential${t.essential?" on":""}" data-act="essential" title="Essential — cannot be missed">E</button>`;
+    }
   });
   h+=`<button class="tb-circle tb-circle-wide${t.whenever?" on":""}" data-act="whenever" title="Whenever — independent of day/F1/F2/Monthly, can be checked alongside anything else">Wh</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f1"?" on":""}" data-act="bucket" data-bucket="f1" title="Fortnightly — List 1">F1</button>`;
@@ -2615,6 +2680,7 @@ function renderTaskBank(){
       const tasks=loadTaskBank(); const t=tasks.find(x=>x.id===id); if(!t) return;
       const act=circleBtn.dataset.act;
       if(act==="day") _tbSetBucketDay(t, circleBtn.dataset.day);
+      else if(act==="essential") _tbToggleEssential(t);
       else if(act==="whenever") _tbToggleWhenever(t);
       else if(act==="bucket") _tbSetOther(t, circleBtn.dataset.bucket);
       saveTaskBank(tasks); renderTaskBank();
