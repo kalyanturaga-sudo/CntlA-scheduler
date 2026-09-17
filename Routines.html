@@ -2585,11 +2585,11 @@ function _tbSetOther(t,bucket){ t.bucket=bucket; t.days=[]; }
 function _tbCircleRow(t){
   let h='<div class="tb-circles">';
   TB_DAY_LABELS.forEach((lbl,i)=>{
-    const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
-    h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
     if(i===0){
       h+=`<button class="tb-circle tb-circle-essential${t.essential?" on":""}" data-act="essential" title="Essential — cannot be missed">E</button>`;
     }
+    const on = t.bucket==="day" && t.days && t.days.includes(TB_DAY_VALUES[i]);
+    h+=`<button class="tb-circle${on?" on":""}" data-act="day" data-day="${TB_DAY_VALUES[i]}" title="${TB_DAY_VALUES[i]}">${lbl}</button>`;
   });
   h+=`<button class="tb-circle tb-circle-wide${t.whenever?" on":""}" data-act="whenever" title="Whenever — independent of day/F1/F2/Monthly, can be checked alongside anything else">Wh</button>`;
   h+=`<button class="tb-circle tb-circle-wide${t.bucket==="f1"?" on":""}" data-act="bucket" data-bucket="f1" title="Fortnightly — List 1">F1</button>`;
