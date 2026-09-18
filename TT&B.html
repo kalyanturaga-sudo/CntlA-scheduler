@@ -1631,12 +1631,50 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 </div>
 </div>
 
+<div class="panel" id="panel-opslib">
+
+<style>
+.opslib-list{padding-bottom:20px;}
+.opslib-section{margin-bottom:26px;}
+.opslib-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.opslib-rows{display:flex;flex-direction:column;}
+.opslib-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border);}
+.opslib-row.opslib-done .opslib-text{opacity:.5;text-decoration:line-through;}
+.opslib-text{flex:1;min-width:0;border:none;background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13.5px;padding:4px 6px;border-radius:6px;}
+.opslib-text:hover,.opslib-text:focus{background:var(--surface2);outline:none;}
+.opslib-sched-btns{display:flex;gap:4px;flex-shrink:0;}
+.opslib-sched-btn{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0;line-height:1;}
+.opslib-sched-btn:hover{border-color:var(--sched-color,var(--accent));color:var(--sched-color,var(--accent));}
+.opslib-sched-btn.active{background:var(--sched-color,var(--accent));border-color:var(--sched-color,var(--accent));color:#fff;}
+.opslib-del{flex-shrink:0;width:24px;height:24px;border-radius:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:13px;}
+.opslib-del:hover{background:var(--surface2);color:#e85c5c;}
+.opslib-add input{width:100%;border:1px dashed var(--border);background:transparent;border-radius:8px;padding:7px 10px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);margin-top:2px;}
+.opslib-add input:focus{outline:none;border-color:var(--accent);}
+.ops-empty-hint{padding:30px 10px;text-align:center;color:var(--text3);font-size:13.5px;}
+</style>
+
+<div class="main">
+  <div class="header">
+    <div class="header-left">
+      <h1 id="opslib__heading" title="Double-click to rename" style="cursor:text;">Operations Library</h1>
+      <div class="subtitle">Every Operations item — tag P / T / W / F1 / F2 / M / B to send it to Operations</div>
+    </div>
+  </div>
+  <div class="opslib-list" id="opslib__list"></div>
+</div>
+
+<div class="footer-actions">
+  <div class="spacer"></div>
+  <span id="otBrandFooter_opslib"></span>
+</div>
+</div>
+
 
 </div><!-- /.panels -->
 
 <script>
 const TAB_ORDER_KEY='PLANNER_TAB_ORDER';
-const PAGE_META={today:{icon:'📅',label:'Today'},tomorrow:{icon:'🌤️',label:'Tomorrow'},ops:{icon:'⚙️',label:'Operations'}};
+const PAGE_META={today:{icon:'📅',label:'Today'},tomorrow:{icon:'🌤️',label:'Tomorrow'},ops:{icon:'⚙️',label:'Operations'},opslib:{icon:'📚',label:'Operations Library'}};
 function loadTabOrder(){try{const s=JSON.parse(localStorage.getItem(TAB_ORDER_KEY));const ids=Object.keys(PAGE_META);if(Array.isArray(s)&&s.every(id=>ids.includes(id))&&ids.every(id=>s.includes(id)))return s;}catch(e){}return Object.keys(PAGE_META);}
 let tabOrder=loadTabOrder(),activePanel=tabOrder[0];
 /* ── Theme/accent/font + dark-mode-flash prevention: now centralized in storage.js (ONETRACK_THEME module). Nothing to do here. ── */
@@ -1659,7 +1697,8 @@ const TAB_HIDDEN_KEY='PLANNER_TAB_HIDDEN';
 const PAGE_DATA_KEYS={
   today:    ["TODAY_BLOCKS_V2","TODAY_SLOT_ACTIVE","TODAY_SLOT_ORDER","TODAY_SLOT_LABELS"],
   tomorrow: ["TOMORROW_BLOCKS_V2","TOMORROW_SLOT_ACTIVE","TOMORROW_SLOT_ORDER","TOMORROW_SLOT_LABELS"],
-  ops:      ["OPERATIONS_BLOCKS_V1","OPERATIONS_LABELS_V1","OPERATIONS_SLOTS_V1"]
+  ops:      ["OPERATIONS_BLOCKS_V1","OPERATIONS_LABELS_V1","OPERATIONS_SLOTS_V1"],
+  opslib:   [] /* Operations Library is a view over the same Operations data — nothing exclusive to back up/wipe */
 };
 function _tabDeletedList(){ try{ const a=JSON.parse(localStorage.getItem(TAB_DELETED_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
 function _tabHiddenList(){ try{ const a=JSON.parse(localStorage.getItem(TAB_HIDDEN_KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
@@ -1842,7 +1881,7 @@ function _openManageTabs(){
 
 /* ── h1 heading rename: apply saved labels + wire dblclick ── */
 (function(){
-  [{id:'today',hid:'today__heading'},{id:'tomorrow',hid:'tomorrow__heading'},{id:'ops',hid:'ops__heading'}].forEach(({id,hid})=>{
+  [{id:'today',hid:'today__heading'},{id:'tomorrow',hid:'tomorrow__heading'},{id:'ops',hid:'ops__heading'},{id:'opslib',hid:'opslib__heading'}].forEach(({id,hid})=>{
     const h1=document.getElementById(hid);if(!h1)return;
     const m=PAGE_META[id];
     h1.textContent=m.label;
@@ -3680,6 +3719,23 @@ const DEFAULT_DATA = {
 const PRIORITY_CYCLE = ["none","low","mid","high"];
 const PRIORITY_COLOR = {none:"#9e9891",low:"#4caf50",mid:"#ff9800",high:"#f44336"};
 
+/* ── schedule buckets (set from Operations Library, shown in Operations) ── */
+const BUCKETS = [
+  {key:"P",  label:"Priority",     icon:"🔴"},
+  {key:"T",  label:"Today",        icon:"📌"},
+  {key:"W",  label:"This week",    icon:"🗓️"},
+  {key:"F1", label:"Fortnight 1",  icon:"🌓"},
+  {key:"F2", label:"Fortnight 2",  icon:"🌗"},
+  {key:"M",  label:"This month",   icon:"📆"},
+  {key:"B",  label:"Backlog",      icon:"🗄️"},
+];
+const BUCKET_COLOR = {P:"#f44336",T:"#ff9800",W:"#4caf50",F1:"#2196f3",F2:"#03a9f4",M:"#9c27b0",B:"#9e9891"};
+function scheduledItems(bucketKey){
+  const out=[];
+  SLOTS.forEach(slot=>{ (data[slot]||[]).forEach(item=>{ if(item.sched===bucketKey) out.push({slot,item}); }); });
+  return out;
+}
+
 const html = document.documentElement;
 const sysDark = ()=>window.matchMedia("(prefers-color-scheme: dark)").matches;
 function resolveTheme(){ const o=localStorage.getItem(DARK_KEY); return o!==null?o==="1":sysDark(); }
@@ -3691,8 +3747,8 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>
 
 function normalize(items=[]){
   return items.map(t=>typeof t==="string"
-    ?{text:t,done:false,sub:false,priority:"none",mins:""}
-    :{text:t.text||"",done:!!t.done,sub:!!t.sub,priority:t.priority||"none",mins:t.mins||""});
+    ?{text:t,done:false,sub:false,priority:"none",mins:"",sched:null}
+    :{text:t.text||"",done:!!t.done,sub:!!t.sub,priority:t.priority||"none",mins:t.mins||"",sched:t.sched||null});
 }
 
 let raw  = JSON.parse(localStorage.getItem(STORAGE_KEY)||"null");
@@ -3769,193 +3825,194 @@ function getDropIndex(block,clientY){
 
 /* ── stats ── */
 function updateStats(){
-  const all=SLOTS.flatMap(s=>data[s]||[]);
+  const all=BUCKETS.flatMap(b=>scheduledItems(b.key).map(e=>e.item));
   const done=all.filter(t=>t.done).length;
-  document.getElementById("ops__totalStats").textContent=all.length?`${done} / ${all.length} items checked`:"";
+  document.getElementById("ops__totalStats").textContent=all.length?`${done} / ${all.length} scheduled items checked`:"";
 }
 
 function sortDoneToBottom(arr){
   return [...arr.filter(t=>!t.done),...arr.filter(t=>t.done)];
 }
 
-/* ── render ── */
+/* ── render — Operations tab shows only ITEMS TAGGED with a schedule
+   bucket from Operations Library, grouped by that bucket. Untagged
+   items stay out of sight here and live in Operations Library. ── */
 function render(){
   const grid=document.getElementById("ops__grid");
   grid.innerHTML="";
-  const labels=loadLabels();
 
-  SLOTS.forEach(slot=>{
-    const meta        = getMeta(slot);
-    const items       = data[slot]||[];
-    const done        = items.filter(t=>t.done).length;
-    const total       = items.length;
-    const pct         = total?Math.round(done/total*100):0;
-    const displayLabel= labels[slot]||meta.label;
+  BUCKETS.forEach(bucket=>{
+    const entries=scheduledItems(bucket.key);
+    if(!entries.length) return; // hide empty buckets — keeps this tab clean
+
+    const done=entries.filter(e=>e.item.done).length;
+    const total=entries.length;
+    const pct=total?Math.round(done/total*100):0;
 
     const block=document.createElement("div");
-    block.className=`block ${meta.cls}`;
-    block.dataset.slot=slot;
+    block.className="block slot-misc";
+    block.dataset.bucket=bucket.key;
 
     block.innerHTML=`
       <div class="block-header">
-        <div class="block-title"><input class="block-title-input" value="${displayLabel.replace(/"/g,'&quot;')}" title="Click to rename"></div>
+        <div class="block-title"><span>${bucket.icon} ${bucket.label}</span></div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="btn-all-toggle" title="Toggle all" style="font-size:11px;padding:2px 7px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;">${total>0&&done===total?'☑':'☐'} All</button>
           <div class="block-stats">${total?`${done}/${total}`:""}</div>
-          <button class="block-del-btn" title="Delete block">✕</button>
         </div>
       </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${BUCKET_COLOR[bucket.key]};"></div></div>
       <div class="block-body"></div>
     `;
 
-    block.querySelector(".block-title-input").oninput=e=>{
-      const l=loadLabels(); l[slot]=e.target.value; saveLabels(l);
-    };
-    block.querySelector(".block-del-btn").onclick=()=>{
-      if(items.length&&!confirm(`Delete "${displayLabel}" and all its tasks?`)) return;
-      SLOTS.splice(SLOTS.indexOf(slot),1); delete data[slot];
-      save(); render();
-    };
     block.querySelector(".btn-all-toggle").onclick=()=>{
-      const allDone=data[slot].every(t=>t.done);
-      data[slot].forEach(t=>t.done=!allDone); save(); render();
+      const allDone=entries.every(e=>e.item.done);
+      entries.forEach(e=>e.item.done=!allDone); save(); render();
     };
 
     const body=block.querySelector(".block-body");
 
-    const nt=document.createElement("div"); nt.className="new-task";
-    nt.innerHTML=`<input placeholder="Add item… (Enter to save)">`;
-    nt.querySelector("input").onkeydown=e=>{
-      if(e.key==="Enter"){
-        const val=cap(e.target.value.trim()); if(!val) return;
-        data[slot].unshift({text:val,done:false,sub:false,priority:"none",mins:""});
-        save(); render();
-        setTimeout(()=>block.querySelector(".new-task input")?.focus(),0);
-      }
-    };
-    body.appendChild(nt);
-
-    items.forEach((item,i)=>{
-      const si=SLOTS.indexOf(slot);
+    entries.forEach(({slot,item})=>{
       const row=document.createElement("div");
-      row.className="task"+(item.done?" completed":"")+(item.sub?" subtask":"");
+      row.className="task"+(item.done?" completed":"");
       row.innerHTML=`
-        <span class="drag-handle">⠿</span>
         <input type="checkbox" class="task-cb" ${item.done?"checked":""}>
         <input type="text" class="task-text" value="${item.text.replace(/"/g,'&quot;')}">
-        <button class="task-btn" title="Subtask">↳</button>
-        <button class="task-btn" ${si===0?"disabled":""} title="Move left">‹</button>
+        <span style="font-size:12px;opacity:.55;flex-shrink:0;" title="From ${getMeta(slot).label}">${getMeta(slot).icon}</span>
         <button class="xmove-btn" title="Send to another tab">↗</button>
+        <button class="task-btn" title="Back to Operations Library">⇤</button>
         <button class="task-btn" title="Remove">✕</button>
       `;
 
-      const handle=row.querySelector(".drag-handle");
       const cb=row.querySelector(".task-cb");
       const tx=row.querySelector(".task-text");
-      const [subBtn,leftBtn,delBtn]=row.querySelectorAll(".task-btn");
       const xmoveBtn=row.querySelector(".xmove-btn");
-
-      handle.onpointerdown=()=>{row.draggable=true;};
-      handle.onpointerup=()=>{if(!dragState)row.draggable=false;};
-      tx.addEventListener("mousedown",e=>{ row.draggable=false; e.stopPropagation(); });
-      // removed mouseleave — fires mid-drag and kills it
-      row.addEventListener("dragstart",e=>{
-        if(!row.draggable){e.preventDefault();return;}
-        let group=[i];
-        if(!item.sub){ for(let j=i+1;j<data[slot].length;j++){ if(!data[slot][j].sub) break; group.push(j); } }
-        dragState={fromSlot:slot,fromIndex:i,groupSize:group.length};
-        row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain","");
-        group.slice(1).forEach(gi=>{ const r=body.querySelectorAll('.task')[gi]; if(r) r.classList.add('dragging'); });
-      });
-      row.addEventListener("dragend",()=>{ body.querySelectorAll('.task').forEach(r=>r.classList.remove("dragging")); row.draggable=false; dragState=null; });
+      const [backBtn,delBtn]=row.querySelectorAll(".task-btn");
 
       cb.onchange=()=>{
         item.done=cb.checked;
-        // look up current index by reference — captured i is stale after any re-render/sort
-        const ci=data[slot].indexOf(item);
-        if(ci===-1){save();render();return;}
-        // parent → cascade to following subtasks
-        if(!item.sub){
-          for(let j=ci+1;j<data[slot].length;j++){if(!data[slot][j].sub)break;data[slot][j].done=item.done;}
-        }
-        // subtask → update parent
-        if(item.sub){
-          let pi=-1;
-          for(let j=ci-1;j>=0;j--){if(!data[slot][j].sub){pi=j;break;}}
-          if(pi>=0){
-            if(!item.done){data[slot][pi].done=false;}
-            else{
-              let allDone=true;
-              for(let j=pi+1;j<data[slot].length;j++){if(!data[slot][j].sub)break;if(!data[slot][j].done){allDone=false;break;}}
-              if(allDone) data[slot][pi].done=true;
-            }
-          }
-        }
-        data[slot]=sortDoneToBottom(data[slot]); save(); render();
+        save(); render();
       };
       tx.oninput=e=>{item.text=e.target.value;save();};
       tx.onkeydown=e=>{if(e.key==="Enter"){item.text=tx.value;save();tx.blur();}};
-      subBtn.onclick=()=>{item.sub=!item.sub;save();render();};
-      leftBtn.onclick=()=>{data[SLOTS[si-1]].push(data[slot].splice(i,1)[0]);save();render();};
-      delBtn.onclick=()=>{data[slot].splice(i,1);save();render();};
-      row.addEventListener("dblclick",e=>{
-        if(e.target.matches("input,select,button")) return;
-        const moved=data[slot].splice(i,1)[0]; data[slot].push(moved); save(); render();
-        showToast("↓ Moved to bottom");
-      });
+      backBtn.onclick=()=>{
+        item.sched=null; save(); render(); renderOpsLib();
+        showToast("⇤ Back to Operations Library");
+      };
+      delBtn.onclick=()=>{
+        const idx=data[slot].indexOf(item);
+        if(idx>-1) data[slot].splice(idx,1);
+        save(); render(); renderOpsLib();
+      };
       if(xmoveBtn) xmoveBtn.onclick=e=>{
         e.stopPropagation();
         openOpsXPortal(xmoveBtn,()=>({...item}),(lbl)=>{
-          data[slot].splice(i,1); save(); render(); showToast("↗ Sent to "+lbl);
+          const idx=data[slot].indexOf(item);
+          if(idx>-1) data[slot].splice(idx,1);
+          save(); render(); renderOpsLib(); showToast("↗ Sent to "+lbl);
         }, slot);
       };
 
       body.appendChild(row);
     });
 
-    block.addEventListener("dragover",e=>{
-      if(!dragState)return; e.preventDefault();
-      if(dragState.fromSlot!==slot) block.classList.add("ops-drop-target");
-    });
-    block.addEventListener("dragleave",e=>{
-      if(!block.contains(e.relatedTarget)) block.classList.remove("ops-drop-target");
-    });
-    block.addEventListener("drop",e=>{
-      if(!dragState)return; e.preventDefault();
-      block.classList.remove("ops-drop-target");
-      const{fromSlot,fromIndex,groupSize=1}=dragState;
-      let ti=getDropIndex(block,e.clientY);
-      const group=data[fromSlot].splice(fromIndex,groupSize);
-      if(fromSlot===slot&&fromIndex<ti) ti=Math.max(0,ti-groupSize);
-      data[slot].splice(ti,0,...group);
-      save(); dragState=null; render();
-    });
-
-    if(items.some(t=>t.done)){
+    if(entries.some(e=>e.item.done)){
       const clr=document.createElement("button");
       clr.className="block-clear-done-btn"; clr.textContent="✓ Clear completed tasks";
-      clr.onclick=()=>{data[slot]=data[slot].filter(t=>!t.done);save();render();};
+      clr.onclick=()=>{
+        entries.filter(e=>e.item.done).forEach(e=>{
+          const idx=data[e.slot].indexOf(e.item);
+          if(idx>-1) data[e.slot].splice(idx,1);
+        });
+        save(); render(); renderOpsLib();
+      };
       body.appendChild(clr);
     }
 
     grid.appendChild(block);
   });
 
-  /* add block button */
-  const addBtn=document.createElement("button");
-  addBtn.className="add-block-btn";
-  addBtn.innerHTML=`<span style="font-size:18px;">＋</span> Add block`;
-  addBtn.onclick=()=>{
-    const name=prompt("Block name:"); if(!name||!name.trim()) return;
-    const slug="custom_"+Date.now();
-    SLOTS.push(slug); data[slug]=[];
-    const l=loadLabels(); l[slug]=name.trim(); saveLabels(l);
-    if(!SLOT_META[slug]) SLOT_META[slug]={label:name.trim(),icon:"✦",cls:"slot-misc"};
-    save(); render();
-  };
-  grid.appendChild(addBtn);
+  if(!grid.children.length){
+    grid.innerHTML='<div class="ops-empty-hint">Nothing scheduled yet. Open <strong>Operations Library</strong> and tag items P / T / W / F1 / F2 / M / B to bring them here.</div>';
+  }
+
   updateStats();
+  renderOpsLib();
+}
+
+/* ── Operations Library — the plain master list of every Operations
+   item, grouped under its original category. Round buttons here set
+   (or clear) an item's schedule bucket, which is what makes it show
+   up in the Operations tab above. ── */
+function renderOpsLib(){
+  const list=document.getElementById("opslib__list");
+  if(!list) return;
+  list.innerHTML="";
+  const labels=loadLabels();
+
+  SLOTS.forEach(slot=>{
+    const meta=getMeta(slot);
+    const items=data[slot]||[];
+    const displayLabel=labels[slot]||meta.label;
+
+    const sec=document.createElement("div"); sec.className="opslib-section";
+    const title=document.createElement("div"); title.className="opslib-section-title";
+    title.textContent=`${meta.icon} ${displayLabel}`;
+    sec.appendChild(title);
+
+    const rows=document.createElement("div"); rows.className="opslib-rows";
+    items.forEach(item=>{
+      const row=document.createElement("div");
+      row.className="opslib-row"+(item.done?" opslib-done":"");
+
+      const tx=document.createElement("input");
+      tx.className="opslib-text"; tx.value=item.text;
+      tx.oninput=()=>{ item.text=tx.value; save(); };
+      tx.onkeydown=e=>{ if(e.key==="Enter") tx.blur(); };
+      row.appendChild(tx);
+
+      const btnWrap=document.createElement("div"); btnWrap.className="opslib-sched-btns";
+      BUCKETS.forEach(b=>{
+        const bt=document.createElement("button");
+        bt.className="opslib-sched-btn"+(item.sched===b.key?" active":"");
+        bt.textContent=b.key;
+        bt.title=b.label+(item.sched===b.key?" — tap to remove":"");
+        bt.style.setProperty("--sched-color",BUCKET_COLOR[b.key]);
+        bt.onclick=()=>{
+          item.sched=(item.sched===b.key)?null:b.key;
+          save(); renderOpsLib(); render();
+        };
+        btnWrap.appendChild(bt);
+      });
+      row.appendChild(btnWrap);
+
+      const del=document.createElement("button");
+      del.className="opslib-del"; del.textContent="✕"; del.title="Delete item";
+      del.onclick=()=>{
+        const idx=data[slot].indexOf(item);
+        if(idx>-1) data[slot].splice(idx,1);
+        save(); renderOpsLib(); render();
+      };
+      row.appendChild(del);
+
+      rows.appendChild(row);
+    });
+    sec.appendChild(rows);
+
+    const addRow=document.createElement("div"); addRow.className="opslib-add";
+    addRow.innerHTML=`<input placeholder="Add item… (Enter to save)">`;
+    addRow.querySelector("input").onkeydown=e=>{
+      if(e.key==="Enter"){
+        const val=cap(e.target.value.trim()); if(!val) return;
+        data[slot].unshift({text:val,done:false,sub:false,priority:"none",mins:"",sched:null});
+        save(); renderOpsLib();
+        setTimeout(()=>addRow.querySelector("input")?.focus(),0);
+      }
+    };
+    sec.appendChild(addRow);
+
+    list.appendChild(sec);
+  });
 }
 
 /* ── B&W print ── */
