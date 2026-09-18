@@ -1644,7 +1644,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .opslib-cat-del:hover{background:var(--surface2);color:#e85c5c;}
 .opslib-rows.opslib-drop-target{background:var(--accent-soft);border-radius:8px;}
 .opslib-row.dragging{opacity:.35;}
-.opslib-drag-handle{color:var(--text3);cursor:grab;font-size:10px;letter-spacing:-1px;padding:0 4px;flex-shrink:0;user-select:none;}
 .opslib-rows{display:flex;flex-direction:column;}
 .opslib-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border);}
 .opslib-row.opslib-done .opslib-text{opacity:.5;text-decoration:line-through;}
@@ -3997,7 +3996,7 @@ function renderOpsLib(){
       row.className="opslib-row"+(item.done?" opslib-done":"");
 
       const handle=document.createElement("span");
-      handle.className="opslib-drag-handle"; handle.textContent="⠿⠿⠿"; handle.title="Drag to reorder";
+      handle.className="drag-handle"; handle.textContent="⠿"; handle.title="Drag to reorder";
       row.appendChild(handle);
 
       const tx=document.createElement("input");
