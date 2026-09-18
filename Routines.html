@@ -455,7 +455,10 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .mode-tab.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
 
 /* ====== TASK BANK (new — Weekly / Fortnightly / Monthly display + Task bank editor) ====== */
-.tb-toolbar{display:flex;justify-content:flex-end;margin-bottom:14px;}
+.tb-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:14px;}
+.tb-sort-btn{font-variant-numeric:tabular-nums;}
+.tb-sort-note{font-size:11px;color:var(--text3);margin:-8px 0 12px;padding:6px 10px;background:var(--surface2);border-radius:var(--radius-sm);}
+.tb-row-nodrag .tb-grip{opacity:.25;cursor:not-allowed;}
 .tb-table{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
 .tb-row{display:flex;align-items:center;gap:8px;padding:10px 10px;border-bottom:1px solid var(--border);}
 .tb-row:last-child{border-bottom:none;}
@@ -2360,6 +2363,7 @@ const TB_DONE_WK_KEY = "ONETRACK_TASKBANK_DONE_WEEKLY_V1";
 const TB_DONE_F1_KEY = "ONETRACK_TASKBANK_DONE_FORT_V1";   // shared by F1 + F2 (ids are unique)
 const TB_DONE_MO_KEY = "ONETRACK_TASKBANK_DONE_MONTH_V1";
 const TB_DONE_PRIORITY_KEY = "ONETRACK_TASKBANK_DONE_PRIORITY_V1"; // own checkbox state for the Priority tasks box
+const TB_SORT_KEY = "ONETRACK_TASKBANK_SORT_V1"; // Task bank *view* sort only — never touches the stored task order, and never affects Weekly/Fortnightly/Monthly
 
 const TB_DAY_LABELS = ["M","T","W","T","F","S","S"];
 const TB_DAY_VALUES = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
@@ -2665,8 +2669,53 @@ function _tbCircleRow(t){
   return h;
 }
 
+/* ── Task bank view-only sort. Cycles Manual → A-Z → Day order (P→Mo) → Manual.
+   Purely a display order for this tab — never written back into the saved
+   task array, so Weekly/Fortnightly/Monthly (which read loadTaskBank() order
+   directly) are completely unaffected. Remembered across visits. ── */
+const TB_SORT_MODES  = ["manual","az","day"];
+const TB_SORT_LABELS = { manual:"⇅ Manual order", az:"🔤 Sort: A → Z", day:"📅 Sort: P → Mo" };
+function loadTBSort(){ const v=_cget(TB_SORT_KEY); return TB_SORT_MODES.includes(v)?v:"manual"; }
+function saveTBSort(m){ _cset(TB_SORT_KEY, m); }
+/* group rank for "day order": Mon..Sun (by earliest assigned day) → Whenever → F1 → F2 → Monthly */
+function _tbDayGroupRank(t){
+  if(t.bucket==="day" && t.days && t.days.length){
+    const idxs=t.days.map(d=>TB_DAY_VALUES.indexOf(d)).filter(i=>i>-1);
+    return 1+(idxs.length?Math.min(...idxs):6); // Mon=1 .. Sun=7
+  }
+  if(t.whenever || (t.bucket==="day" && (!t.days||!t.days.length))) return 8; // Whenever
+  if(t.bucket==="f1") return 9;
+  if(t.bucket==="f2") return 10;
+  if(t.bucket==="month") return 11;
+  return 12;
+}
+function _tbSortedForView(tasks, mode){
+  if(mode==="manual") return tasks;
+  const withIdx=tasks.map((t,i)=>({t,i}));
+  if(mode==="az"){
+    withIdx.sort((a,b)=>{
+      const wa=(a.t.name||"").trim().split(/\s+/)[0].toLowerCase();
+      const wb=(b.t.name||"").trim().split(/\s+/)[0].toLowerCase();
+      const c=wa.localeCompare(wb);
+      return c!==0?c:a.i-b.i;
+    });
+  } else if(mode==="day"){
+    withIdx.sort((a,b)=>{
+      const pa=a.t.priority?0:1, pb=b.t.priority?0:1;
+      if(pa!==pb) return pa-pb;
+      const ra=_tbDayGroupRank(a.t), rb=_tbDayGroupRank(b.t);
+      if(ra!==rb) return ra-rb;
+      return a.i-b.i;
+    });
+  }
+  return withIdx.map(x=>x.t);
+}
+
 function renderTaskBank(){
   const tasks=loadTaskBank();
+  const sortMode=loadTBSort();
+  const displayTasks=_tbSortedForView(tasks, sortMode);
+  const dragOK=sortMode==="manual";
   const bankRoot=document.getElementById("tbBankContent");
   if(_tbFirstRender){
     tasks.forEach(t=>{ if(t.subs && t.subs.length) _tbCollapsed.add(t.id); });
@@ -2678,26 +2727,30 @@ function renderTaskBank(){
     (t.subs||[]).forEach(s=>maxLen=Math.max(maxLen,(s.name||"").length));
   });
   if(bankRoot) bankRoot.style.setProperty("--tb-name-w", (maxLen?maxLen+5:20)+"ch");
-  let html='<div class="tb-toolbar"><button class="btn btn-ghost" id="tbAddTaskBtn" title="Adds to top of list, or right beneath the selected task/sub-task">＋ Add task</button></div>';
+  let html='<div class="tb-toolbar">'
+      +`<button class="btn btn-ghost tb-sort-btn" id="tbSortBtn" title="Sorts this list only, for browsing/updating here — Weekly, Fortnightly and Monthly always keep their own order">${TB_SORT_LABELS[sortMode]}</button>`
+      +`<button class="btn btn-ghost" id="tbAddTaskBtn" title="Adds to top of list, or right beneath the selected task/sub-task">＋ Add task</button>`
+      +'</div>';
+  if(sortMode!=="manual") html+='<div class="tb-sort-note">Sorted for viewing only — drag-reorder and indent are off while sorted. Switch back to Manual order to reorder.</div>';
   html+='<div class="tb-table" id="tbTable">';
-  tasks.forEach((t,idx)=>{
+  displayTasks.forEach((t,idx)=>{
     const hasSubs = t.subs && t.subs.length>0;
-    const canIndent = idx>0 && !hasSubs;
+    const canIndent = dragOK && idx>0 && !hasSubs;
     const collapsed = hasSubs && _tbCollapsed.has(t.id);
     const isSelTask = _tbSelected && _tbSelected.type==="task" && _tbSelected.id===t.id;
-    html+=`<div class="tb-row${isSelTask?" tb-row-selected":""}" draggable="true" data-idx="${idx}" data-id="${t.id}">`
-        +`<span class="tb-grip" title="Drag to reorder">⠿</span>`
+    html+=`<div class="tb-row${isSelTask?" tb-row-selected":""}${dragOK?"":" tb-row-nodrag"}" draggable="${dragOK}" data-idx="${idx}" data-id="${t.id}">`
+        +`<span class="tb-grip" title="${dragOK?"Drag to reorder":"Switch to Manual order to drag-reorder"}">⠿</span>`
         +`<span class="tb-chevron${hasSubs?"":" tb-chevron-empty"}" data-act="${hasSubs?"toggle-collapse":""}">${hasSubs?(collapsed?"▶":"▼"):""}</span>`
         +`<span class="tb-name" data-act="rename" title="Click to select, double-click to rename">${_esc(t.name)}${hasSubs?` <span class="tb-count">(${t.subs.length})</span>`:""}</span>`
         +_tbCircleRow(t)
-        +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
+        +`<button class="tb-icon-btn"${canIndent?"":" disabled"} data-act="indent" title="${hasSubs?"Can't indent — this task already has sub-tasks":!dragOK?"Switch to Manual order to indent":idx===0?"Nothing above to indent under":"Make this a sub-task of the task above"}">↳</button>`
         +`<button class="tb-icon-btn" data-act="delete" title="Delete task">🗑</button>`
         +`</div>`;
     if(!collapsed){
       (t.subs||[]).forEach((s,sidx)=>{
         const isSelSub = _tbSelected && _tbSelected.type==="sub" && _tbSelected.subId===s.id;
-        html+=`<div class="tb-row tb-subrow${isSelSub?" tb-row-selected":""}" draggable="true" data-parent="${t.id}" data-subidx="${sidx}">`
-            +`<span class="tb-grip" title="Drag to reorder within this task">⠿</span>`
+        html+=`<div class="tb-row tb-subrow${isSelSub?" tb-row-selected":""}${dragOK?"":" tb-row-nodrag"}" draggable="${dragOK}" data-parent="${t.id}" data-subidx="${sidx}">`
+            +`<span class="tb-grip" title="${dragOK?"Drag to reorder within this task":"Switch to Manual order to drag-reorder"}">⠿</span>`
             +`<span class="tb-chevron tb-chevron-empty"></span>`
             +`<span class="tb-name" data-act="rename-sub" title="Click to select, double-click to rename">${_esc(s.name)}</span>`
             +`<button class="tb-icon-btn" data-act="outdent" title="Make this a top-level task">↰</button>`
@@ -2715,6 +2768,14 @@ function renderTaskBank(){
   if(!root) return;
 
   root.addEventListener("click", e=>{
+    if(e.target.closest("#tbSortBtn")){
+      const cur=loadTBSort();
+      const next=TB_SORT_MODES[(TB_SORT_MODES.indexOf(cur)+1)%TB_SORT_MODES.length];
+      saveTBSort(next);
+      renderTaskBank();
+      showToast(TB_SORT_LABELS[next]);
+      return;
+    }
     if(e.target.closest("#tbAddTaskBtn")){
       const name=prompt("New task name:"); if(!name||!name.trim()) return;
       const tasks=loadTaskBank();
@@ -2846,6 +2907,7 @@ function renderTaskBank(){
      sub-task rows reorder only among siblings under the same parent */
   let dragFromId=null, dragFromSub=null;
   root.addEventListener("dragstart", e=>{
+    if(loadTBSort()!=="manual"){ e.preventDefault(); return; }
     const subRow=e.target.closest(".tb-subrow");
     if(subRow){ dragFromSub={parent:subRow.dataset.parent, subidx:+subRow.dataset.subidx}; dragFromId=null; e.dataTransfer.effectAllowed="move"; return; }
     const row=e.target.closest(".tb-row:not(.tb-subrow)");
@@ -2976,7 +3038,7 @@ const TAB_HIDDEN_KEY  = "RTN_TAB_HIDDEN";   // [modeId, ...] — hidden, not del
 const TAB_META = {
   daily:    { defaultLabel:"☀️ Daily",    keys:[ROUTINES_KEY,CUSTOM_KEY,NAMES_KEY,ORDER_KEY,SEED_KEY,TODAY_DATE_KEY,ACTIVE_KEY,SECHDR_KEY] },
   weekly:   { defaultLabel:"📅 Weekly",   keys:["ONETRACK_WEEKLY_V2","ONETRACK_WEEKLY_ORDER_V1","ONETRACK_WEEKLY_ACTIVE_V1","ONETRACK_FORTNIGHT_BOARD_V1",TB_DONE_WK_KEY,TB_DONE_F1_KEY,TB_DONE_MO_KEY,TB_DONE_PRIORITY_KEY] },
-  taskbank: { defaultLabel:"🗂 Task bank", keys:[TB_KEY,TB_SEED_KEY] }
+  taskbank: { defaultLabel:"🗂 Task bank", keys:[TB_KEY,TB_SEED_KEY,TB_SORT_KEY] }
 };
 function _tabLabels(){ try{ const o=JSON.parse(_cget(TAB_LABELS_KEY)||"{}"); return (o&&typeof o==="object")?o:{}; }catch(e){ return {}; } }
 function _tabDeletedList(){ try{ const a=JSON.parse(_cget(TAB_DELETED_KEY)||"[]"); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
