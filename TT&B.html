@@ -1636,7 +1636,15 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 <style>
 .opslib-list{padding-bottom:20px;}
 .opslib-section{margin-bottom:26px;}
-.opslib-section-title{font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.opslib-section-title{display:flex;align-items:center;gap:2px;font-family:'DM Serif Display',serif;font-size:16px;color:var(--text);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.opslib-title-input{flex:1;min-width:0;border:none;background:transparent;color:var(--text);font-family:'DM Serif Display',serif;font-size:16px;padding:2px 4px;border-radius:6px;}
+.opslib-title-input:hover,.opslib-title-input:focus{background:var(--surface2);outline:none;}
+.opslib-cat-del{flex-shrink:0;width:22px;height:22px;border-radius:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;opacity:0;transition:opacity .15s;}
+.opslib-section-title:hover .opslib-cat-del{opacity:1;}
+.opslib-cat-del:hover{background:var(--surface2);color:#e85c5c;}
+.opslib-rows.opslib-drop-target{background:var(--accent-soft);border-radius:8px;}
+.opslib-row.dragging{opacity:.35;}
+.opslib-drag-handle{color:var(--text3);cursor:grab;font-size:10px;letter-spacing:-1px;padding:0 4px;flex-shrink:0;user-select:none;}
 .opslib-rows{display:flex;flex-direction:column;}
 .opslib-row{display:flex;align-items:center;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border);}
 .opslib-row.opslib-done .opslib-text{opacity:.5;text-decoration:line-through;}
@@ -3943,7 +3951,14 @@ function render(){
 /* ── Operations Library — the plain master list of every Operations
    item, grouped under its original category. Round buttons here set
    (or clear) an item's schedule bucket, which is what makes it show
-   up in the Operations tab above. ── */
+   up in the Operations tab above. Category names are editable, new
+   categories can be added, and each task has a drag handle so items
+   can be reordered (within or across categories). ── */
+function getOpslibDropIndex(container,clientY){
+  const rows=Array.from(container.querySelectorAll(".opslib-row:not(.dragging)"));
+  for(let i=0;i<rows.length;i++){const r=rows[i].getBoundingClientRect();if(clientY<r.top+r.height/2)return i;}
+  return rows.length;
+}
 function renderOpsLib(){
   const list=document.getElementById("opslib__list");
   if(!list) return;
@@ -3956,14 +3971,34 @@ function renderOpsLib(){
     const displayLabel=labels[slot]||meta.label;
 
     const sec=document.createElement("div"); sec.className="opslib-section";
-    const title=document.createElement("div"); title.className="opslib-section-title";
-    title.textContent=`${meta.icon} ${displayLabel}`;
-    sec.appendChild(title);
+
+    const head=document.createElement("div"); head.className="opslib-section-title";
+    const icon=document.createElement("span"); icon.textContent=meta.icon+" "; icon.style.flexShrink="0";
+    head.appendChild(icon);
+    const titleInput=document.createElement("input");
+    titleInput.className="opslib-title-input"; titleInput.value=displayLabel;
+    titleInput.title="Click to rename category";
+    titleInput.oninput=()=>{ const l=loadLabels(); l[slot]=titleInput.value; saveLabels(l); };
+    head.appendChild(titleInput);
+    const catDel=document.createElement("button");
+    catDel.className="opslib-cat-del"; catDel.textContent="✕"; catDel.title="Delete category";
+    catDel.onclick=()=>{
+      if(items.length && !confirm(`Delete "${displayLabel}" and all ${items.length} task(s)?`)) return;
+      SLOTS.splice(SLOTS.indexOf(slot),1); delete data[slot];
+      save(); renderOpsLib(); render();
+    };
+    head.appendChild(catDel);
+    sec.appendChild(head);
 
     const rows=document.createElement("div"); rows.className="opslib-rows";
-    items.forEach(item=>{
+
+    items.forEach((item,i)=>{
       const row=document.createElement("div");
       row.className="opslib-row"+(item.done?" opslib-done":"");
+
+      const handle=document.createElement("span");
+      handle.className="opslib-drag-handle"; handle.textContent="⠿⠿⠿"; handle.title="Drag to reorder";
+      row.appendChild(handle);
 
       const tx=document.createElement("input");
       tx.className="opslib-text"; tx.value=item.text;
@@ -3995,8 +4030,43 @@ function renderOpsLib(){
       };
       row.appendChild(del);
 
+      /* drag to reorder — grab only via the handle, drop within or across categories */
+      handle.onpointerdown=()=>{row.draggable=true;};
+      handle.onpointerup=()=>{if(!dragState)row.draggable=false;};
+      row.addEventListener("dragstart",e=>{
+        if(!row.draggable){e.preventDefault();return;}
+        const idx=data[slot].indexOf(item);
+        dragState={fromSlot:slot,fromIndex:idx};
+        row.classList.add("dragging");
+        e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("text/plain","");
+      });
+      row.addEventListener("dragend",()=>{
+        row.classList.remove("dragging"); row.draggable=false; dragState=null;
+        document.querySelectorAll(".opslib-rows").forEach(r=>r.classList.remove("opslib-drop-target"));
+      });
+
       rows.appendChild(row);
     });
+
+    rows.addEventListener("dragover",e=>{
+      if(!dragState) return; e.preventDefault();
+      rows.classList.add("opslib-drop-target");
+    });
+    rows.addEventListener("dragleave",e=>{
+      if(!rows.contains(e.relatedTarget)) rows.classList.remove("opslib-drop-target");
+    });
+    rows.addEventListener("drop",e=>{
+      if(!dragState) return; e.preventDefault();
+      rows.classList.remove("opslib-drop-target");
+      const {fromSlot,fromIndex}=dragState;
+      const ti=getOpslibDropIndex(rows,e.clientY);
+      const moved=data[fromSlot].splice(fromIndex,1)[0];
+      let insertAt=ti;
+      if(fromSlot===slot && fromIndex<ti) insertAt=Math.max(0,ti-1);
+      data[slot].splice(insertAt,0,moved);
+      save(); dragState=null; renderOpsLib(); render();
+    });
+
     sec.appendChild(rows);
 
     const addRow=document.createElement("div"); addRow.className="opslib-add";
@@ -4013,6 +4083,20 @@ function renderOpsLib(){
 
     list.appendChild(sec);
   });
+
+  /* add category button */
+  const addCatBtn=document.createElement("button");
+  addCatBtn.className="add-block-btn";
+  addCatBtn.innerHTML=`<span style="font-size:18px;">＋</span> Add category`;
+  addCatBtn.onclick=()=>{
+    const name=prompt("Category name:"); if(!name||!name.trim()) return;
+    const slug="lib_"+Date.now();
+    SLOTS.push(slug); data[slug]=[];
+    const l=loadLabels(); l[slug]=name.trim(); saveLabels(l);
+    if(!SLOT_META[slug]) SLOT_META[slug]={label:name.trim(),icon:"✦",cls:"slot-misc"};
+    save(); renderOpsLib();
+  };
+  list.appendChild(addCatBtn);
 }
 
 /* ── B&W print ── */
