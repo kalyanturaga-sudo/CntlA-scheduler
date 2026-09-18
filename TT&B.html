@@ -3885,16 +3885,10 @@ function render(){
       row.innerHTML=`
         <input type="checkbox" class="task-cb" ${item.done?"checked":""}>
         <input type="text" class="task-text" value="${item.text.replace(/"/g,'&quot;')}">
-        <span style="font-size:12px;opacity:.55;flex-shrink:0;" title="From ${getMeta(slot).label}">${getMeta(slot).icon}</span>
-        <button class="xmove-btn" title="Send to another tab">↗</button>
-        <button class="task-btn" title="Back to Operations Library">⇤</button>
-        <button class="task-btn" title="Remove">✕</button>
       `;
 
       const cb=row.querySelector(".task-cb");
       const tx=row.querySelector(".task-text");
-      const xmoveBtn=row.querySelector(".xmove-btn");
-      const [backBtn,delBtn]=row.querySelectorAll(".task-btn");
 
       cb.onchange=()=>{
         item.done=cb.checked;
@@ -3902,23 +3896,6 @@ function render(){
       };
       tx.oninput=e=>{item.text=e.target.value;save();};
       tx.onkeydown=e=>{if(e.key==="Enter"){item.text=tx.value;save();tx.blur();}};
-      backBtn.onclick=()=>{
-        item.sched=null; save(); render(); renderOpsLib();
-        showToast("⇤ Back to Operations Library");
-      };
-      delBtn.onclick=()=>{
-        const idx=data[slot].indexOf(item);
-        if(idx>-1) data[slot].splice(idx,1);
-        save(); render(); renderOpsLib();
-      };
-      if(xmoveBtn) xmoveBtn.onclick=e=>{
-        e.stopPropagation();
-        openOpsXPortal(xmoveBtn,()=>({...item}),(lbl)=>{
-          const idx=data[slot].indexOf(item);
-          if(idx>-1) data[slot].splice(idx,1);
-          save(); render(); renderOpsLib(); showToast("↗ Sent to "+lbl);
-        }, slot);
-      };
 
       body.appendChild(row);
     });
@@ -3972,8 +3949,6 @@ function renderOpsLib(){
     const sec=document.createElement("div"); sec.className="opslib-section";
 
     const head=document.createElement("div"); head.className="opslib-section-title";
-    const icon=document.createElement("span"); icon.textContent=meta.icon+" "; icon.style.flexShrink="0";
-    head.appendChild(icon);
     const titleInput=document.createElement("input");
     titleInput.className="opslib-title-input"; titleInput.value=displayLabel;
     titleInput.title="Click to rename category";
