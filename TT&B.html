@@ -4073,112 +4073,118 @@ function renderOpsLib(){
   list.appendChild(addCatBtn);
 }
 
-/* ── B&W print ── */
+/* ── B&W print ──
+   Mirrors the on-screen Operations tab: grouped by BUCKETS
+   (Priority/Today/This week/Fortnight 1/Fortnight 2/This month/
+   Backlog) via scheduledItems(), not the old daily/weekly/monthly
+   SLOTS. Laid out as CSS multi-columns (not a grid) so the browser
+   paginates it properly — sized to hold ~45–55 items across 7
+   buckets on 2 x A4 pages. */
 function printChecklist(){
   const now=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
   const todayShort=new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'});
-  const allTasks=SLOTS.flatMap(s=>(data[s]||[]));
-  const totalAll=allTasks.length, doneAll=allTasks.filter(t=>t.done).length;
-  const labels=loadLabels();
+  const allEntries=BUCKETS.flatMap(b=>scheduledItems(b.key));
+  const totalAll=allEntries.length, doneAll=allEntries.filter(e=>e.item.done).length;
   let sectionsHTML='';
-  SLOTS.forEach(slot=>{
-    const meta=getMeta(slot); const items=data[slot]||[]; if(!items.length) return;
-    const done=items.filter(t=>t.done).length, total=items.length;
-    const displayLabel=labels[slot]||meta.label;
+  BUCKETS.forEach(bucket=>{
+    const entries=scheduledItems(bucket.key); if(!entries.length) return;
+    const done=entries.filter(e=>e.item.done).length, total=entries.length;
     let rowsHTML='';
-    items.forEach(item=>{
-      const indent=item.sub?'padding-left:18px;':'';
+    entries.forEach(({item})=>{
       const strike=item.done?'text-decoration:line-through;color:#aaa;':'';
-      const weight=!item.sub?'font-weight:600;':'font-weight:400;';
       const box=item.done
-        ?`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:8px;vertical-align:middle;background:#333;position:relative;flex-shrink:0;"><span style="position:absolute;top:-1px;left:2px;font-size:11px;color:#fff;line-height:1;">✓</span></span>`
-        :`<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:8px;vertical-align:middle;flex-shrink:0;"></span>`;
-      rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid #f0f0f0;${indent}">${box}<span style="font-size:12.5px;${weight}${strike}flex:1;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+        ?`<span style="display:inline-block;width:11px;height:11px;border:1.3px solid #333;border-radius:2px;margin-right:6px;vertical-align:middle;background:#333;position:relative;flex-shrink:0;"><span style="position:absolute;top:-2px;left:1px;font-size:9px;color:#fff;line-height:1;">✓</span></span>`
+        :`<span style="display:inline-block;width:11px;height:11px;border:1.3px solid #999;border-radius:2px;margin-right:6px;vertical-align:middle;flex-shrink:0;"></span>`;
+      rowsHTML+=`<div style="display:flex;align-items:center;padding:2.5px 0;border-bottom:1px solid #f0f0f0;">${box}<span style="font-size:10.5px;font-weight:600;${strike}flex:1;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
     });
-    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;">
-      <div style="padding:9px 12px 7px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
-        <span style="font-size:13.5px;font-weight:700;letter-spacing:0.01em;">${meta.icon} ${displayLabel}</span>
-        <span style="font-size:11px;color:#888;">${done}/${total}</span>
+    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.3px solid #ccc;border-radius:5px;overflow:hidden;background:#fff;margin-bottom:9px;">
+      <div style="padding:6px 9px 5px;border-bottom:1.3px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
+        <span style="font-size:11.5px;font-weight:700;letter-spacing:0.01em;">${bucket.icon} ${bucket.label}</span>
+        <span style="font-size:9.5px;color:#888;">${done}/${total}</span>
       </div>
-      <div style="padding:4px 12px 8px;">${rowsHTML}</div>
+      <div style="padding:3px 9px 6px;">${rowsHTML}</div>
     </div>`;
   });
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Operations — ${todayShort}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#111;background:#fff;padding:20px 24px;}
-  @page{size:A4;margin:14mm 12mm;}@media print{body{padding:0;}}</style></head><body>
-  <div style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;">
-    <div><div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;">Operations</div><div style="font-size:12px;color:#666;margin-top:3px;">${now}</div></div>
-    <div style="text-align:right;"><div style="font-size:12px;font-weight:600;margin-top:2px;">${doneAll} / ${totalAll} done</div></div>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#111;background:#fff;padding:14px 16px;}
+  @page{size:A4;margin:9mm 8mm;}@media print{body{padding:0;}}
+  .cols{column-count:3;column-gap:10px;}
+  .head{border-bottom:2px solid #111;padding-bottom:7px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;}
+  </style></head><body>
+  <div class="head">
+    <div><div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;">Operations</div><div style="font-size:10px;color:#666;margin-top:2px;">${now}</div></div>
+    <div style="text-align:right;"><div style="font-size:10.5px;font-weight:600;">${doneAll} / ${totalAll} done</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${sectionsHTML}</div>
-  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:10px;color:#b0a898;font-style:italic;">
+  <div class="cols">${sectionsHTML}</div>
+  <div style="margin-top:10px;padding-top:6px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:9px;color:#b0a898;font-style:italic;">
     <span>✦ Planner — Operations</span><span>${todayShort}</span>
   </div></body></html>`);
   w.document.close(); w.onload=()=>{w.focus();w.print();};
 }
 
-/* ── colour print ── */
+/* ── colour print ──
+   Same BUCKETS-based grouping as printChecklist(), with a light
+   tint per bucket instead of per old SLOT, and the same compact
+   multi-column layout so it fits 2 x A4 pages. */
 function printChecklistColor(){
   const now=new Date().toLocaleDateString('en-AU',{weekday:'long',day:'2-digit',month:'short',year:'numeric'});
   const todayShort=new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'});
-  const allTasks=SLOTS.flatMap(s=>(data[s]||[]));
-  const totalAll=allTasks.length, doneAll=allTasks.filter(t=>t.done).length;
+  const allEntries=BUCKETS.flatMap(b=>scheduledItems(b.key));
+  const totalAll=allEntries.length, doneAll=allEntries.filter(e=>e.item.done).length;
   const pctAll=totalAll?Math.round(doneAll/totalAll*100):0;
-  const labels=loadLabels();
-  const SLOT_PALETTES={
-    daily:   {bg:'#eef8ee',hdr:'#d8eed8',accent:'#2e7a2e',border:'#b0d8b0'},
-    weekly:  {bg:'#eef2fc',hdr:'#d4dff5',accent:'#2a4ea0',border:'#a8bce8'},
-    monthly: {bg:'#f8eeff',hdr:'#e8d4f5',accent:'#7a30a0',border:'#c8a0e0'},
-    systems: {bg:'#fdf5e0',hdr:'#f5e4b8',accent:'#9a6a10',border:'#e0c880'},
-    admin:   {bg:'#fef0e0',hdr:'#f8ddb8',accent:'#b05010',border:'#e8b880'},
-    misc:    {bg:'#eef2f8',hdr:'#d8e0ee',accent:'#3a5070',border:'#a8b8d0'},
+  const BUCKET_PALETTES={
+    P:  {bg:'#fdeceb',hdr:'#f6d2cd',accent:'#c0392b',border:'#f0b8b0'},
+    T:  {bg:'#fdf1e3',hdr:'#f6ddb8',accent:'#b0700a',border:'#eec98e'},
+    W:  {bg:'#eaf6ea',hdr:'#cdeacd',accent:'#2e7a2e',border:'#a8dba8'},
+    F1: {bg:'#e9f2fc',hdr:'#cfe3f7',accent:'#2a4ea0',border:'#aecdf0'},
+    F2: {bg:'#e6f5fc',hdr:'#c9e9f6',accent:'#1a7ea0',border:'#a6d9ee'},
+    M:  {bg:'#f5eafc',hdr:'#e5cdf5',accent:'#7a30a0',border:'#d6b6ee'},
+    B:  {bg:'#f0efec',hdr:'#dedad2',accent:'#5c5850',border:'#d6d3cc'},
   };
   const DEFAULT_PAL={bg:'#f5f5f5',hdr:'#e5e5e5',accent:'#555',border:'#ccc'};
   let sectionsHTML='';
-  SLOTS.forEach(slot=>{
-    const meta=getMeta(slot); const items=data[slot]||[]; if(!items.length) return;
-    const done=items.filter(t=>t.done).length, total=items.length;
+  BUCKETS.forEach(bucket=>{
+    const entries=scheduledItems(bucket.key); if(!entries.length) return;
+    const done=entries.filter(e=>e.item.done).length, total=entries.length;
     const pct=total?Math.round(done/total*100):0;
-    const pal=SLOT_PALETTES[slot]||DEFAULT_PAL;
-    const displayLabel=labels[slot]||meta.label;
+    const pal=BUCKET_PALETTES[bucket.key]||DEFAULT_PAL;
     let rowsHTML='';
-    items.forEach(item=>{
-      const indent=item.sub?'padding-left:20px;':'';
+    entries.forEach(({item})=>{
       const strike=item.done?`text-decoration:line-through;color:${pal.accent};opacity:0.5;`:'';
-      const weight=!item.sub?'font-weight:600;':'font-weight:400;';
       const box=item.done
-        ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:8px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
-        :`<span style="display:inline-block;width:14px;height:14px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:8px;flex-shrink:0;background:#fff;"></span>`;
-      rowsHTML+=`<div style="display:flex;align-items:center;padding:5px 0;border-bottom:1px solid ${pal.hdr};${indent}">${box}<span style="font-size:12.5px;${weight}${strike}flex:1;color:#1a1714;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
+        ?`<span style="display:inline-flex;align-items:center;justify-content:center;width:12px;height:12px;border:1.3px solid ${pal.accent};border-radius:3px;margin-right:6px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:9px;line-height:1;">✓</span></span>`
+        :`<span style="display:inline-block;width:12px;height:12px;border:1.3px solid ${pal.border};border-radius:3px;margin-right:6px;flex-shrink:0;background:#fff;"></span>`;
+      rowsHTML+=`<div style="display:flex;align-items:center;padding:2.5px 0;border-bottom:1px solid ${pal.hdr};">${box}<span style="font-size:10.5px;font-weight:600;${strike}flex:1;color:#1a1714;">${item.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span></div>`;
     });
-    const barFill=`<div style="height:4px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
-    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid ${pal.border};border-radius:8px;overflow:hidden;background:${pal.bg};">
-      <div style="padding:9px 12px 7px;border-bottom:1.5px solid ${pal.border};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};">
-        <span style="font-family:'DM Serif Display',Georgia,serif;font-size:14px;font-weight:400;color:${pal.accent};">${meta.icon}&nbsp;${displayLabel}</span>
-        <span style="font-size:11px;color:${pal.accent};opacity:0.7;font-weight:600;">${done}/${total}</span>
-      </div>${barFill}<div style="padding:0 12px 10px;">${rowsHTML}</div>
+    const barFill=`<div style="height:3px;background:${pal.hdr};border-radius:2px;margin:0 9px 5px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>`;
+    sectionsHTML+=`<div style="break-inside:avoid;page-break-inside:avoid;border:1.3px solid ${pal.border};border-radius:6px;overflow:hidden;background:${pal.bg};margin-bottom:9px;">
+      <div style="padding:6px 9px 5px;border-bottom:1.3px solid ${pal.border};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};">
+        <span style="font-family:'DM Serif Display',Georgia,serif;font-size:12px;font-weight:400;color:${pal.accent};">${bucket.icon}&nbsp;${bucket.label}</span>
+        <span style="font-size:9.5px;color:${pal.accent};opacity:0.75;font-weight:600;">${done}/${total}</span>
+      </div>${barFill}<div style="padding:0 9px 7px;">${rowsHTML}</div>
     </div>`;
   });
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Operations — Colour — ${todayShort}</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#1a1714;background:#fff;padding:22px 26px;}
-  @page{size:A4;margin:12mm 10mm;}@media print{body{padding:0;}}</style></head><body>
-  <div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;">
-    <div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-weight:400;letter-spacing:-0.01em;color:#3a2e20;">Operations</div>
-    <div style="font-size:12px;color:#7a6a56;margin-top:4px;font-style:italic;">${now}</div></div>
-    <div style="text-align:right;flex-shrink:0;padding-left:20px;">
-      <div style="font-size:20px;font-family:'DM Serif Display',Georgia,serif;font-weight:400;color:#c17b3f;">${pctAll}%</div>
-      <div style="font-size:11px;color:#9a8878;margin-top:1px;">${doneAll} / ${totalAll} done</div>
-      <div style="width:120px;height:6px;background:#e0d0c0;border-radius:3px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${pctAll}%;background:linear-gradient(90deg,#c17b3f,#e09050);border-radius:3px;"></div></div>
+  <style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:'DM Sans',Georgia,sans-serif;color:#1a1714;background:#fff;padding:14px 16px;}
+  @page{size:A4;margin:8mm 7mm;}@media print{body{padding:0;}}
+  .cols{column-count:3;column-gap:10px;}
+  </style></head><body>
+  <div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:8px;padding:10px 14px 8px;margin-bottom:10px;border:1.3px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end;page-break-after:avoid;">
+    <div><div style="font-family:'DM Serif Display',Georgia,serif;font-size:18px;font-weight:400;letter-spacing:-0.01em;color:#3a2e20;">Operations</div>
+    <div style="font-size:10px;color:#7a6a56;margin-top:2px;font-style:italic;">${now}</div></div>
+    <div style="text-align:right;flex-shrink:0;padding-left:14px;">
+      <div style="font-size:14px;font-family:'DM Serif Display',Georgia,serif;font-weight:400;color:#c17b3f;">${pctAll}%</div>
+      <div style="font-size:9.5px;color:#9a8878;margin-top:1px;">${doneAll} / ${totalAll} done</div>
     </div>
   </div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;">${sectionsHTML}</div>
-  <div style="margin-top:18px;padding-top:10px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:10px;color:#b0a898;font-style:italic;">✦ Planner — Operations</span>
-    <span style="font-size:10px;color:#b0a898;">${todayShort}</span>
+  <div class="cols">${sectionsHTML}</div>
+  <div style="margin-top:10px;padding-top:6px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:9px;color:#b0a898;font-style:italic;">✦ Planner — Operations</span>
+    <span style="font-size:9px;color:#b0a898;">${todayShort}</span>
   </div></body></html>`);
   w.document.close(); w.onload=()=>{w.focus();w.print();};
 }
