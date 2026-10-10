@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tasmania Trip Drive Schedule</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --accent:#1d4fd6; --border:#d9d9de; --bg:#f7f7f9; --text:#16151a; --muted:#6b6970; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:24px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.5; }
+  .wrap { overflow-x:auto; background:#fff; border:1px solid var(--border); border-radius:10px; }
+  table { border-collapse:collapse; width:100%; min-width:1500px; font-size:13px; }
+  th, td { padding:8px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+  th { background:#eef1fb; position:sticky; top:0; font-weight:600; white-space:nowrap; }
+  tr:hover td { background:#fafbff; }
+  tr.sea td { background:#f3f8f3; }
+  input[type=time] { font-size:13px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; }
+  input[type=time]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  .tag { display:inline-block; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; padding:2px 6px; border-radius:6px; margin-left:6px; vertical-align:middle; }
+  .tag.proposed { background:#fff4e0; color:#8a5a00; }
+  .tag.planned  { background:#e6f0ff; color:var(--accent); }
+  .tag.booked   { background:#e4f5e8; color:#23643a; }
+  .arr { font-weight:600; white-space:nowrap; }
+  .nextday { font-size:11px; color:var(--muted); font-weight:400; }
+  .muted { color:var(--muted); }
+  .toolbar { margin-bottom:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  button { font-size:13px; padding:7px 12px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
+  button:hover { border-color:var(--accent); color:var(--accent); }
+  .legend { font-size:12px; color:var(--muted); }
+  .tabs { display:flex; gap:6px; margin-bottom:14px; }
+  .tab { border:1px solid var(--border); background:#fff; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:13px; }
+  .tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .cal-sub { color:var(--muted); font-size:13px; margin-bottom:10px; }
+  .cal-wrap { overflow-x:auto; }
+  .cal-head, .cal-grid { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; min-width:1000px; }
+  .cal-head { font-weight:600; font-size:12px; color:var(--muted); margin-bottom:6px; text-align:center; }
+  .cal-cell { background:#fff; border:1px solid var(--border); border-radius:8px; min-height:150px; padding:6px; font-size:12px; }
+  .cal-cell.out { background:#efeff2; color:#b0b0b8; }
+  .cal-date { font-weight:700; margin-bottom:4px; color:var(--accent); }
+  .cal-ev { border-left:3px solid var(--accent); padding:3px 5px; margin-bottom:5px; background:#f5f8ff; border-radius:4px; }
+  .cal-ev.sea { border-left-color:#23643a; background:#f3f8f3; }
+  .cal-time { font-weight:600; }
+  .cal-meta { color:var(--muted); font-size:11px; }
+  .cal-stay { margin-top:6px; color:#23643a; font-size:11px; font-weight:600; }
+  .cal-none { color:var(--muted); font-style:italic; font-size:11px; margin-bottom:5px; }
+  #map { height:560px; border:1px solid var(--border); border-radius:10px; background:#e8eef5; }
+  .map-num { background:var(--accent); color:#fff; border-radius:50%; width:26px; height:26px; line-height:26px; text-align:center; font-weight:700; font-size:12px; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .map-list { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px 12px 36px; margin:12px 0 0; font-size:13px; columns:2; column-gap:32px; }
+  .map-list li { margin-bottom:6px; break-inside:avoid; }
+  .map-list .d { color:var(--muted); }
+  .key { display:inline-block; margin-right:14px; font-size:12px; color:var(--muted); }
+  .key i { display:inline-block; width:28px; height:0; border-top:4px solid var(--accent); vertical-align:middle; margin-right:6px; }
+  .key i.sea { border-top-style:dashed; border-top-color:#23643a; }
+</style>
+</head>
+<body>
+
+<h1>Tasmania Trip Drive Schedule</h1>
+<div class="sub">
+  Change any start time and the approximate arrival time updates. Drive times and distances are estimates, so check them in Google Maps before relying on them.
+  Start times tagged <strong>proposed</strong> are my suggestions, <strong>planned</strong> comes from your itinerary notes, and <strong>booked</strong> is fixed by a booking.
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-view="schedule" type="button">Schedule</button>
+  <button class="tab" data-view="calendar" type="button">Calendar</button>
+  <button class="tab" data-view="map" type="button">Map</button>
+</div>
+
+<div id="view-schedule">
+<div class="toolbar">
+  <button id="resetBtn" type="button">Reset start times to defaults</button>
+  <span class="legend">Arrival = start time + approx drive time. Sea crossings show the booked arrival time.</span>
+</div>
+
+<div class="wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Day</th>
+        <th>Date</th>
+        <th>Drive origin</th>
+        <th>Start time</th>
+        <th>Approx drive time</th>
+        <th>Approx km</th>
+        <th>Approx arrival time</th>
+        <th>Drive destination</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Stay place</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+</div>
+</div>
+
+<div id="view-calendar" hidden>
+  <div class="cal-sub">20 Dec 2026 to 6 Jan 2027. Times follow the start times set in the Schedule tab.</div>
+  <div class="cal-wrap">
+    <div class="cal-head"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<div id="view-map" hidden>
+  <div class="cal-sub">
+    <span class="key"><i></i>Drive</span><span class="key"><i class="sea"></i>Ferry crossing</span>
+    Numbers follow the trip order: 1 is Cherrybrook on 20 Dec, 27 is home on 6 Jan. Stops are approximate pins. The Friend's place stay near Geelong is not pinned.
+  </div>
+  <div id="map"></div>
+  <ol class="map-list" id="mapList"></ol>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* Each row: default start (HH:MM), drive minutes, status tag. Sea rows have drive minutes for the crossing. */
+const TRIPS = [
+  { day:"Sun", date:"20 Dec 2026", from:"Cherrybrook, Sydney", start:"08:00", tag:"proposed", mins:300, km:"~470", to:"Wagga Wagga", cin:"14:00 to 19:00", cout:"02:30 to 10:00 (21 Dec)", stay:"Wagga Wagga Tourist Park, 16 Allonby Ave, Forest Hill" },
+  { day:"Mon", date:"21 Dec 2026", from:"Wagga Wagga", start:"08:00", tag:"proposed", mins:300, km:"~520", to:"Friend's place, near Geelong", cin:"Not stated", cout:"Not stated", stay:"Friend's place, about 1 hr from Geelong" },
+  { day:"Tue", date:"22 Dec 2026", from:"Friend's place", start:"14:00", tag:"proposed", mins:60, km:"~80", to:"Geelong terminal, North Geelong", cin:"-", cout:"-", stay:"Spirit of Tasmania (overnight)" },
+  { day:"Tue", date:"22 Dec 2026", from:"Geelong terminal (sailing)", start:"18:45", tag:"booked", mins:705, km:"Sea crossing", to:"Devonport terminal", cin:"Boards 18:45", cout:"Arrives 06:30 (23 Dec)", stay:"Spirit of Tasmania, booking #15839536", sea:true },
+  { day:"Wed", date:"23 Dec 2026", from:"Devonport terminal", start:"08:30", tag:"proposed", mins:90, km:"~100", to:"Cradle Mountain", cin:"Not stated", cout:"Not stated (until 25 Dec)", stay:"Discovery Resorts Cradle Mountain" },
+  { day:"Fri", date:"25 Dec 2026", from:"Cradle Mountain", start:"08:30", tag:"proposed", mins:120, km:"~100", to:"Queenstown (drive-through)", cin:"Not stated", cout:"Not stated (until 28 Dec)", stay:"Strahan Beach Tourist Park" },
+  { day:"Fri", date:"25 Dec 2026", from:"Queenstown", start:"11:00", tag:"proposed", mins:45, km:"~40", to:"Strahan", cin:"Not stated", cout:"Not stated (until 28 Dec)", stay:"Strahan Beach Tourist Park" },
+  { day:"Mon", date:"28 Dec 2026", from:"Strahan", start:"08:00", tag:"planned", mins:150, km:"~170", to:"Lake St Clair", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Mon", date:"28 Dec 2026", from:"Lake St Clair", start:"10:30", tag:"proposed", mins:90, km:"~130", to:"Mt Field", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Mon", date:"28 Dec 2026", from:"Mt Field", start:"12:30", tag:"proposed", mins:90, km:"~80", to:"Kingston", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Tue", date:"29 Dec 2026", from:"Kingston", start:"08:30", tag:"planned", mins:20, km:"~25", to:"Kettering ferry terminal", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Tue", date:"29 Dec 2026", from:"Roberts Point, Bruny Island", start:"09:05", tag:"proposed", mins:30, km:"~35", to:"Adventure Bay", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Tue", date:"29 Dec 2026", from:"Adventure Bay", start:"16:15", tag:"proposed", mins:50, km:"~60", to:"Kingston, after return ferry", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Wed", date:"30 Dec 2026", from:"Kingston", start:"09:00", tag:"proposed", mins:75, km:"~100", to:"Port Arthur", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Wed", date:"30 Dec 2026", from:"Port Arthur", start:"17:00", tag:"planned", mins:75, km:"~100", to:"Kingston", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Thu", date:"31 Dec 2026", from:"Kingston", start:"10:00", tag:"proposed", mins:25, km:"~25", to:"MONA", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Thu", date:"31 Dec 2026", from:"MONA", start:"14:00", tag:"proposed", mins:10, km:"~10", to:"Regatta Grounds, Hobart", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Thu", date:"31 Dec 2026", from:"Regatta Grounds", start:"21:00", tag:"proposed", mins:25, km:"~25", to:"Kingston", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
+  { day:"Fri", date:"1 Jan 2027", from:"Kingston", start:"10:00", tag:"proposed", mins:120, km:"~200", to:"Bicheno", cin:"14:00 to 20:00", cout:"Until 10:00 (2 Jan)", stay:"Wintersun Motel Bicheno, 35 Gordon St" },
+  { day:"Sat", date:"2 Jan 2027", from:"Bicheno", start:"08:00", tag:"proposed", mins:45, km:"~35", to:"Freycinet (Coles Bay)", cin:"14:00 to 19:00", cout:"Until 10:00 (3 Jan)", stay:"Kellraine Holiday Units, 72 Tully St, St Helens" },
+  { day:"Sat", date:"2 Jan 2027", from:"Freycinet", start:"15:00", tag:"proposed", mins:90, km:"~120", to:"St Helens", cin:"14:00 to 19:00", cout:"Until 10:00 (3 Jan)", stay:"Kellraine Holiday Units, 72 Tully St, St Helens" },
+  { day:"Sun", date:"3 Jan 2027", from:"St Helens", start:"08:30", tag:"proposed", mins:135, km:"~190", to:"Launceston, via Binalong Bay", cin:"14:00", cout:"10:00 (4 Jan)", stay:"Discovery Parks Hadspen, 9 Main St, Launceston" },
+  { day:"Mon", date:"4 Jan 2027", from:"Launceston", start:"11:00", tag:"proposed", mins:90, km:"~100", to:"Devonport terminal", cin:"-", cout:"-", stay:"Spirit of Tasmania (overnight)" },
+  { day:"Mon", date:"4 Jan 2027", from:"Devonport terminal (sailing)", start:"18:45", tag:"booked", mins:705, km:"Sea crossing", to:"Geelong terminal", cin:"Boards 18:45", cout:"Arrives 06:30 (5 Jan)", stay:"Spirit of Tasmania, booking #15839536", sea:true },
+  { day:"Tue", date:"5 Jan 2027", from:"Geelong terminal", start:"06:45", tag:"proposed", mins:60, km:"~80", to:"Friend's place", cin:"14:00 to 20:00", cout:"Until 10:00 (6 Jan)", stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St" },
+  { day:"Tue", date:"5 Jan 2027", from:"Friend's place", start:"13:00", tag:"proposed", mins:300, km:"~520", to:"Wagga Wagga", cin:"14:00 to 20:00", cout:"Until 10:00 (6 Jan)", stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St" },
+  { day:"Wed", date:"6 Jan 2027", from:"Wagga Wagga", start:"10:00", tag:"proposed", mins:270, km:"~470", to:"Cherrybrook, Sydney", cin:"-", cout:"10:00", stay:"Home, Cherrybrook" }
+];
+
+function toMinutes(hhmm){
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+function formatArrival(totalMin, isSea){
+  const dayOffset = Math.floor(totalMin / 1440);
+  const mins = totalMin % 1440;
+  const hh = String(Math.floor(mins / 60)).padStart(2, "0");
+  const mm = String(mins % 60).padStart(2, "0");
+  const next = dayOffset > 0 ? ` <span class="nextday">(+${dayOffset} day)</span>` : "";
+  return `${hh}:${mm}${next}`;
+}
+function formatDuration(mins){
+  const h = Math.floor(mins / 60), m = mins % 60;
+  if (h && m) return `${h} hr ${String(m).padStart(2, "0")} min`;
+  if (h) return `${h} hr 00 min`;
+  return `${m} min`;
+}
+
+const tbody = document.getElementById("rows");
+
+function buildRows(){
+  tbody.innerHTML = "";
+  TRIPS.forEach((t, i) => {
+    const tr = document.createElement("tr");
+    if (t.sea) tr.className = "sea";
+    tr.innerHTML = `
+      <td>${t.day}</td>
+      <td>${t.date}</td>
+      <td>${t.from}</td>
+      <td>
+        <input type="time" value="${t.start}" data-idx="${i}" aria-label="Start time">
+        <span class="tag ${t.tag}">${t.tag}</span>
+      </td>
+      <td>${formatDuration(t.mins)}</td>
+      <td>${t.km}</td>
+      <td class="arr" id="arr-${i}"></td>
+      <td>${t.to}</td>
+      <td>${t.cin}</td>
+      <td>${t.cout}</td>
+      <td>${t.stay}</td>`;
+    tbody.appendChild(tr);
+    updateArrival(i);
+  });
+}
+
+function updateArrival(i){
+  const t = TRIPS[i];
+  const input = tbody.querySelector(`input[data-idx="${i}"]`);
+  const startMin = toMinutes(input.value || t.start);
+  document.getElementById(`arr-${i}`).innerHTML = formatArrival(startMin + t.mins, !!t.sea);
+}
+
+tbody.addEventListener("input", e => {
+  if (e.target.matches("input[type=time]")) {
+    updateArrival(Number(e.target.dataset.idx));
+    renderCalendar();
+  }
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  tbody.querySelectorAll("input[type=time]").forEach(inp => {
+    inp.value = TRIPS[Number(inp.dataset.idx)].start;
+    updateArrival(Number(inp.dataset.idx));
+  });
+  renderCalendar();
+});
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTH_INDEX = { Jan:0, Feb:1, Mar:2, Apr:3, May:4, Jun:5, Jul:6, Aug:7, Sep:8, Oct:9, Nov:10, Dec:11 };
+const TRIP_START = new Date(2026, 11, 20);
+const TRIP_END = new Date(2027, 0, 6);
+const GRID_START = new Date(2026, 11, 14); /* Monday before the trip */
+const GRID_END = new Date(2027, 0, 10);    /* Sunday after the trip */
+
+function parseTripDate(s){
+  const [d, mon, y] = s.split(" ");
+  return new Date(Number(y), MONTH_INDEX[mon], Number(d));
+}
+function keyOf(dt){ return dt.getFullYear() + "-" + dt.getMonth() + "-" + dt.getDate(); }
+function getStart(i){
+  const inp = tbody.querySelector(`input[data-idx="${i}"]`);
+  return inp ? inp.value : TRIPS[i].start;
+}
+
+function renderCalendar(){
+  const grid = document.getElementById("calGrid");
+  grid.innerHTML = "";
+  let carryStay = "";
+  for (let d = new Date(GRID_START); d <= GRID_END; d.setDate(d.getDate() + 1)){
+    const cell = document.createElement("div");
+    const inTrip = d >= TRIP_START && d <= TRIP_END;
+    cell.className = "cal-cell" + (inTrip ? "" : " out");
+    let html = `<div class="cal-date">${d.getDate()} ${MONTH_NAMES[d.getMonth()]}</div>`;
+    if (inTrip){
+      const key = keyOf(d);
+      const evs = TRIPS.map((t, i) => ({ t, i })).filter(o => keyOf(parseTripDate(o.t.date)) === key);
+      if (evs.length){
+        evs.forEach(({ t, i }) => {
+          const start = getStart(i);
+          const arr = formatArrival(toMinutes(start) + t.mins, !!t.sea);
+          html += `<div class="cal-ev${t.sea ? " sea" : ""}">
+            <div><span class="cal-time">${start}</span> ${t.from} to ${t.to}</div>
+            <div class="cal-meta">${formatDuration(t.mins)}, arrives ${arr}, ${t.km}</div>
+          </div>`;
+        });
+        carryStay = evs[evs.length - 1].t.stay;
+      } else {
+        html += `<div class="cal-none">No driving</div>`;
+      }
+      html += `<div class="cal-stay">Night: ${carryStay}</div>`;
+    }
+    cell.innerHTML = html;
+    grid.appendChild(cell);
+  }
+}
+
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(b => b.classList.toggle("active", b === btn));
+    const view = btn.dataset.view;
+    document.getElementById("view-schedule").hidden = view !== "schedule";
+    document.getElementById("view-calendar").hidden = view !== "calendar";
+    document.getElementById("view-map").hidden = view !== "map";
+    if (view === "calendar") renderCalendar();
+    if (view === "map") initMap();
+  });
+});
+
+
+/* Full trip route in order, 20 Dec to 6 Jan. leg = how you travel TO this stop from the previous one. */
+const ROUTE = [
+  { n:1,  name:"Cherrybrook, Sydney (start)", date:"20 Dec", lat:-33.73, lng:151.03, leg:null, note:"Drive to Wagga Wagga, about 5 hrs" },
+  { n:2,  name:"Wagga Wagga Tourist Park", date:"20 Dec", lat:-35.12, lng:147.36, leg:"drive", note:"Night 20 Dec" },
+  { n:3,  name:"Geelong terminal (Spirit of Tasmania)", date:"22 Dec", lat:-38.10, lng:144.36, leg:"drive", note:"Friend's place stay 21 Dec. Board 18:45" },
+  { n:4,  name:"Devonport terminal", date:"23 Dec", lat:-41.17, lng:146.37, leg:"sea", note:"Arrive 06:30. Groceries at Woolworths Devonport" },
+  { n:5,  name:"Cradle Mountain (Discovery Resorts)", date:"23 Dec", lat:-41.68, lng:145.94, leg:"drive", note:"Nights 23 to 25 Dec. Buy Park Pass here" },
+  { n:6,  name:"Queenstown (drive-through)", date:"25 Dec", lat:-42.08, lng:145.55, leg:"drive", note:"Lookouts only, Christmas Day" },
+  { n:7,  name:"Strahan Beach Tourist Park", date:"25 Dec", lat:-42.15, lng:145.33, leg:"drive", note:"Nights 25 to 28 Dec. Gordon River cruise 27 Dec" },
+  { n:8,  name:"Lake St Clair", date:"28 Dec", lat:-42.12, lng:146.18, leg:"drive", note:"Lakeside walk, big driving day" },
+  { n:9,  name:"Russell Falls, Mt Field", date:"28 Dec", lat:-42.68, lng:146.68, leg:"drive", note:"Russell Falls and Tall Trees" },
+  { n:10, name:"Hobart Bush Cabins Kingston", date:"28 Dec", lat:-42.99, lng:147.30, leg:"drive", note:"Base 28 Dec to 1 Jan" },
+  { n:11, name:"Kettering, SeaLink ferry (not yet booked)", date:"29 Dec", lat:-43.00, lng:147.29, leg:"drive", note:"Ferry about 08:50" },
+  { n:12, name:"Adventure Bay, Bruny Island", date:"29 Dec", lat:-43.36, lng:147.32, leg:"sea", note:"Wilderness cruise 11:00" },
+  { n:13, name:"Kingston (return from Bruny)", date:"29 Dec", lat:-42.99, lng:147.30, leg:"sea", note:"Return ferry about 16:30" },
+  { n:14, name:"Port Arthur", date:"30 Dec", lat:-43.15, lng:147.85, leg:"drive", note:"Harbour cruise 14:45. Leave by 17:00" },
+  { n:15, name:"Kingston (return from Port Arthur)", date:"30 Dec", lat:-42.99, lng:147.30, leg:"drive", note:"Back about 18:15" },
+  { n:16, name:"MONA", date:"31 Dec", lat:-42.89, lng:147.36, leg:"drive", note:"Timed entry 11:00" },
+  { n:17, name:"Hobart waterfront, Regatta Grounds, NYE", date:"31 Dec", lat:-42.88, lng:147.33, leg:"drive", note:"Fireworks 21:30. The Saffron not yet booked" },
+  { n:18, name:"Kingston (return from Hobart)", date:"31 Dec", lat:-42.99, lng:147.30, leg:"drive", note:"Back about 23:00" },
+  { n:19, name:"Bicheno (Wintersun Motel)", date:"1 Jan", lat:-41.87, lng:148.30, leg:"drive", note:"Night 1 Jan. Penguins at Redbill Beach" },
+  { n:20, name:"Freycinet, Wineglass Bay", date:"2 Jan", lat:-42.13, lng:148.30, leg:"drive", note:"Day trip covered by Park Pass" },
+  { n:21, name:"St Helens (Kellraine Holiday Units)", date:"2 Jan", lat:-41.32, lng:148.24, leg:"drive", note:"Night 2 Jan" },
+  { n:22, name:"Binalong Bay, Bay of Fires", date:"3 Jan", lat:-41.20, lng:148.32, leg:"drive", note:"Morning orange rocks" },
+  { n:23, name:"Launceston (Discovery Parks Hadspen)", date:"3 Jan", lat:-41.52, lng:146.98, leg:"drive", note:"Night 3 Jan. Cataract Gorge and City Park" },
+  { n:24, name:"Devonport terminal", date:"4 Jan", lat:-41.17, lng:146.37, leg:"drive", note:"Board Spirit 18:45" },
+  { n:25, name:"Geelong terminal", date:"5 Jan", lat:-38.10, lng:144.36, leg:"sea", note:"Arrive 06:30" },
+  { n:26, name:"Centralpoint Motel Wagga Wagga", date:"5 Jan", lat:-35.12, lng:147.37, leg:"drive", note:"Night 5 Jan" },
+  { n:27, name:"Cherrybrook, Sydney (home)", date:"6 Jan", lat:-33.73, lng:151.03, leg:"drive", note:"Trip ends" }
+];
+
+let leafletMap = null;
+
+function renderMapList(){
+  document.getElementById("mapList").innerHTML = ROUTE.map(s =>
+    `<li><strong>${s.name}</strong> <span class="d">${s.date}</span><br>${s.note}</li>`).join("");
+}
+
+function initMap(){
+  if (!leafletMap){
+    leafletMap = L.map("map");
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 18,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(leafletMap);
+
+    ROUTE.forEach((s, i) => {
+      if (i === 0) return;
+      const p = ROUTE[i - 1];
+      const sea = s.leg === "sea";
+      L.polyline([[p.lat, p.lng], [s.lat, s.lng]], {
+        color: sea ? "#23643a" : "#1d4fd6",
+        weight: 4,
+        opacity: 0.85,
+        dashArray: sea ? "8 8" : null
+      }).addTo(leafletMap);
+    });
+
+    ROUTE.forEach(s => {
+      const icon = L.divIcon({
+        className: "",
+        html: `<div class="map-num">${s.n}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13]
+      });
+      L.marker([s.lat, s.lng], { icon })
+        .bindPopup(`<strong>${s.n}. ${s.name}</strong><br>${s.date}<br>${s.note}`)
+        .addTo(leafletMap);
+    });
+
+    leafletMap.fitBounds(ROUTE.map(s => [s.lat, s.lng]), { padding: [30, 30] });
+    renderMapList();
+  }
+  setTimeout(() => leafletMap.invalidateSize(), 50);
+}
+
+buildRows();
+renderCalendar();
+</script>
+</body>
+</html>
