@@ -5,28 +5,59 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <title data-page="Trip Planners">Trip Planners</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="storage.js"></script>
 <style>
 
-/* ===== GLOBAL LAYOUT CSS ===== */
-:root { --nav-width: 200px; }
+/* ===== DESIGN TOKENS ===== */
+:root {
+  --nav-width: 200px;
+  --nav-toggle-size: 22px;
+  --bg: #f3f2f0;
+  --surface: #ffffff;
+  --surface2: #f8f7f5;
+  --border: rgba(0,0,0,0.08);
+  --text: #16151a;
+  --text2: #5c5a60;
+  --text3: #8a878e;
+  --accent: #c17b3f;
+  --accent-soft: rgba(193,123,63,0.12);
+  --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  --radius: 16px;
+}
+[data-theme="dark"] {
+  --bg: #16151a;
+  --surface: #1f1d23;
+  --surface2: #26242b;
+  --border: rgba(255,255,255,0.08);
+  --text: #f3f1ee;
+  --text2: #b9b5bd;
+  --text3: #8a878e;
+  --accent: #d4935a;
+  --accent-soft: rgba(212,147,90,0.14);
+  --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+
+/* ===== GLOBAL LAYOUT ===== */
 .topbar { position:fixed; top:0; left:var(--nav-width); right:0; height:48px; z-index:2000; }
 .panels { position:fixed; top:48px; left:var(--nav-width); right:0; bottom:0; overflow:hidden; }
 .panel  { position:absolute; inset:0; opacity:0; pointer-events:none; overflow-y:auto; transition:opacity 0.15s; }
 .panel.active { opacity:1; pointer-events:all; }
 .panel .main  { margin-left:0 !important; padding-top:24px !important; }
-.panel .footer-actions { left:0 !important; }
 .footer-actions { position:fixed; bottom:0; left:var(--nav-width); right:0; background:var(--surface); border-top:2px solid var(--accent); padding:10px 24px; display:flex; align-items:center; gap:10px; z-index:50; }
-.footer-actions .btn { background:var(--surface); color:var(--text2); border:1px solid var(--border); border-bottom:2px solid transparent; transition:all 0.15s; }
-.footer-actions .btn:hover { color:var(--accent); border-color:var(--border); border-bottom-color:var(--accent); background:var(--accent-soft); transform:none; opacity:1; }
 .footer-actions .spacer { flex:1; }
 .build-stamp { font-size:10px; color:var(--text3); letter-spacing:0.06em; font-family:'DM Sans',sans-serif; white-space:nowrap; opacity:0.75; font-style:italic; }
 @media(max-width:700px){ :root{ --nav-width:0px; } .nav{ display:none; } }
 
 /* ===== TOPBAR ===== */
 .topbar {
-  background: var(--surface, #fff);
-  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   padding: 0 16px;
@@ -36,7 +67,7 @@
 .topbar-logo {
   font-family: 'DM Serif Display', serif;
   font-size: 15px;
-  color: var(--accent, #1d4fd6);
+  color: var(--accent);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -60,49 +91,19 @@
   white-space: nowrap;
   transition: all 0.15s;
   background: none;
-  color: var(--text2, #5c5a60);
+  color: var(--text2);
   user-select: none;
 }
-.tab-btn:hover { background: var(--surface2, #f8f7f5); color: var(--text, #16151a); }
+.tab-btn:hover { background: var(--surface2); color: var(--text); }
 .tab-btn.active {
-  background: var(--accent-soft, rgba(29,79,214,0.12));
-  color: var(--accent, #1d4fd6);
+  background: var(--accent-soft);
+  color: var(--accent);
   border-color: rgba(193,123,63,0.25);
   font-weight: 600;
 }
 .tab-btn.dragging-tab { opacity: 0.4; }
-/* .master-dark-toggle removed */
-/*  width: 40px; height: 22px;
-  background: var(--border, rgba(0,0,0,0.08)); border-radius: 11px;
-  position: relative; cursor: pointer; border: none;
-  transition: background 0.2s; flex-shrink: 0;
-}
-.master-dark-toggle::after {
-  content: ''; position: absolute;
-  width: 16px; height: 16px;
-  background: var(--text2, #5c5a60); border-radius: 50%;
-  top: 3px; left: 3px;
-  transition: transform 0.2s, background 0.2s;
-}
-[data-theme="dark"] .master-dark-toggle { background: var(--accent, #5b7fff); }
-[data-theme="dark"] .master-dark-toggle::after { transform: translateX(18px); background: #fff; }
 
-/* ===== india CSS ===== */
-:root {
-  --accent:#c17b3f; --accent-soft:rgba(193,123,63,0.12);
-  --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-hover: 0 8px 28px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
-  --radius: 16px;
-}
-[data-theme="dark"] {
-  --accent:#d4935a; --accent-soft:rgba(212,147,90,0.14);
-  --shadow: 0 2px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-hover: 0 8px 28px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3);
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background 0.3s, color 0.3s; }
-
-/* ── NAV ── */
+/* ===== NAV (built by storage.js) ===== */
 .nav {
   position: fixed; left: 0; top: 0; bottom: 0;
   width: var(--nav-width);
@@ -111,455 +112,21 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   display: flex; flex-direction: column;
   padding: 24px 0; z-index: 100;
   box-shadow: 2px 0 16px rgba(0,0,0,0.04);
+  transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease;
 }
-.nav-title { font-family: 'DM Serif Display', serif; font-size: 18px; color: var(--accent); padding: 0 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
 .nav a { display: block; padding: 8px 20px; font-size: 13px; color: var(--text2); text-decoration: none; transition: all 0.15s; border-left: 3px solid transparent; }
 .nav a:hover { color: var(--text); background: var(--surface2); transform: translateX(4px); }
 .nav a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
-
-
-.main { margin-left: var(--nav-width); padding: 32px 32px 80px; }
-.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
-.header-left h1 { font-family: 'DM Serif Display', serif; font-size: 36px; font-weight: 400; }
-.header-left .subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
-.header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-
-.btn { padding: 8px 14px; border-radius: 10px; border: none; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; }
-.btn-ghost { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
-.btn-ghost:hover { color: var(--text); background: var(--surface2); }
-.btn-accent { background: var(--accent); color: #fff; }
-.btn-accent:hover { opacity: 0.88; }
-.btn-print-color { background: rgba(100,140,200,0.10); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
-.btn-print-color:hover { background: rgba(100,140,200,0.18); color: #2a5a90; }
-.btn-danger { background: #e85c5c; color: #fff; }
-.btn-danger:hover { opacity: 0.88; }
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.section {
-  background: var(--surface);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow);
-  padding: 16px;
-  min-height: 200px;
-  transition: box-shadow 0.2s, border-color 0.2s;
-  position: relative;
-}
-.section:hover { box-shadow: var(--shadow-hover); }
-.section.drop-target { border-color: var(--accent); background: var(--accent-soft); }
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  gap: 6px;
-}
-.section h2 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 14px; font-weight: 400;
-  color: var(--accent);
-  flex: 1;
-}
-.section-title-input {
-  flex: 1;
-  font-family: 'DM Serif Display', serif;
-  font-size: 14px;
-  color: var(--accent);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 2px 6px;
-  outline: none;
-}
-.section-edit-btn, .section-del-btn, .section-add-btn {
-  border: none; background: none; cursor: pointer;
-  font-size: 12px; color: var(--text3); padding: 2px 4px;
-  border-radius: 4px; transition: all 0.15s; flex-shrink: 0;
-}
-.section-edit-btn:hover { color: var(--accent); background: var(--accent-soft); }
-.section-del-btn:hover { color: #e85c5c; background: rgba(232,92,92,0.1); }
-.section-add-btn { font-size: 16px; }
-.section-badge {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 20px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  flex-shrink: 0;
-  font-family: 'DM Sans', sans-serif;
-}
-.badge-today    { background: var(--accent); color: #fff; }
-.badge-tomorrow { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(193,123,63,0.3); }
-.badge-past     { background: rgba(0,0,0,0.06); color: var(--text3); border: 1px solid var(--border); }
-.badge-return   { background: rgba(100,140,200,0.12); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
-[data-theme="dark"] .badge-past { background: rgba(255,255,255,0.06); }
-.section.is-past { opacity: 0.7; }
-.section.is-past .section h2 { color: var(--text3); }
-.section.is-today { border-color: var(--accent); box-shadow: var(--shadow), 0 0 0 1.5px var(--accent); }
-
-.task { display: flex; align-items: center; gap: 6px; margin: 6px 0; padding: 5px 6px; border-radius: 8px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.7); transition: background 0.15s; }
-[data-theme="dark"] .task { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
-.task:hover { background: rgba(255,255,255,0.85); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
-[data-theme="dark"] .task:hover { background: rgba(255,255,255,0.08); }
-.task input[type=text] { flex: 1; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s, background 0.15s; }
-.task input[type=text]:focus { border-color: var(--accent); background: rgba(255,255,255,0.8); }
-[data-theme="dark"] .task input[type=text]:focus { background: rgba(255,255,255,0.06); }
-.task.completed .task-text { text-decoration: line-through; opacity: .45; }
-[data-theme="dark"] .task.completed .task-text { color: var(--text); }
-.task input[type=checkbox] { position:absolute;opacity:0;width:0;height:0;pointer-events:none; }
-.task button { border: none; background: none; cursor: pointer; font-size: 11px; color: var(--text3); padding: 2px 3px; border-radius: 4px; transition: all 0.15s; }
-.task button:hover { color: var(--text); background: rgba(0,0,0,0.07); }
-.task button:disabled { opacity: .2; cursor: default; }
-.drag-handle { cursor: grab; user-select: none; color: var(--text3); font-size: 13px; flex-shrink: 0; }
-.task.dragging { opacity: 0.3; }
-.task.subtask { margin-left: 22px; opacity: 0.88; }
-.task.subtask .drag-handle { font-size: 11px; }
-.sub-toggle-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 3px; border-radius:4px; transition:all 0.15s; flex-shrink:0; }
-.sub-toggle-btn:hover { color: var(--accent); background: var(--accent-soft); }
-.task.subtask .sub-toggle-btn { color: var(--accent); opacity: 0.7; }
-
-/* Move-to-block button */
-.move-block-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 4px; border-radius:4px; transition:color 0.15s,background 0.15s; flex-shrink:0; }
-.move-block-btn:hover { color:var(--accent); background:var(--accent-soft); }
-
-/* Block portal */
-#india__blockPortal { position:fixed; z-index:99999; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.10); min-width:200px; max-width:240px; max-height:320px; overflow-y:auto; padding:5px; display:none; }
-#india__blockPortal.open { display:block; }
-#india__blockPortal .portal-title { font-size:10px; font-weight:600; color:var(--text3); padding:4px 10px 6px; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); margin-bottom:3px; position:sticky; top:0; background:var(--surface); }
-#india__blockPortal .portal-item { display:block; width:100%; text-align:left; padding:7px 12px; font-size:12px; font-family:'DM Sans',sans-serif; border:none; background:none; color:var(--text); cursor:pointer; border-radius:8px; }
-#india__blockPortal .portal-item:hover { background:var(--accent-soft); color:var(--accent); }
-#india__blockPortal .portal-item.current-block { opacity:0.4; cursor:default; pointer-events:none; font-style:italic; }
-
-.new-task input {
-  width: 100%; padding: 6px 10px;
-  font-style: italic; font-size: 13px;
-  border: 1.5px dashed rgba(0,0,0,0.14);
-  border-radius: 10px;
-  background: rgba(255,255,255,0.35);
-  font-family: 'DM Sans', sans-serif;
-  color: var(--text2); outline: none;
-  transition: border-color 0.15s, background 0.15s;
-}
-[data-theme="dark"] .new-task input { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
-.new-task input:focus { border-color: var(--accent); font-style: normal; background: var(--surface); }
-
-/* Add block panel */
-.add-block-bar {
-  margin-bottom: 20px;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.add-block-bar input {
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1.5px dashed var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  outline: none;
-  min-width: 220px;
-  transition: border-color 0.15s;
-}
-.add-block-bar input:focus { border-color: var(--accent); }
-
-/* Toast */
-.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a1714; color:#fff; padding:10px 20px; border-radius:40px; font-size:13px; z-index:9999; opacity:1; transition:opacity 0.4s; font-family:'DM Sans',sans-serif; pointer-events:none; }
-
-/* Calendar date input */
-.cal-date-wrap { display:flex; align-items:center; gap:6px; }
-.cal-date-wrap input[type=date] { padding:7px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; outline:none; }
-
-#panel-india .grid { grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 900px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 600px)  { .grid { grid-template-columns: 1fr; } }
-
-/* ── Entry animation ── */
-.section { animation: fadeUp 0.35s ease both; }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-
-/* ===== TASMANIA REDESIGN CSS ===== */
-
-/* Prep panels (3 at top) */
-.tas-prep-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 18px;
-  margin-bottom: 32px;
-}
-@media(max-width:900px){ .tas-prep-grid { grid-template-columns:1fr; } }
-
-.tas-prep-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius,16px);
-  box-shadow: var(--shadow);
-  overflow: visible;
-}
-.tas-prep-card-header {
-  padding: 14px 16px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-}
-.tas-prep-card-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: 15px;
-  color: var(--text);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.tas-prep-card-stats {
-  font-size: 11px;
-  color: var(--text3);
-  font-weight: 500;
-}
-.tas-prep-card-progress {
-  height: 3px;
-  background: var(--border);
-  margin: 0 16px 10px;
-  border-radius: 2px;
-  overflow: hidden;
-}
-.tas-prep-card-progress-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width .4s cubic-bezier(.4,0,.2,1);
-}
-.tas-prep-card-body { padding: 4px 12px 12px; }
-
-/* 2-column week grid */
-.tas-weeks-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: start;
-}
-@media(max-width:900px){ .tas-weeks-grid { grid-template-columns: 1fr; } }
-
-/* Week group */
-.tas-week-group { margin-bottom: 0; }
-.tas-week-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0 8px;
-  margin-bottom: 12px;
-  border-bottom: 2px solid var(--accent);
-  cursor: pointer;
-  user-select: none;
-}
-.tas-week-header h3 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 18px;
-  font-weight: 400;
-  color: var(--accent);
-  flex: 1;
-}
-.tas-week-toggle {
-  font-size: 13px;
-  color: var(--text3);
-  transition: transform .2s;
-}
-.tas-week-toggle.collapsed { transform: rotate(-90deg); }
-.tas-week-body { display: flex; flex-direction: column; gap: 12px; }
-.tas-week-body.collapsed { display: none; }
-
-/* Day tabs (horizontal strip per week) */
-.tas-day-strip {
-  display: flex;
-  align-items: stretch;
-  gap: 0;
-  border-bottom: 2px solid var(--border);
-  margin-bottom: 16px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-.tas-day-strip::-webkit-scrollbar { display: none; }
-.tas-day-tab {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 9px 16px 8px;
-  font-size: 12px;
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 500;
-  color: var(--text2);
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  white-space: nowrap;
-  transition: all .15s;
-  flex-shrink: 0;
-  background: none;
-  border-top: none;
-  border-left: none;
-  border-right: none;
-}
-.tas-day-tab:hover { color: var(--text); background: var(--surface2); }
-.tas-day-tab.active {
-  color: var(--accent);
-  font-weight: 700;
-  border-bottom-color: var(--accent);
-  background: var(--accent-soft);
-}
-.tas-day-tab .tas-day-name { font-size: 13px; font-weight: 600; }
-.tas-day-tab .tas-day-date { font-size: 10px; color: var(--text3); }
-.tas-day-tab.active .tas-day-date { color: var(--accent); opacity: .75; }
-.tas-day-tab .tas-day-count {
-  font-size: 9px;
-  font-weight: 600;
-  background: var(--border);
-  color: var(--text3);
-  padding: 1px 5px;
-  border-radius: 8px;
-  transition: all .15s;
-}
-.tas-day-tab.active .tas-day-count { background: var(--accent); color: #fff; }
-.tas-day-tab.has-tasks .tas-day-count { background: var(--accent-soft); color: var(--accent); }
-.tas-day-content {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius,16px);
-  box-shadow: var(--shadow);
-  padding: 14px 16px 12px;
-  min-height: 80px;
-}
-
-/* Tasks inside day cards and prep cards */
-.tas-task {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0;
-  padding: 5px 6px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.45);
-  border: 1px solid rgba(255,255,255,0.6);
-  transition: background .15s;
-}
-[data-theme="dark"] .tas-task {
-  background: rgba(255,255,255,0.04);
-  border-color: rgba(255,255,255,0.07);
-}
-.tas-task:hover { background: rgba(255,255,255,0.75); }
-[data-theme="dark"] .tas-task:hover { background: rgba(255,255,255,0.09); }
-.tas-task.completed input[type=text] { text-decoration: line-through; opacity: .42; }
-[data-theme="dark"] .tas-task.completed input[type=text] { color: var(--text); }
-.tas-task .tas-drag-handle { color: var(--text3); cursor: grab; font-size: 13px; padding: 0 2px; flex-shrink: 0; user-select: none; }
-.tas-task input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
-.tas-task input[type=text] { flex:1; padding:3px 6px; border-radius:6px; border:1px solid transparent; background:transparent; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; transition:border-color .15s,background .15s; }
-.tas-task input[type=text]:focus { border-color:var(--accent); background:rgba(255,255,255,.8); }
-[data-theme="dark"] .tas-task input[type=text]:focus { background:rgba(255,255,255,.06); }
-.tas-task-btn { border:none; background:none; cursor:pointer; font-size:11px; color:var(--text3); padding:2px 3px; border-radius:4px; flex-shrink:0; transition:color .15s,background .15s; }
-.tas-task-btn:hover { color:var(--text); background:rgba(0,0,0,.07); }
-.tas-task-btn:disabled { opacity:.2; cursor:default; }
-
-/* Add input */
-.tas-add-row { margin-top: 6px; }
-.tas-add-input { width:100%; padding:6px 10px; border-radius:8px; border:1.5px dashed rgba(0,0,0,.13); background:rgba(255,255,255,.3); font-family:'DM Sans',sans-serif; font-size:13px; font-style:italic; color:var(--text2); outline:none; transition:border-color .15s,background .15s; }
-[data-theme="dark"] .tas-add-input { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); }
-.tas-add-input:focus { border-color:var(--accent); background:rgba(255,255,255,.7); font-style:normal; }
-/* ===== tasmania CSS (old, kept for compat) ===== */
-/* Tasmania shares the same design tokens from :root above */
-/* Tasmania-specific section h2 (static, no section-header wrapper) */
-#panel-tasmania .section h2 {
-  font-family: 'DM Serif Display', serif;
-  font-size: 14px;
-  font-weight: 400;
-  color: var(--accent);
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-#panel-tasmania .task { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
-#panel-tasmania .task input[type=text] { flex: 1; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s; }
-#panel-tasmania .task input[type=text]:focus { border-color: var(--accent); background: var(--surface); }
-#panel-tasmania .task.completed input[type=text] { text-decoration: line-through; opacity: .45; }
-[data-theme="dark"] #panel-tasmania .task.completed input[type=text] { color: var(--text); }
-#panel-tasmania .task input[type=checkbox] { position:absolute;opacity:0;width:0;height:0;pointer-events:none; }
-#panel-tasmania .task button { border: none; background: none; cursor: pointer; font-size: 12px; color: var(--text3); padding: 2px 3px; border-radius: 4px; }
-#panel-tasmania .task button:hover { color: var(--text); background: var(--surface2); }
-#panel-tasmania .task button:disabled { opacity: .2; cursor: default; }
-
-
-/* ── PIN NAV ── */
 .nav-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 14px 14px; border-bottom: 1px solid var(--border);
   margin-bottom: 10px; gap: 6px;
 }
-.nav-header .nav-title { padding: 0; border-bottom: none; margin-bottom: 0; flex: 1; }
-.nav-header { display:flex; align-items:center; padding:0 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px; }
-.nav-header .nav-title { padding:0; border-bottom:none; margin-bottom:0; }
-/* ── END PIN NAV ── */
-/* ── NAV LOGO CHECKBOX ── */
-.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
-.logo-check svg{overflow:visible;display:block;}
-.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
-.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
-.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
-.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
-.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
-.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
-.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
-.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
-@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
-@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
-@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
-@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
-/* ── END NAV LOGO CHECKBOX ── */
-
-/* ── TASK CHECKBOX STYLE B (overshoot tick) ── */
-.task-cb{
-  position:absolute;opacity:0;width:0;height:0;pointer-events:none;
+.nav-header .nav-title {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+  font-family: 'DM Serif Display', serif; font-size: 18px;
+  color: var(--accent); padding: 0; border-bottom: none; margin-bottom: 0;
 }
-.task-cb-svg{
-  display:inline-flex;align-items:center;justify-content:center;
-  flex-shrink:0;cursor:pointer;width:18px;height:18px;
-  overflow:visible;
-}
-.task-cb-svg svg{ overflow:visible;display:block; }
-.tcb-box{
-  fill:none;stroke:var(--accent);stroke-width:1.5;
-  transition:fill 0.25s,stroke 0.25s;
-}
-.tcb-tick{
-  fill:none;stroke:var(--accent);stroke-width:2;
-  stroke-linecap:round;stroke-linejoin:round;
-  stroke-dasharray:28;stroke-dashoffset:28;
-  transition:stroke 0.15s;
-}
-.task-cb-svg.tcb-on .tcb-box{fill:#3a8c5c;stroke:#3a8c5c;}
-.task-cb-svg.tcb-on .tcb-tick{
-  stroke:#fff;
-  stroke-dashoffset:0;
-  transition:stroke-dashoffset 0.35s cubic-bezier(.2,0,.1,1) 0.12s,stroke 0.15s;
-}
-/* ── END TASK CHECKBOX ── */
-
-/* ── NAV COLLAPSE ── */
-:root { --nav-toggle-size: 22px; }
 .nav-toggle-btn {
   display: flex; align-items: center; justify-content: center;
   width: var(--nav-toggle-size); height: var(--nav-toggle-size);
@@ -570,24 +137,14 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   user-select: none;
 }
 .nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-
-/* Collapsed nav */
 .nav.nav-collapsed {
-  width: 0 !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  border-right: none !important;
-  box-shadow: none !important;
+  width: 0 !important; padding: 0 !important; overflow: hidden !important;
+  border-right: none !important; box-shadow: none !important;
 }
-
-/* Shift content when nav is collapsed */
-body.nav-is-collapsed .main        { margin-left: 0 !important; }
-body.nav-is-collapsed .topbar      { left: 0 !important; }
-body.nav-is-collapsed .panels      { left: 0 !important; }
+body.nav-is-collapsed .topbar,
+body.nav-is-collapsed .panels,
 body.nav-is-collapsed .footer-actions { left: 0 !important; }
-body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
-
-/* Floating "show nav" tab on left edge */
+body.nav-is-collapsed .main { margin-left: 0 !important; }
 #nav-show-tab {
   display: none;
   position: fixed; top: 50%; left: 0;
@@ -610,35 +167,230 @@ body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
 #nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
 body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
 
-/* Smooth width transition on nav itself */
-.nav { transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease; }
-/* ── END NAV COLLAPSE ── */
+/* ===== PAGE HEADER ===== */
+.main { margin-left: var(--nav-width); padding: 32px 32px 80px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+.header-left h1 { font-family: 'DM Serif Display', serif; font-size: 36px; font-weight: 400; }
+.header-left .subtitle { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.header-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-/* ── NAV HEADER NORMALIZED ── */
-.nav-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 14px 14px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 10px;
-  gap: 6px;
+.btn { padding: 8px 14px; border-radius: 10px; border: none; font-size: 13px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+.btn-ghost { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { color: var(--text); background: var(--surface2); }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { opacity: 0.88; }
+.btn-print-color { background: rgba(100,140,200,0.10); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
+.btn-print-color:hover { background: rgba(100,140,200,0.18); color: #2a5a90; }
+
+/* ===== INDIA PANEL ===== */
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+#panel-india .grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 900px)  { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px)  { .grid { grid-template-columns: 1fr; } }
+
+.section {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  min-height: 200px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+  position: relative;
+  animation: fadeUp 0.35s ease both;
 }
-.nav-header .nav-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.section:hover { box-shadow: var(--shadow-hover); }
+.section.drop-target { border-color: var(--accent); background: var(--accent-soft); }
+.section.is-past { opacity: 0.7; }
+.section.is-today { border-color: var(--accent); box-shadow: var(--shadow), 0 0 0 1.5px var(--accent); }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border); gap: 6px;
+}
+.section h2 {
+  font-family: 'DM Serif Display', serif;
+  font-size: 14px; font-weight: 400;
+  color: var(--accent);
+  flex: 1;
+}
+.section-title-input {
   flex: 1;
   font-family: 'DM Serif Display', serif;
-  font-size: 18px;
+  font-size: 14px;
   color: var(--accent);
-  padding: 0;
-  border-bottom: none;
-  margin-bottom: 0;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 2px 6px;
+  outline: none;
 }
-/* ── END NAV HEADER NORMALIZED ── */
-/* ===== ROAD TRIP CSS (scoped) ===== */
-.road-scope { --accent:#1d4fd6; --border:#d9d9de; --bg:#f7f7f9; --text:#16151a; --muted:#6b6970; }
+.section-edit-btn, .section-del-btn {
+  border: none; background: none; cursor: pointer;
+  font-size: 12px; color: var(--text3); padding: 2px 4px;
+  border-radius: 4px; transition: all 0.15s; flex-shrink: 0;
+}
+.section-edit-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.section-del-btn:hover { color: #e85c5c; background: rgba(232,92,92,0.1); }
+.section-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 20px;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  flex-shrink: 0; font-family: 'DM Sans', sans-serif;
+}
+.badge-today    { background: var(--accent); color: #fff; }
+.badge-tomorrow { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(193,123,63,0.3); }
+.badge-past     { background: rgba(0,0,0,0.06); color: var(--text3); border: 1px solid var(--border); }
+.badge-return   { background: rgba(100,140,200,0.12); color: #3a6ba0; border: 1px solid rgba(100,140,200,0.28); }
+[data-theme="dark"] .badge-past { background: rgba(255,255,255,0.06); }
+
+.task { display: flex; align-items: center; gap: 6px; margin: 6px 0; padding: 5px 6px; border-radius: 8px; background: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.7); transition: background 0.15s; }
+[data-theme="dark"] .task { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08); }
+.task:hover { background: rgba(255,255,255,0.85); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+[data-theme="dark"] .task:hover { background: rgba(255,255,255,0.08); }
+.task input[type=text] { flex: 1; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s, background 0.15s; }
+.task input[type=text]:focus { border-color: var(--accent); background: rgba(255,255,255,0.8); }
+[data-theme="dark"] .task input[type=text]:focus { background: rgba(255,255,255,0.06); }
+.task.completed input[type=text] { text-decoration: line-through; opacity: .45; }
+.task input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+.task button { border: none; background: none; cursor: pointer; font-size: 11px; color: var(--text3); padding: 2px 3px; border-radius: 4px; transition: all 0.15s; }
+.task button:hover { color: var(--text); background: rgba(0,0,0,0.07); }
+.drag-handle { cursor: grab; user-select: none; color: var(--text3); font-size: 13px; flex-shrink: 0; }
+.task.dragging { opacity: 0.3; }
+.task.subtask { margin-left: 22px; opacity: 0.88; }
+.task.subtask .drag-handle { font-size: 11px; }
+.sub-toggle-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 3px; border-radius:4px; transition:all 0.15s; flex-shrink:0; }
+.sub-toggle-btn:hover { color: var(--accent); background: var(--accent-soft); }
+.task.subtask .sub-toggle-btn { color: var(--accent); opacity: 0.7; }
+.move-block-btn { font-size:11px; border:none; background:none; cursor:pointer; color:var(--text3); padding:2px 4px; border-radius:4px; transition:color 0.15s,background 0.15s; flex-shrink:0; }
+.move-block-btn:hover { color:var(--accent); background:var(--accent-soft); }
+
+#india__blockPortal { position:fixed; z-index:99999; background:var(--surface); border:1px solid var(--border); border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.18),0 2px 8px rgba(0,0,0,0.10); min-width:200px; max-width:240px; max-height:320px; overflow-y:auto; padding:5px; display:none; }
+#india__blockPortal.open { display:block; }
+#india__blockPortal .portal-title { font-size:10px; font-weight:600; color:var(--text3); padding:4px 10px 6px; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); margin-bottom:3px; position:sticky; top:0; background:var(--surface); }
+#india__blockPortal .portal-item { display:block; width:100%; text-align:left; padding:7px 12px; font-size:12px; font-family:'DM Sans',sans-serif; border:none; background:none; color:var(--text); cursor:pointer; border-radius:8px; }
+#india__blockPortal .portal-item:hover { background:var(--accent-soft); color:var(--accent); }
+#india__blockPortal .portal-item.current-block { opacity:0.4; cursor:default; pointer-events:none; font-style:italic; }
+
+.new-task input {
+  width: 100%; padding: 6px 10px;
+  font-style: italic; font-size: 13px;
+  border: 1.5px dashed rgba(0,0,0,0.14);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.35);
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text2); outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+[data-theme="dark"] .new-task input { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+.new-task input:focus { border-color: var(--accent); font-style: normal; background: var(--surface); }
+
+.add-block-bar { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.add-block-bar input {
+  padding: 8px 14px; border-radius: 10px;
+  border: 1.5px dashed var(--border);
+  background: var(--surface); color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  outline: none; min-width: 220px;
+  transition: border-color 0.15s;
+}
+.add-block-bar input:focus { border-color: var(--accent); }
+
+.cal-date-wrap { display:flex; align-items:center; gap:6px; }
+.cal-date-wrap input[type=date] { padding:7px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:12px; font-family:'DM Sans',sans-serif; cursor:pointer; outline:none; }
+
+.toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1a1714; color:#fff; padding:10px 20px; border-radius:40px; font-size:13px; z-index:9999; opacity:1; transition:opacity 0.4s; font-family:'DM Sans',sans-serif; pointer-events:none; }
+
+/* ===== TASMANIA PANEL ===== */
+.tas-prep-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-bottom: 32px; }
+@media(max-width:900px){ .tas-prep-grid { grid-template-columns:1fr; } }
+.tas-prep-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: visible; }
+.tas-prep-card-header { padding: 14px 16px 10px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+.tas-prep-card-title { font-family: 'DM Serif Display', serif; font-size: 15px; color: var(--text); display: flex; align-items: center; gap: 8px; }
+.tas-prep-card-stats { font-size: 11px; color: var(--text3); font-weight: 500; }
+.tas-prep-card-progress { height: 3px; background: var(--border); margin: 0 16px 10px; border-radius: 2px; overflow: hidden; }
+.tas-prep-card-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .4s cubic-bezier(.4,0,.2,1); }
+.tas-prep-card-body { padding: 4px 12px 12px; }
+
+.tas-weeks-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+@media(max-width:900px){ .tas-weeks-grid { grid-template-columns: 1fr; } }
+.tas-week-group { margin-bottom: 0; }
+.tas-week-header { display: flex; align-items: center; gap: 10px; padding: 10px 0 8px; margin-bottom: 12px; border-bottom: 2px solid var(--accent); cursor: pointer; user-select: none; }
+.tas-week-header h3 { font-family: 'DM Serif Display', serif; font-size: 18px; font-weight: 400; color: var(--accent); flex: 1; }
+.tas-week-toggle { font-size: 13px; color: var(--text3); transition: transform .2s; }
+.tas-week-toggle.collapsed { transform: rotate(-90deg); }
+.tas-week-body { display: flex; flex-direction: column; gap: 12px; }
+.tas-week-body.collapsed { display: none; }
+
+.tas-day-strip { display: flex; align-items: stretch; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
+.tas-day-strip::-webkit-scrollbar { display: none; }
+.tas-day-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 9px 16px 8px; font-size: 12px;
+  font-family: 'DM Sans', sans-serif; font-weight: 500;
+  color: var(--text2); cursor: pointer;
+  border: none; border-bottom: 3px solid transparent; margin-bottom: -2px;
+  white-space: nowrap; transition: all .15s; flex-shrink: 0; background: none;
+}
+.tas-day-tab:hover { color: var(--text); background: var(--surface2); }
+.tas-day-tab.active { color: var(--accent); font-weight: 700; border-bottom-color: var(--accent); background: var(--accent-soft); }
+.tas-day-tab .tas-day-name { font-size: 13px; font-weight: 600; }
+.tas-day-tab .tas-day-date { font-size: 10px; color: var(--text3); }
+.tas-day-tab.active .tas-day-date { color: var(--accent); opacity: .75; }
+.tas-day-tab .tas-day-count { font-size: 9px; font-weight: 600; background: var(--border); color: var(--text3); padding: 1px 5px; border-radius: 8px; transition: all .15s; }
+.tas-day-tab.active .tas-day-count { background: var(--accent); color: #fff; }
+.tas-day-tab.has-tasks .tas-day-count { background: var(--accent-soft); color: var(--accent); }
+.tas-day-content { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px 16px 12px; min-height: 80px; }
+
+.tas-task { display: flex; align-items: center; gap: 6px; margin: 4px 0; padding: 5px 6px; border-radius: 8px; background: rgba(255,255,255,0.45); border: 1px solid rgba(255,255,255,0.6); transition: background .15s; }
+[data-theme="dark"] .tas-task { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.07); }
+.tas-task:hover { background: rgba(255,255,255,0.75); }
+[data-theme="dark"] .tas-task:hover { background: rgba(255,255,255,0.09); }
+.tas-task.completed input[type=text] { text-decoration: line-through; opacity: .42; }
+.tas-task .tas-drag-handle { color: var(--text3); cursor: grab; font-size: 13px; padding: 0 2px; flex-shrink: 0; user-select: none; }
+.tas-task input[type=checkbox] { position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+.tas-task input[type=text] { flex:1; padding:3px 6px; border-radius:6px; border:1px solid transparent; background:transparent; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text); outline:none; transition:border-color .15s,background .15s; }
+.tas-task input[type=text]:focus { border-color:var(--accent); background:rgba(255,255,255,.8); }
+[data-theme="dark"] .tas-task input[type=text]:focus { background:rgba(255,255,255,.06); }
+.tas-task-btn { border:none; background:none; cursor:pointer; font-size:11px; color:var(--text3); padding:2px 3px; border-radius:4px; flex-shrink:0; transition:color .15s,background .15s; }
+.tas-task-btn:hover { color:var(--text); background:rgba(0,0,0,.07); }
+.tas-add-row { margin-top: 6px; }
+.tas-add-input { width:100%; padding:6px 10px; border-radius:8px; border:1.5px dashed rgba(0,0,0,.13); background:rgba(255,255,255,.3); font-family:'DM Sans',sans-serif; font-size:13px; font-style:italic; color:var(--text2); outline:none; transition:border-color .15s,background .15s; }
+[data-theme="dark"] .tas-add-input { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.1); }
+.tas-add-input:focus { border-color:var(--accent); background:rgba(255,255,255,.7); font-style:normal; }
+
+/* Shared checkbox (overshoot tick) */
+.task-cb-svg { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; cursor:pointer; width:18px; height:18px; overflow:visible; }
+.task-cb-svg svg { overflow:visible; display:block; }
+.tcb-box { fill:none; stroke:var(--accent); stroke-width:1.5; transition:fill 0.25s,stroke 0.25s; }
+.tcb-tick { fill:none; stroke:var(--accent); stroke-width:2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:28; stroke-dashoffset:28; transition:stroke 0.15s; }
+.task-cb-svg.tcb-on .tcb-box { fill:#3a8c5c; stroke:#3a8c5c; }
+.task-cb-svg.tcb-on .tcb-tick { stroke:#fff; stroke-dashoffset:0; transition:stroke-dashoffset 0.35s cubic-bezier(.2,0,.1,1) 0.12s,stroke 0.15s; }
+
+/* Nav logo checkbox */
+.logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
+.logo-check svg{overflow:visible;display:block;}
+.logo-box{fill:none;stroke:var(--accent);stroke-width:1.5;transition:fill 0.25s,stroke 0.25s;}
+.logo-tick{fill:none;stroke:var(--accent);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:28;stroke-dashoffset:28;transition:stroke 0.15s;}
+.logo-check.is-checked .logo-box{fill:#3a8c5c;stroke:#3a8c5c;}
+.logo-check.is-checked .logo-tick{stroke:#fff;stroke-dashoffset:0;}
+.logo-check.animating .logo-box{animation:logoBoxFill 0.3s ease forwards 0.1s;}
+.logo-check.animating .logo-tick{stroke:#fff;animation:logoTickDraw 0.35s cubic-bezier(.2,0,.1,1) forwards 0.12s;}
+.logo-check.uncheck .logo-box{animation:logoBoxUnfill 0.25s ease forwards;}
+.logo-check.uncheck .logo-tick{animation:logoTickErase 0.2s ease forwards;}
+@keyframes logoBoxFill{0%{fill:none;stroke:var(--accent);}100%{fill:#3a8c5c;stroke:#3a8c5c;}}
+@keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
+@keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
+@keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+
+/* ===== ROAD TRIP (scoped) ===== */
+.road-scope { --accent:#1d4fd6; --border:#d9d9de; --bg:#f7f7f9; --text:#16151a; --muted:#6b6970; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); }
 .road-scope * { box-sizing:border-box; }
 .road-scope .sub { color:var(--muted); font-size:13px; margin-bottom:16px; line-height:1.5; }
 .road-scope .wrap { overflow-x:auto; background:#fff; border:1px solid var(--border); border-radius:10px; }
@@ -656,7 +408,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .road-scope .arr { font-weight:600; white-space:nowrap; }
 .road-scope .nextday { font-size:11px; color:var(--muted); font-weight:400; }
 .road-scope .muted { color:var(--muted); }
-.road-scope .toolbar { margin-bottom:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.road-scope .road-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
 .road-scope button { font-size:13px; padding:7px 12px; border:1px solid var(--border); background:#fff; border-radius:8px; cursor:pointer; }
 .road-scope button:hover { border-color:var(--accent); color:var(--accent); }
 .road-scope .legend { font-size:12px; color:var(--muted); }
@@ -674,26 +426,22 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .road-scope .cal-stay { margin-top:6px; color:#23643a; font-size:11px; font-weight:600; }
 .road-scope .cal-none { color:var(--muted); font-style:italic; font-size:11px; margin-bottom:5px; }
 .road-scope #road-map-canvas { height:560px; border:1px solid var(--border); border-radius:10px; background:#e8eef5; }
-.road-scope .map-num { background:var(--accent); color:#fff; border-radius:50%; width:26px; height:26px; line-height:26px; text-align:center; font-weight:700; font-size:12px; border:2px solid #fff; box-shadow:0 1px 3px rgba(0,0,0,.4); }
 .road-scope .map-list { background:#fff; border:1px solid var(--border); border-radius:10px; padding:12px 16px 12px 36px; margin:12px 0 0; font-size:13px; columns:2; column-gap:32px; }
 .road-scope .map-list li { margin-bottom:6px; break-inside:avoid; }
 .road-scope .map-list .d { color:var(--muted); }
 .road-scope .key { display:inline-block; margin-right:14px; font-size:12px; color:var(--muted); }
 .road-scope .key i { display:inline-block; width:28px; height:0; border-top:4px solid var(--accent); vertical-align:middle; margin-right:6px; }
 .road-scope .key i.sea { border-top-style:dashed; border-top-color:#23643a; }
-.road-scope { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--text); }
-.road-scope .road-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
 .road-label { background:#fff; border:1px solid #d9d9de; border-radius:6px; padding:2px 6px; font-size:11px; font-weight:600; color:#16151a; box-shadow:0 1px 3px rgba(0,0,0,.2); white-space:nowrap; }
 .road-label::before { display:none; }
 .road-map-note { font-size:12px; color:#6b6970; margin-top:8px; }
 
 </style>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 </head>
 <body>
 <div id="nav-show-tab" title="Show sidebar">☰</div>
 
-<!-- NAV: links + drag-reorder are built centrally by storage.js. Settings is pinned at bottom, not draggable. -->
+<!-- NAV: links + drag-reorder are built centrally by storage.js. -->
 <nav class="nav" id="onetrack-nav">
   <div class="nav-header">
     <div class="nav-title">
@@ -710,16 +458,16 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
   <div id="onetrack-nav-links"></div>
 </nav>
 
-<!-- ── TOPBAR ── -->
+<!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-logo">✦ Trips</div>
   <div class="tab-strip" id="tabStrip"></div>
 </div>
 
-<!-- ── PANELS ── -->
+<!-- PANELS -->
 <div class="panels">
 
-  <!-- ===== INDIA PANEL ===== -->
+  <!-- ===== INDIA ===== -->
   <div class="panel active" id="panel-india">
     <div class="main">
       <div class="header">
@@ -737,7 +485,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         </div>
       </div>
 
-      <!-- ADD BLOCK BAR -->
       <div class="add-block-bar">
         <input type="text" id="india__newBlockName" placeholder="New block title… (e.g. Sat 19 Apr 2026)" maxlength="60">
         <button class="btn btn-accent" onclick="indiaAddBlock()">+ Add Block</button>
@@ -746,20 +493,18 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <div class="grid" id="india__grid"></div>
     </div>
 
-    <!-- Block portal for move-to-block -->
     <div id="india__blockPortal">
       <div class="portal-title">Move to block</div>
       <div id="india__blockPortalItems"></div>
     </div>
 
-    <!-- FOOTER -->
     <div class="footer-actions">
       <div class="spacer"></div>
       <span id="otBrandFooter_india"></span>
     </div>
   </div>
 
-  <!-- ===== TASMANIA PANEL ===== -->
+  <!-- ===== TASMANIA ===== -->
   <div class="panel" id="panel-tasmania">
     <div class="main">
       <div class="header">
@@ -769,10 +514,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         </div>
       </div>
 
-      <!-- ── THREE PREP PANELS ── -->
       <div class="tas-prep-grid">
-
-        <!-- Pre-Travel Prep -->
         <div class="tas-prep-card">
           <div class="tas-prep-card-header">
             <div class="tas-prep-card-title">✈️ Pre-Travel Prep</div>
@@ -782,7 +524,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-prep-card-body" id="tas-pretravel-body"></div>
         </div>
 
-        <!-- Day Before Checklist -->
         <div class="tas-prep-card">
           <div class="tas-prep-card-header">
             <div class="tas-prep-card-title">🌅 Day Before</div>
@@ -792,7 +533,6 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-prep-card-body" id="tas-daybefore-body"></div>
         </div>
 
-        <!-- End of Trip Checklist -->
         <div class="tas-prep-card">
           <div class="tas-prep-card-header">
             <div class="tas-prep-card-title">🏁 End of Trip</div>
@@ -801,13 +541,10 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-prep-card-progress"><div class="tas-prep-card-progress-fill" id="tas-endtrip-fill" style="width:0%"></div></div>
           <div class="tas-prep-card-body" id="tas-endtrip-body"></div>
         </div>
-
       </div>
 
-      <!-- ── WEEK-GROUPED DAYS ── -->
       <div id="tasmania__weeks" class="tas-weeks-grid">
 
-        <!-- Week 1 · Dec 20 – 26 -->
         <div class="tas-week-group" id="tas-week-1">
           <div class="tas-week-header" onclick="tasToggleWeek('tas-week-1')">
             <h3>Week 1 · Dec 20 – 26</h3>
@@ -816,40 +553,31 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-week-body" id="tas-week-1-body">
             <div class="tas-day-strip" id="tas-week-1-strip">
               <button class="tas-day-tab active" data-week="tas-week-1" data-day="Sun 20 Dec 2026" onclick="tasSwitchDay('tas-week-1','Sun 20 Dec 2026')">
-              <span class="tas-day-name">☀️ Sun</span>
-              <span class="tas-day-date">20 Dec 2026</span>
-              <span class="tas-day-count" id="tas-count-Sun-20-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Mon 21 Dec 2026" onclick="tasSwitchDay('tas-week-1','Mon 21 Dec 2026')">
-              <span class="tas-day-name">Mon</span>
-              <span class="tas-day-date">21 Dec</span>
-              <span class="tas-day-count" id="tas-count-Mon-21-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Tue 22 Dec 2026" onclick="tasSwitchDay('tas-week-1','Tue 22 Dec 2026')">
-              <span class="tas-day-name">Tue</span>
-              <span class="tas-day-date">22 Dec</span>
-              <span class="tas-day-count" id="tas-count-Tue-22-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Wed 23 Dec 2026" onclick="tasSwitchDay('tas-week-1','Wed 23 Dec 2026')">
-              <span class="tas-day-name">Wed</span>
-              <span class="tas-day-date">23 Dec</span>
-              <span class="tas-day-count" id="tas-count-Wed-23-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Thu 24 Dec 2026" onclick="tasSwitchDay('tas-week-1','Thu 24 Dec 2026')">
-              <span class="tas-day-name">🎄 Thu</span>
-              <span class="tas-day-date">24 Dec</span>
-              <span class="tas-day-count" id="tas-count-Thu-24-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Fri 25 Dec 2026" onclick="tasSwitchDay('tas-week-1','Fri 25 Dec 2026')">
-              <span class="tas-day-name">🎅 Fri</span>
-              <span class="tas-day-date">25 Dec</span>
-              <span class="tas-day-count" id="tas-count-Fri-25-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-1" data-day="Sat 26 Dec 2026" onclick="tasSwitchDay('tas-week-1','Sat 26 Dec 2026')">
-              <span class="tas-day-name">Sat</span>
-              <span class="tas-day-date">26 Dec</span>
-              <span class="tas-day-count" id="tas-count-Sat-26-Dec-2026">0</span>
-            </button>
+                <span class="tas-day-name">☀️ Sun</span><span class="tas-day-date">20 Dec 2026</span><span class="tas-day-count" id="tas-count-Sun-20-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Mon 21 Dec 2026" onclick="tasSwitchDay('tas-week-1','Mon 21 Dec 2026')">
+                <span class="tas-day-name">Mon</span><span class="tas-day-date">21 Dec</span><span class="tas-day-count" id="tas-count-Mon-21-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Tue 22 Dec 2026" onclick="tasSwitchDay('tas-week-1','Tue 22 Dec 2026')">
+                <span class="tas-day-name">Tue</span><span class="tas-day-date">22 Dec</span><span class="tas-day-count" id="tas-count-Tue-22-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Wed 23 Dec 2026" onclick="tasSwitchDay('tas-week-1','Wed 23 Dec 2026')">
+                <span class="tas-day-name">Wed</span><span class="tas-day-date">23 Dec</span><span class="tas-day-count" id="tas-count-Wed-23-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Thu 24 Dec 2026" onclick="tasSwitchDay('tas-week-1','Thu 24 Dec 2026')">
+                <span class="tas-day-name">🎄 Thu</span><span class="tas-day-date">24 Dec</span><span class="tas-day-count" id="tas-count-Thu-24-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Fri 25 Dec 2026" onclick="tasSwitchDay('tas-week-1','Fri 25 Dec 2026')">
+                <span class="tas-day-name">🎅 Fri</span><span class="tas-day-date">25 Dec</span><span class="tas-day-count" id="tas-count-Fri-25-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-1" data-day="Sat 26 Dec 2026" onclick="tasSwitchDay('tas-week-1','Sat 26 Dec 2026')">
+                <span class="tas-day-name">Sat</span><span class="tas-day-date">26 Dec</span><span class="tas-day-count" id="tas-count-Sat-26-Dec-2026">0</span>
+              </button>
             </div>
             <div class="tas-day-content" id="tas-week-1-content"></div>
           </div>
         </div>
 
-        <!-- Week 2 · Dec 27 – Jan 2 -->
         <div class="tas-week-group" id="tas-week-2">
           <div class="tas-week-header" onclick="tasToggleWeek('tas-week-2')">
             <h3>Week 2 · Dec 27 – Jan 2</h3>
@@ -858,40 +586,31 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-week-body" id="tas-week-2-body">
             <div class="tas-day-strip" id="tas-week-2-strip">
               <button class="tas-day-tab active" data-week="tas-week-2" data-day="Sun 27 Dec 2026" onclick="tasSwitchDay('tas-week-2','Sun 27 Dec 2026')">
-              <span class="tas-day-name">Sun</span>
-              <span class="tas-day-date">27 Dec</span>
-              <span class="tas-day-count" id="tas-count-Sun-27-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Mon 28 Dec 2026" onclick="tasSwitchDay('tas-week-2','Mon 28 Dec 2026')">
-              <span class="tas-day-name">Mon</span>
-              <span class="tas-day-date">28 Dec</span>
-              <span class="tas-day-count" id="tas-count-Mon-28-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Tue 29 Dec 2026" onclick="tasSwitchDay('tas-week-2','Tue 29 Dec 2026')">
-              <span class="tas-day-name">Tue</span>
-              <span class="tas-day-date">29 Dec</span>
-              <span class="tas-day-count" id="tas-count-Tue-29-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Wed 30 Dec 2026" onclick="tasSwitchDay('tas-week-2','Wed 30 Dec 2026')">
-              <span class="tas-day-name">Wed</span>
-              <span class="tas-day-date">30 Dec</span>
-              <span class="tas-day-count" id="tas-count-Wed-30-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Thu 31 Dec 2026" onclick="tasSwitchDay('tas-week-2','Thu 31 Dec 2026')">
-              <span class="tas-day-name">🎆 Thu</span>
-              <span class="tas-day-date">31 Dec</span>
-              <span class="tas-day-count" id="tas-count-Thu-31-Dec-2026">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Fri 01 Jan 2027" onclick="tasSwitchDay('tas-week-2','Fri 01 Jan 2027')">
-              <span class="tas-day-name">🎉 Fri</span>
-              <span class="tas-day-date">01 Jan</span>
-              <span class="tas-day-count" id="tas-count-Fri-01-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-2" data-day="Sat 02 Jan 2027" onclick="tasSwitchDay('tas-week-2','Sat 02 Jan 2027')">
-              <span class="tas-day-name">Sat</span>
-              <span class="tas-day-date">02 Jan</span>
-              <span class="tas-day-count" id="tas-count-Sat-02-Jan-2027">0</span>
-            </button>
+                <span class="tas-day-name">Sun</span><span class="tas-day-date">27 Dec</span><span class="tas-day-count" id="tas-count-Sun-27-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Mon 28 Dec 2026" onclick="tasSwitchDay('tas-week-2','Mon 28 Dec 2026')">
+                <span class="tas-day-name">Mon</span><span class="tas-day-date">28 Dec</span><span class="tas-day-count" id="tas-count-Mon-28-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Tue 29 Dec 2026" onclick="tasSwitchDay('tas-week-2','Tue 29 Dec 2026')">
+                <span class="tas-day-name">Tue</span><span class="tas-day-date">29 Dec</span><span class="tas-day-count" id="tas-count-Tue-29-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Wed 30 Dec 2026" onclick="tasSwitchDay('tas-week-2','Wed 30 Dec 2026')">
+                <span class="tas-day-name">Wed</span><span class="tas-day-date">30 Dec</span><span class="tas-day-count" id="tas-count-Wed-30-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Thu 31 Dec 2026" onclick="tasSwitchDay('tas-week-2','Thu 31 Dec 2026')">
+                <span class="tas-day-name">🎆 Thu</span><span class="tas-day-date">31 Dec</span><span class="tas-day-count" id="tas-count-Thu-31-Dec-2026">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Fri 01 Jan 2027" onclick="tasSwitchDay('tas-week-2','Fri 01 Jan 2027')">
+                <span class="tas-day-name">🎉 Fri</span><span class="tas-day-date">01 Jan</span><span class="tas-day-count" id="tas-count-Fri-01-Jan-2027">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-2" data-day="Sat 02 Jan 2027" onclick="tasSwitchDay('tas-week-2','Sat 02 Jan 2027')">
+                <span class="tas-day-name">Sat</span><span class="tas-day-date">02 Jan</span><span class="tas-day-count" id="tas-count-Sat-02-Jan-2027">0</span>
+              </button>
             </div>
             <div class="tas-day-content" id="tas-week-2-content"></div>
           </div>
         </div>
 
-        <!-- Week 3 · Jan 3 – 9 -->
         <div class="tas-week-group" id="tas-week-3">
           <div class="tas-week-header" onclick="tasToggleWeek('tas-week-3')">
             <h3>Week 3 · Jan 3 – 6</h3>
@@ -900,37 +619,30 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="tas-week-body" id="tas-week-3-body">
             <div class="tas-day-strip" id="tas-week-3-strip">
               <button class="tas-day-tab active" data-week="tas-week-3" data-day="Sun 03 Jan 2027" onclick="tasSwitchDay('tas-week-3','Sun 03 Jan 2027')">
-              <span class="tas-day-name">Sun</span>
-              <span class="tas-day-date">03 Jan</span>
-              <span class="tas-day-count" id="tas-count-Sun-03-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Mon 04 Jan 2027" onclick="tasSwitchDay('tas-week-3','Mon 04 Jan 2027')">
-              <span class="tas-day-name">Mon</span>
-              <span class="tas-day-date">04 Jan</span>
-              <span class="tas-day-count" id="tas-count-Mon-04-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Tue 05 Jan 2027" onclick="tasSwitchDay('tas-week-3','Tue 05 Jan 2027')">
-              <span class="tas-day-name">Tue</span>
-              <span class="tas-day-date">05 Jan</span>
-              <span class="tas-day-count" id="tas-count-Tue-05-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Wed 06 Jan 2027" onclick="tasSwitchDay('tas-week-3','Wed 06 Jan 2027')">
-              <span class="tas-day-name">Wed</span>
-              <span class="tas-day-date">06 Jan</span>
-              <span class="tas-day-count" id="tas-count-Wed-06-Jan-2027">0</span>
-            </button>
+                <span class="tas-day-name">Sun</span><span class="tas-day-date">03 Jan</span><span class="tas-day-count" id="tas-count-Sun-03-Jan-2027">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-3" data-day="Mon 04 Jan 2027" onclick="tasSwitchDay('tas-week-3','Mon 04 Jan 2027')">
+                <span class="tas-day-name">Mon</span><span class="tas-day-date">04 Jan</span><span class="tas-day-count" id="tas-count-Mon-04-Jan-2027">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-3" data-day="Tue 05 Jan 2027" onclick="tasSwitchDay('tas-week-3','Tue 05 Jan 2027')">
+                <span class="tas-day-name">Tue</span><span class="tas-day-date">05 Jan</span><span class="tas-day-count" id="tas-count-Tue-05-Jan-2027">0</span>
+              </button>
+              <button class="tas-day-tab" data-week="tas-week-3" data-day="Wed 06 Jan 2027" onclick="tasSwitchDay('tas-week-3','Wed 06 Jan 2027')">
+                <span class="tas-day-name">Wed</span><span class="tas-day-date">06 Jan</span><span class="tas-day-count" id="tas-count-Wed-06-Jan-2027">0</span>
+              </button>
             </div>
             <div class="tas-day-content" id="tas-week-3-content"></div>
           </div>
         </div>
 
-      </div><!-- /weeks -->
-    </div><!-- /main -->
+      </div>
+    </div>
 
-    <!-- FOOTER -->
     <div class="footer-actions">
       <div class="spacer"></div>
       <span id="otBrandFooter_weeks"></span>
     </div>
   </div>
-
 
   <!-- ===== ROAD TRIP: SCHEDULE ===== -->
   <div class="panel road-scope" id="panel-road-schedule">
@@ -941,22 +653,20 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="subtitle">20 Dec 2026 – 6 Jan 2027 · Mazda CX-9 · Change a start time and the arrival updates</div>
         </div>
       </div>
-      
-<div class="road-toolbar">
-  <button id="road-reset" type="button">Reset start times to defaults</button>
-  <span class="legend">Arrival = start time + approx drive time. Sea crossings show the booked arrival time.</span>
-</div>
-<div class="wrap">
-  <table>
-    <thead><tr>
-      <th>Day</th><th>Date</th><th>Drive origin</th><th>Start time</th><th>Approx drive time</th>
-      <th>Approx km</th><th>Approx arrival time</th><th>Drive destination</th><th>Check-in</th>
-      <th>Check-out</th><th>Stay place</th>
-    </tr></thead>
-    <tbody id="road-rows"></tbody>
-  </table>
-</div>
-
+      <div class="road-toolbar">
+        <button id="road-reset" type="button">Reset start times to defaults</button>
+        <span class="legend">Arrival = start time + approx drive time. Sea crossings show the booked arrival time.</span>
+      </div>
+      <div class="wrap">
+        <table>
+          <thead><tr>
+            <th>Day</th><th>Date</th><th>Drive origin</th><th>Start time</th><th>Approx drive time</th>
+            <th>Approx km</th><th>Approx arrival time</th><th>Drive destination</th><th>Check-in</th>
+            <th>Check-out</th><th>Stay place</th>
+          </tr></thead>
+          <tbody id="road-rows"></tbody>
+        </table>
+      </div>
       <div class="road-map-note">Start times tagged proposed are suggestions. Planned comes from your itinerary notes. Booked is fixed by a booking. Drive times and distances are estimates, so check them in Google Maps.</div>
     </div>
   </div>
@@ -970,13 +680,11 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="subtitle">Drives, times and the night's stay for each day</div>
         </div>
       </div>
-      
-<div class="cal-sub">20 Dec 2026 to 6 Jan 2027. Times follow the start times set in the Schedule tab.</div>
-<div class="cal-wrap">
-  <div class="cal-head"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
-  <div class="cal-grid" id="road-calgrid"></div>
-</div>
-
+      <div class="cal-sub">20 Dec 2026 to 6 Jan 2027. Times follow the start times set in the Schedule tab.</div>
+      <div class="cal-wrap">
+        <div class="cal-head"><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div></div>
+        <div class="cal-grid" id="road-calgrid"></div>
+      </div>
     </div>
   </div>
 
@@ -989,41 +697,25 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <div class="subtitle">One route, 20 Dec to 6 Jan, labelled by date</div>
         </div>
       </div>
-      
-<div class="road-toolbar">
-  <button id="road-fit-tas" type="button">Show Tasmania</button>
-  <button id="road-fit-all" type="button">Show whole route</button>
-  <span class="key"><i></i>Drive</span><span class="key"><i class="sea"></i>Ferry</span>
-</div>
-<div id="road-map-canvas"></div>
-<ol class="map-list" id="road-maplist"></ol>
-<div class="road-map-note">Each pin is labelled with the date you are there. Pins at the same place are merged. Straight lines between stops are approximate, not road routes. Pins are placed from memory, so check them. The Friend's place stay near Geelong is not pinned.</div>
-
+      <div class="road-toolbar">
+        <button id="road-fit-tas" type="button">Show Tasmania</button>
+        <button id="road-fit-all" type="button">Show whole route</button>
+        <span class="key"><i></i>Drive</span><span class="key"><i class="sea"></i>Ferry</span>
+      </div>
+      <div id="road-map-canvas"></div>
+      <ol class="map-list" id="road-maplist"></ol>
+      <div class="road-map-note">Each pin is labelled with the date you are there. Pins at the same place are merged. Straight lines between stops are approximate, not road routes. Pins are placed from memory, so check them. The Friend's place stay near Geelong is not pinned.</div>
     </div>
   </div>
 
 </div><!-- end .panels -->
 
-<!-- ===== TOPBAR TAB SWITCHER JS ===== -->
+<!-- ===== DRIVE-WAIT GATE + BOOT QUEUE ===== -->
 <script>
-/* OT CACHE — populated on boot */
-var _otCache = {};
-function _cget(k){ var v=_otCache[k]; return (v===undefined)?null:v; }
+function _cget(k){ return (_otCache[k] === undefined) ? null : _otCache[k]; }
 function _cset(k,v){ _otCache[k]=v; OT.set(k,v); }
+var _otCache = {};
 
-/* ============================================================
-   DRIVE-WAIT GATE
-   ------------------------------------------------------------
-   This page has THREE independent module boots (tab strip / trip
-   days, and the prep lists). Each is registered via _onAuth()
-   instead of OT.onReady, so it runs only once the AUTHORITATIVE
-   store has loaded — Drive when signed in, or the local mirror
-   once we know there's no Drive this session (OT.isAuthoritative(),
-   signalled via OT.onSync). Until then a "Fetching from Google
-   Drive…" overlay is shown and nothing seeds / migrates / rolls /
-   renders / saves, so a stale browser-mirror snapshot can never be
-   written back over the real Drive file.
-   ============================================================ */
 function _showDriveWait(){
   if (document.getElementById("driveWaitOverlay")) return;
   if (!document.getElementById("driveWaitStyles")){
@@ -1045,17 +737,14 @@ function _showDriveWait(){
   var ov=document.createElement("div"); ov.id="driveWaitOverlay";
   ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
     '<div class="dw-msg">Fetching from Google Drive…</div>'+
-    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+    '<div class="dw-sub">Loading your saved data, please wait.</div></div>';
   (document.body||document.documentElement).appendChild(ov);
 }
 function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
-
-/* Only persist a default-seed / migration once the authoritative store loaded. */
 function _authoritative(){
   return (typeof OT==="undefined" || !OT.isAuthoritative) ? true : OT.isAuthoritative();
 }
 
-/* ── authority-gated boot queue ── */
 var _tpAuthCbs = [];
 var _tpBooted  = false;
 function _onAuth(fn){
@@ -1065,17 +754,13 @@ function _onAuth(fn){
 async function _tpRunBoot(){
   if(_tpBooted) return;
   _tpBooted = true;
-  try { _otCache = await OT.getAll(); } catch(e){}   // authoritative cache before any boot
+  try { _otCache = await OT.getAll(); } catch(e){}
   _hideDriveWait();
   for (var i=0;i<_tpAuthCbs.length;i++){
     try { await _tpAuthCbs[i](); } catch(e){ console.error("[trip boot]", e); }
   }
   _tpAuthCbs = [];
 }
-
-/* Robust trigger — first reliable signal wins so the overlay can never stick:
-   onSync (authority, preferred), onReady with authority already known (or an old
-   storage.js that can't report it), and a hard timeout as a last resort. */
 if (window.OT && OT.onSync){ OT.onSync(function(){ _tpRunBoot(); }); }
 if (window.OT){
   OT.onReady(function(){
@@ -1084,22 +769,19 @@ if (window.OT){
   });
 }
 setTimeout(function(){ if(!_tpBooted) _tpRunBoot(); }, 15000);
+_showDriveWait();
 
-_showDriveWait();  // overlay up at parse time, before the tab strip / panels paint
-
-/* Master boot — footers + tab-strip re-sync, now gated on authority. */
 _onAuth(async () => {
   const lastUpdated = new Date('2026-06-28T09:20:00+10:00');
   OT.renderBrandFooter('otBrandFooter_india', 'v1.0', lastUpdated);
   OT.renderBrandFooter('otBrandFooter_weeks', 'v1.0', lastUpdated);
-  // Re-sync the tab strip now that the REAL saved data has loaded. (The tab-strip
-  // script below paints from defaults at parse time; this re-reads the now-
-  // authoritative cache so deleted/reordered/renamed tabs reflect what's saved.)
   if (typeof window.__refreshTripTabsFromStorage === 'function') {
     window.__refreshTripTabsFromStorage();
   }
 });
 </script>
+
+<!-- ===== TOPBAR TAB SWITCHER ===== -->
 <script>
 (function(){
   const TAB_ORDER_KEY  = "TRIP_PLANNERS_TAB_ORDER";
@@ -1114,9 +796,8 @@ _onAuth(async () => {
     { id: "road-map", label: "🚗 Road · Map" }
   ];
 
-  let customLabels = (() => {
-    try { return JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){ return {}; }
-  })();
+  let customLabels = {};
+  try { customLabels = JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){}
 
   function getTabLabel(id) {
     if (customLabels[id]) return customLabels[id];
@@ -1129,7 +810,10 @@ _onAuth(async () => {
       const raw = _cget(TAB_ORDER_KEY);
       if(raw){
         const order = JSON.parse(raw);
-        if(Array.isArray(order) && order.length > 0){ TABS_DEFAULT.forEach(t=>{ if(!order.includes(t.id)) order.push(t.id); }); return order; }
+        if(Array.isArray(order) && order.length > 0){
+          TABS_DEFAULT.forEach(t=>{ if(!order.includes(t.id)) order.push(t.id); });
+          return order;
+        }
       }
     } catch(e){}
     return TABS_DEFAULT.map(t=>t.id);
@@ -1140,19 +824,11 @@ _onAuth(async () => {
   let tabOrder = loadOrder();
   let activeTab = _cget(ACTIVE_TAB_KEY) || tabOrder[0];
 
-  // Re-derive everything from _otCache and re-render. Called once on
-  // first parse (with whatever is in the cache at that instant — usually
-  // still empty, hence defaults), and again from OT.onReady once the
-  // real Drive-backed data has actually loaded, so deletions/renames/
-  // reordering done in a previous session stick instead of reverting
-  // to TABS_DEFAULT on every refresh.
   function syncFromStorage(){
-    customLabels = (() => {
-      try { return JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){ return {}; }
-    })();
+    try { customLabels = JSON.parse(_cget(TAB_LABELS_KEY) || "{}"); } catch(e){ customLabels = {}; }
     tabOrder = loadOrder();
     activeTab = _cget(ACTIVE_TAB_KEY) || tabOrder[0];
-    document.querySelectorAll(".panel").forEach(p=>{ p.classList.remove("active"); });
+    document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
     const panel = document.getElementById("panel-" + activeTab);
     if (panel) panel.classList.add("active");
     renderTabs();
@@ -1161,7 +837,7 @@ _onAuth(async () => {
 
   function activatePanel(id){
     const label = getTabLabel(id).replace(/[^\w\s]/g,"").trim();
-    OT.setTitle(label);
+    if (window.OT && OT.setTitle) OT.setTitle(label);
     activeTab = id;
     _cset(ACTIVE_TAB_KEY, id);
     document.querySelectorAll(".panel").forEach(p=>{
@@ -1184,7 +860,7 @@ _onAuth(async () => {
     const label = getTabLabel(id);
     const isDef = TABS_DEFAULT.some(t => t.id === id);
     const msg = isDef
-      ? `Hide "${label}" tab? It's a built-in tab — data is kept.`
+      ? `Hide "${label}" tab? It's a built-in tab, data is kept.`
       : `Delete "${label}" tab? This cannot be undone.`;
     if (!confirm(msg)) return;
     tabOrder = tabOrder.filter(t => t !== id);
@@ -1220,14 +896,12 @@ _onAuth(async () => {
         saveOrder(tabOrder); renderTabs();
       };
 
-      // ✏ Rename button
       const renBtn = document.createElement("button");
       renBtn.title = "Rename tab";
       renBtn.textContent = "✏";
       renBtn.style.cssText = "font-size:10px;border:none;background:none;cursor:pointer;color:var(--text3);padding:2px 3px;border-radius:3px;opacity:0;transition:opacity 0.15s;line-height:1;";
       renBtn.onclick = e => { e.stopPropagation(); renameTab(id); };
 
-      // ✕ Delete button
       const delBtn = document.createElement("button");
       delBtn.title = "Delete tab";
       delBtn.textContent = "✕";
@@ -1244,8 +918,7 @@ _onAuth(async () => {
     });
   }
 
-  // Ensure correct panel visibility on load
-  document.querySelectorAll(".panel").forEach(p=>{ p.classList.remove("active"); });
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   const initialPanel = document.getElementById("panel-" + activeTab);
   if(initialPanel) initialPanel.classList.add("active");
 
@@ -1253,16 +926,12 @@ _onAuth(async () => {
 })();
 </script>
 
-<!-- ===== THEME: now centralized in storage.js (ONETRACK_THEME module) ===== -->
-
-<!-- ===== INDIA JS ===== -->
+<!-- ===== INDIA ===== -->
 <script>
 (function(){
 const STORAGE_KEY    = "INDIA_TRIP_DAILY_TASKS_V4";
 const STORAGE_KEY_V3 = "INDIA_TRIP_DAILY_TASKS_V3";
-const DARK_KEY    = "TODAY_DARK";
 
-/* ── Default blocks ── */
 const DEFAULT_DAYS = [
   "PRE_TRAVEL","RETURN_PREP",
   "Sat 28 Mar 2026","Sun 29 Mar 2026","Mon 30 Mar 2026","Tue 31 Mar 2026",
@@ -1273,7 +942,6 @@ const DEFAULT_DAYS = [
   "Fri 17 Apr 2026","Sat 18 Apr 2026"
 ];
 
-/* ── Storage ── */
 function loadData(){
   const raw = _cget(STORAGE_KEY);
   if(raw){ try { return JSON.parse(raw); } catch(e){} }
@@ -1299,35 +967,15 @@ function loadData(){
       "activate debit cards etc"
     ],
     "RETURN_PREP": [],
-    "Sat 28 Mar 2026": [],
-    "Sun 29 Mar 2026": [],
-    "Mon 30 Mar 2026": ["Meet konda plan for dinner/lunch"],
-    "Tue 31 Mar 2026": [],
-    "Wed 01 Apr 2026": [],
-    "Thu 02 Apr 2026": [],
-    "Fri 03 Apr 2026": [],
-    "Sat 04 Apr 2026": [],
-    "Sun 05 Apr 2026": [],
-    "Mon 06 Apr 2026": [],
-    "Tue 07 Apr 2026": [],
-    "Wed 08 Apr 2026": [],
-    "Thu 09 Apr 2026": [],
-    "Fri 10 Apr 2026": [],
-    "Sat 11 Apr 2026": [],
-    "Sun 12 Apr 2026": [],
-    "Mon 13 Apr 2026": [],
-    "Tue 14 Apr 2026": [],
-    "Wed 15 Apr 2026": [],
-    "Thu 16 Apr 2026": [],
-    "Fri 17 Apr 2026": [],
-    "Sat 18 Apr 2026": []
+    "Mon 30 Mar 2026": ["Meet konda plan for dinner/lunch"]
   };
   const obj = { _order: [...DEFAULT_DAYS], blocks: {} };
   DEFAULT_DAYS.forEach(d => {
     const tasks = (PREPOP[d] || []).map(t => ({ text: t, done: false, sub: false }));
     obj.blocks[d] = { title: d, tasks };
   });
-  if(_authoritative()) saveData(obj); return obj;
+  if(_authoritative()) saveData(obj);
+  return obj;
 }
 
 function saveData(d){ _cset(STORAGE_KEY, JSON.stringify(d)); }
@@ -1344,18 +992,17 @@ function migrateIfNeeded(obj){
       );
       newObj.blocks[k] = { title: k, tasks: norm };
     });
-    if(_authoritative()) saveData(newObj); return newObj;
+    if(_authoritative()) saveData(newObj);
+    return newObj;
   }
   return obj;
 }
 
-let state; // populated once OT.onReady fires (see below) — was previously
-           // built immediately at parse time, before saved data had loaded
+let state;
 
 function getRawBlocks(){ return state._order.map(k => ({ key: k, ...state.blocks[k] })); }
 function save(){ saveData(state); }
 
-/* ── Date parsing ── */
 const MONTH_MAP_PARSE = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
 function parseBlockDate(title){
   const m = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
@@ -1374,20 +1021,11 @@ function todayMidnight(){
   return d;
 }
 
-/*
-  Smart ordering:
-  Slot 0 → Today's block
-  Slot 1 → Tomorrow's block
-  Slot 2 → RETURN_PREP (always pinned to position 3, col 1 row 1)
-  Then   → future days (ascending)
-  Then   → past days (most recent first, so closest past is first)
-  Last   → PRE_TRAVEL
-*/
+/* Ordering: Today, Tomorrow, Return Prep, future days ascending,
+   custom blocks, past days (most recent first), Pre-Travel last. */
 function getBlocks(){
   const today = todayMidnight();
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-
-  const all = getRawBlocks();
 
   const todayKey    = state._order.find(k => { const d=parseBlockDate(state.blocks[k].title); return d && d.getTime()===today.getTime(); });
   const tomorrowKey = state._order.find(k => { const d=parseBlockDate(state.blocks[k].title); return d && d.getTime()===tomorrow.getTime(); });
@@ -1396,55 +1034,35 @@ function getBlocks(){
 
   const pinned = new Set([todayKey, tomorrowKey, returnKey, preTravelKey].filter(Boolean));
 
-  // Future days (after tomorrow), ascending
   const futureDays = state._order.filter(k=>{
     if(pinned.has(k)) return false;
     const d = parseBlockDate(state.blocks[k].title);
     return d && d.getTime() > tomorrow.getTime();
-  }).sort((a,b)=>{
-    return parseBlockDate(state.blocks[a].title) - parseBlockDate(state.blocks[b].title);
-  });
+  }).sort((a,b)=> parseBlockDate(state.blocks[a].title) - parseBlockDate(state.blocks[b].title));
 
-  // Past days (before today), most recent first
   const pastDays = state._order.filter(k=>{
     if(pinned.has(k)) return false;
     const d = parseBlockDate(state.blocks[k].title);
     return d && d.getTime() < today.getTime();
-  }).sort((a,b)=>{
-    return parseBlockDate(state.blocks[b].title) - parseBlockDate(state.blocks[a].title);
-  });
+  }).sort((a,b)=> parseBlockDate(state.blocks[b].title) - parseBlockDate(state.blocks[a].title));
 
-  // Custom blocks (no parseable date, not special keys)
   const customBlocks = state._order.filter(k=>{
     if(pinned.has(k)) return false;
-    const d = parseBlockDate(state.blocks[k].title);
-    return !d;
+    return !parseBlockDate(state.blocks[k].title);
   });
 
-  // Build final order: today, tomorrow, RETURN_PREP, future, custom, past, PRE_TRAVEL
   const ordered = [
-    todayKey,
-    tomorrowKey,
-    returnKey,
-    ...futureDays,
-    ...customBlocks,
-    ...pastDays,
+    todayKey, tomorrowKey, returnKey,
+    ...futureDays, ...customBlocks, ...pastDays,
     preTravelKey
   ].filter(Boolean);
 
   return ordered.map(k => ({ key: k, ...state.blocks[k] }));
 }
 
-/* Set default calendar date */
-document.getElementById("india__calStartDate").value = "2026-03-28";
-
-/* ── Drag state ── */
 let drag = null;
-
-/* ── Block portal state ── */
 let blockPortalState = null;
 
-/* ── Toast ── */
 function showToast(msg){
   document.querySelectorAll(".toast").forEach(t=>t.remove());
   const t=document.createElement("div");
@@ -1453,7 +1071,6 @@ function showToast(msg){
   setTimeout(()=>{ t.style.opacity="0"; setTimeout(()=>t.remove(),400); },2200);
 }
 
-/* ── Add Block ── */
 function indiaAddBlock(){
   const inp = document.getElementById("india__newBlockName");
   const title = inp.value.trim();
@@ -1474,7 +1091,6 @@ document.getElementById("india__newBlockName").addEventListener("keydown", e=>{
   if(e.key==="Enter") indiaAddBlock();
 });
 
-/* ── Delete Block ── */
 function deleteBlock(key){
   const b = state.blocks[key];
   const label = b.title;
@@ -1489,7 +1105,6 @@ function deleteBlock(key){
   showToast(`🗑 "${label}" deleted`);
 }
 
-/* ── Edit Block Title ── */
 function startEditTitle(key, headerEl){
   const h2 = headerEl.querySelector("h2");
   const currentTitle = state.blocks[key].title;
@@ -1514,7 +1129,6 @@ function startEditTitle(key, headerEl){
   };
 }
 
-/* ── Move task to block portal ── */
 function openBlockPortal(btn, fromKey, itemIdx){
   const portal = document.getElementById("india__blockPortal");
   const list   = document.getElementById("india__blockPortalItems");
@@ -1565,29 +1179,21 @@ document.addEventListener("click", e=>{
   if(!e.target.closest("#india__blockPortal") && !e.target.closest(".move-block-btn")) closeBlockPortal();
 });
 
-/* ── Parent-child helpers ── */
-
-// Build a flat list of "groups": each group is { parentIdx, childIdxs[] }
-// A task at index i is a parent if it is NOT sub and has at least one sub task after it
-// A sub task belongs to the nearest non-sub task above it
+/* Parent-child helpers */
 function buildGroups(tasks){
-  // Returns array of group objects indexed by parent task index
-  const groups = {}; // parentIdx -> [childIdx, ...]
+  const groups = {};
   let currentParent = null;
   tasks.forEach((t, i) => {
     if(!t.sub){
       currentParent = i;
       groups[i] = [];
-    } else {
-      if(currentParent !== null){
-        groups[currentParent].push(i);
-      }
+    } else if(currentParent !== null){
+      groups[currentParent].push(i);
     }
   });
   return groups;
 }
 
-// Given a task index, find its parent index (-1 if it IS a parent or orphan)
 function findParent(tasks, idx){
   if(!tasks[idx].sub) return -1;
   for(let i = idx - 1; i >= 0; i--){
@@ -1596,35 +1202,26 @@ function findParent(tasks, idx){
   return -1;
 }
 
-/* ── Sort: done GROUPS sink to bottom, preserving relative order ── */
-// A group is "done" only if the parent AND all children are done
+/* Done groups sink to the bottom, preserving relative order */
 function sortDoneToBottom(tasks){
   const groups = buildGroups(tasks);
-  // Gather parent indices in order
   const parentIdxs = Object.keys(groups).map(Number);
-
-  // Build ordered list of group "slices" [parentIdx, ...childIdxs]
   const slices = parentIdxs.map(pi => [pi, ...groups[pi]]);
-  // Also pick up any orphan subtasks (sub=true but no parent above — edge case)
   const accounted = new Set(slices.flat());
   const orphans = tasks.map((_,i)=>i).filter(i=>!accounted.has(i));
 
   const groupDone = slice => slice.every(i => tasks[i].done);
-
   const undoneSlices = slices.filter(s => !groupDone(s));
   const doneSlices   = slices.filter(s =>  groupDone(s));
 
-  // Rebuild flat array
   const result = [];
   [...undoneSlices, ...doneSlices].forEach(slice => {
     slice.forEach(i => result.push(tasks[i]));
   });
-  // Append orphans (shouldn't normally exist)
   orphans.forEach(i => result.push(tasks[i]));
   return result;
 }
 
-/* ── Render ── */
 function render(){
   const grid = document.getElementById("india__grid");
   grid.innerHTML = "";
@@ -1649,36 +1246,24 @@ function render(){
     sec.dataset.key = key;
     sec.style.animationDelay = (blockIdx * 0.04) + "s";
 
-    /* Header */
     const hdr = document.createElement("div");
     hdr.className = "section-header";
 
     const h2 = document.createElement("h2");
     h2.textContent = title;
 
-    // Badge
     let badgeEl = null;
-    if(isToday){
-      badgeEl = document.createElement("span");
-      badgeEl.className = "section-badge badge-today";
-      badgeEl.textContent = "Today";
-    } else if(isTomorrow){
-      badgeEl = document.createElement("span");
-      badgeEl.className = "section-badge badge-tomorrow";
-      badgeEl.textContent = "Tomorrow";
-    } else if(isPast){
-      badgeEl = document.createElement("span");
-      badgeEl.className = "section-badge badge-past";
-      badgeEl.textContent = "Past";
-    } else if(isReturn){
-      badgeEl = document.createElement("span");
-      badgeEl.className = "section-badge badge-return";
-      badgeEl.textContent = "Return";
-    } else if(isPreTravel){
-      badgeEl = document.createElement("span");
-      badgeEl.className = "section-badge badge-past";
-      badgeEl.textContent = "Pre-Travel";
-    }
+    const mkBadge = (cls, text) => {
+      const b = document.createElement("span");
+      b.className = "section-badge " + cls;
+      b.textContent = text;
+      return b;
+    };
+    if(isToday)          badgeEl = mkBadge("badge-today", "Today");
+    else if(isTomorrow)  badgeEl = mkBadge("badge-tomorrow", "Tomorrow");
+    else if(isPast)      badgeEl = mkBadge("badge-past", "Past");
+    else if(isReturn)    badgeEl = mkBadge("badge-return", "Return");
+    else if(isPreTravel) badgeEl = mkBadge("badge-past", "Pre-Travel");
 
     const editBtn = document.createElement("button");
     editBtn.className = "section-edit-btn";
@@ -1698,7 +1283,6 @@ function render(){
     hdr.appendChild(delBtn);
     sec.appendChild(hdr);
 
-    /* New task input — at the TOP */
     const add = document.createElement("div");
     add.className = "new-task";
     add.innerHTML = `<input placeholder="Add task and press Enter…">`;
@@ -1717,7 +1301,6 @@ function render(){
     };
     sec.appendChild(add);
 
-    /* Tasks */
     tasks.forEach((item, i)=>{
       const row = document.createElement("div");
       row.className = "task" + (item.done?" completed":"") + (item.sub?" subtask":"");
@@ -1736,13 +1319,11 @@ function render(){
       const moveBtn = row.querySelector(".move-block-btn");
       const delTaskBtn = row.querySelector("button[title='Remove']");
 
-      /* Drag */
       handle.onpointerdown = ()=> row.draggable = true;
       row.onpointerup = ()=> row.draggable = false;
       row.ondragstart = e=>{ drag={key,index:i}; row.classList.add("dragging"); e.dataTransfer.effectAllowed="move"; e.dataTransfer.setData("",""); };
       row.ondragend = ()=>{ row.classList.remove("dragging"); row.draggable=false; drag=null; };
 
-      /* Drop zone on section */
       sec.ondragover = e=>{ if(!drag) return; e.preventDefault(); sec.classList.add("drop-target"); };
       sec.ondragleave = ()=> sec.classList.remove("drop-target");
       sec.ondrop = e=>{
@@ -1756,23 +1337,18 @@ function render(){
         save(); drag=null; render();
       };
 
-      /* Checkbox — parent/child aware, sink to bottom on check */
       cb.onchange = ()=>{
         item.done = cb.checked;
         const ts = state.blocks[key].tasks;
         const groups = buildGroups(ts);
 
         if(!item.sub){
-          // Parent checked/unchecked → propagate to all children
-          const children = groups[i] || [];
-          children.forEach(ci => { ts[ci].done = cb.checked; });
+          (groups[i] || []).forEach(ci => { ts[ci].done = cb.checked; });
         } else {
-          // Child toggled → check if all siblings + this are done → auto-check parent
           const parentIdx = findParent(ts, i);
           if(parentIdx !== -1){
             const siblings = groups[parentIdx] || [];
-            const allDone = siblings.every(ci => ts[ci].done);
-            ts[parentIdx].done = allDone;
+            ts[parentIdx].done = siblings.every(ci => ts[ci].done);
           }
         }
 
@@ -1780,30 +1356,22 @@ function render(){
         save(); render();
       };
 
-      /* Text edit — save on input, blur (exit) on Enter */
       tx.oninput  = e=>{ item.text = e.target.value; save(); };
       tx.onkeydown = e=>{ if(e.key==="Enter"){ item.text=tx.value.trim()||item.text; save(); tx.blur(); } };
 
-      /* Subtask toggle — indent = become child of task above; unindent = break relationship */
       subBtn.onclick = ()=>{
         const ts = state.blocks[key].tasks;
         if(!item.sub){
-          // Indenting: become child of nearest task above (must exist)
-          if(i === 0) return; // no task above, can't indent
+          if(i === 0) return;
           item.sub = true;
-          // If all children of the new parent are done, mark parent done too
           const parentIdx = findParent(ts, i);
           if(parentIdx !== -1){
             const groups = buildGroups(ts);
             const siblings = groups[parentIdx] || [];
-            // include newly-indented task
-            const allDone = [...siblings, i].every(ci => ts[ci].done);
-            ts[parentIdx].done = allDone;
+            ts[parentIdx].done = [...siblings, i].every(ci => ts[ci].done);
           }
         } else {
-          // Un-indenting: break relationship
           item.sub = false;
-          // Reset its done state doesn't need change, but re-sort may move it
         }
         save(); render();
       };
@@ -1828,44 +1396,27 @@ function getDropIndex(sec, clientY){
 }
 
 function esc(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+function escPrint(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
-/* ── Roll unfinished tasks from past days to next day ──
-   Runs once per device (flagged in localStorage).
-   Rules:
-   · Skip PRE_TRAVEL and RETURN_PREP entirely.
-   · For each past day (before today), in chronological order,
-     move any unfinished (done=false) tasks to the immediately
-     next day block in the trip sequence.
-   · Mar 28 is the first trip day — nothing rolls into it.
-   · The last past day's tasks roll into the next available day
-     (could be today or a future day).
-   · Already-done tasks stay where they are.
-*/
+/* Roll unfinished tasks from past days into the next day block. Runs once per device. */
 const ROLLOVER_KEY = "INDIA_ROLLOVER_DONE_V1";
 function rollUnfinishedTasks(){
-  if(_cget(ROLLOVER_KEY)) return; // already ran
+  if(_cget(ROLLOVER_KEY)) return;
 
   const today = todayMidnight();
-
-  // Build ordered list of date-keyed trip blocks only (no PRE_TRAVEL / RETURN_PREP)
   const tripKeys = state._order.filter(k => {
     if(k === "PRE_TRAVEL" || k === "RETURN_PREP") return false;
     return parseBlockDate(state.blocks[k].title) !== null;
   });
-  // Sort chronologically
   tripKeys.sort((a,b) => parseBlockDate(state.blocks[a].title) - parseBlockDate(state.blocks[b].title));
 
-  // Walk through each day that is PAST (before today), oldest first
   for(let i = 0; i < tripKeys.length; i++){
     const key = tripKeys[i];
     const blockDate = parseBlockDate(state.blocks[key].title);
-    if(!blockDate || blockDate.getTime() >= today.getTime()) continue; // skip today & future
-
-    // Find the next day block in the sequence
+    if(!blockDate || blockDate.getTime() >= today.getTime()) continue;
     const nextKey = tripKeys[i + 1];
-    if(!nextKey) continue; // no next day (shouldn't happen, but guard)
+    if(!nextKey) continue;
 
-    // Move unfinished tasks to next day
     const unfinished = state.blocks[key].tasks.filter(t => !t.done);
     const remaining  = state.blocks[key].tasks.filter(t =>  t.done);
 
@@ -1879,10 +1430,154 @@ function rollUnfinishedTasks(){
   _cset(ROLLOVER_KEY, "1");
 }
 
-/* Boot — wait for OT (real saved data) to actually load, THEN build
-   state from it, run rollover, and render. This used to run before
-   the real data arrived, so it always rebuilt from defaults and any
-   edits were lost on refresh. */
+/* ── PRINT (shared helper, no scripts in the print document) ── */
+function openPrintWindow(title, css, bodyHtml){
+  const w = window.open("","_blank");
+  if(!w){ showToast("Pop-up blocked. Allow pop-ups to print."); return; }
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>${escPrint(title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>${css}</style></head><body>${bodyHtml}</body></html>`);
+  w.document.close();
+}
+
+const PRINT_BAR_CSS = `
+  .print-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 24px;display:flex;align-items:center;gap:12px;z-index:99;margin-bottom:20px;}
+  .print-bar span{font-size:10pt;color:#555;flex:1;}
+  .print-bar button{padding:7px 20px;border:1.5px solid #111;border-radius:6px;background:#111;color:#fff;font-size:9pt;cursor:pointer;}
+  .print-bar .close{background:transparent;color:#888;border-color:#ccc;padding:7px 14px;}
+  @page{margin:12mm 10mm;}
+  @media print{ .print-bar{display:none!important;} body{padding:0!important;} }
+`;
+
+function indiaOpenPrintBW(){
+  const blocks = getBlocks();
+  let sectionsHTML = "";
+
+  blocks.forEach(block=>{
+    const tasks = block.tasks;
+    const done  = tasks.filter(t=>t.done).length;
+
+    const taskRows = tasks.length > 0
+      ? tasks.map(t=>{
+          const strike = t.done ? "text-decoration:line-through;color:#aaa;" : "";
+          const box = t.done
+            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:7px;flex-shrink:0;background:#333;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
+            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:7px;flex-shrink:0;"></span>`;
+          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;">${box}<span style="font-size:12px;${strike}flex:1;">${escPrint(t.text)}</span></div>`;
+        }).join("")
+      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
+
+    sectionsHTML += `
+      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;">
+        <div style="padding:8px 12px 6px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
+          <span style="font-size:12px;font-weight:700;">${escPrint(block.title)}</span>
+          <span style="font-size:10px;color:#888;">${done}/${tasks.length}</span>
+        </div>
+        <div style="padding:4px 12px 8px;">${taskRows}</div>
+      </div>`;
+  });
+
+  const css = `
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',Georgia,sans-serif;font-weight:300;background:#fff;color:#111;padding:20px 24px;font-size:10.5pt;line-height:1.5;}
+    @page{size:A4;}
+    ${PRINT_BAR_CSS}
+  `;
+  const body = `
+    <div class="print-bar">
+      <span>Ready to print. File → Print → Save as PDF</span>
+      <button onclick="window.print()">⎙ Print / Save as PDF</button>
+      <button class="close" onclick="window.close()">✕ Close</button>
+    </div>
+    <div style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px;">
+      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;font-weight:400;">India Trip Planner</div>
+      <div style="font-size:11px;color:#666;margin-top:3px;letter-spacing:0.05em;text-transform:uppercase;">28 March – 18 April 2026</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
+    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:10px;color:#aaa;font-style:italic;">
+      <span>✦ India Trip Planner</span>
+      <span>Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
+    </div>`;
+
+  openPrintWindow("Trip Planners · India (B&W)", css, body);
+}
+window.indiaOpenPrintBW = indiaOpenPrintBW;
+
+function indiaOpenPrintColor(){
+  const blocks = getBlocks();
+  const PALETTES = [
+    { bg:'#fdf4e3', hdr:'#f8e9c8', accent:'#a07030', border:'#e5cfa0' },
+    { bg:'#fdeedd', hdr:'#f8e0c0', accent:'#b06020', border:'#e8c898' },
+    { bg:'#fde6dc', hdr:'#f8d4c4', accent:'#b04a30', border:'#e8b8a8' },
+    { bg:'#fff0e0', hdr:'#fce4c4', accent:'#c17b3f', border:'#f0d0a0' },
+    { bg:'#e8f4e8', hdr:'#d4ecd4', accent:'#2e7a3c', border:'#a8d4a8' },
+    { bg:'#e4eef8', hdr:'#ccdaee', accent:'#2e5e96', border:'#a8c4de' },
+  ];
+
+  let sectionsHTML = "";
+
+  blocks.forEach((block, bi)=>{
+    const pal = PALETTES[bi % PALETTES.length];
+    const tasks = block.tasks;
+    const done  = tasks.filter(t=>t.done).length;
+    const total = tasks.length;
+    const pct   = total ? Math.round(done/total*100) : 0;
+
+    const taskRows = tasks.length > 0
+      ? tasks.map(t=>{
+          const strike = t.done ? `text-decoration:line-through;color:${pal.accent};opacity:0.5;` : "";
+          const box = t.done
+            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:7px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
+            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:7px;flex-shrink:0;background:#fff;"></span>`;
+          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid ${pal.hdr};">${box}<span style="font-size:12px;${strike}flex:1;color:#1a1714;">${escPrint(t.text)}</span></div>`;
+        }).join("")
+      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
+
+    const barFill = total ? `<div style="height:4px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>` : "";
+
+    sectionsHTML += `
+      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid ${pal.border};border-radius:8px;overflow:hidden;background:${pal.bg};">
+        <div style="padding:8px 12px 6px;border-bottom:1.5px solid ${pal.border};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};">
+          <span style="font-family:'DM Serif Display',Georgia,serif;font-size:13px;font-weight:400;color:${pal.accent};">${escPrint(block.title)}</span>
+          <span style="font-size:10px;color:${pal.accent};opacity:0.7;font-weight:600;">${done}/${total}</span>
+        </div>
+        ${barFill}
+        <div style="padding:0 12px 8px;">${taskRows}</div>
+      </div>`;
+  });
+
+  const css = `
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',Georgia,sans-serif;background:#fff;color:#1a1714;padding:20px 24px;}
+    @page{size:A4;}
+    ${PRINT_BAR_CSS.replace('.print-bar button{padding:7px 20px;border:1.5px solid #111;border-radius:6px;background:#111;', '.print-bar button{padding:7px 20px;border:1.5px solid #c17b3f;border-radius:6px;background:#c17b3f;')}
+  `;
+  const body = `
+    <div class="print-bar">
+      <span>Ready to print in colour. File → Print → Save as PDF</span>
+      <button onclick="window.print()">🎨 Print Colour</button>
+      <button class="close" onclick="window.close()">✕ Close</button>
+    </div>
+    <div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end;">
+      <div>
+        <div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-weight:400;color:#3a2e20;">India Trip Planner</div>
+        <div style="font-size:12px;color:#7a6a56;margin-top:4px;font-style:italic;">28 March – 18 April 2026 · Day-by-Day</div>
+      </div>
+      <div style="font-size:10px;color:#9a8878;text-align:right;">Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
+    <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:10px;color:#b0a898;font-style:italic;">✦ India Trip Planner</span>
+      <span style="font-size:10px;color:#b0a898;">${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
+    </div>`;
+
+  openPrintWindow("Trip Planners · India (Colour)", css, body);
+}
+window.indiaOpenPrintColor = indiaOpenPrintColor;
+
+/* ── Boot: wait for authoritative data, then build state ── */
 _onAuth(async () => {
   if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
   state = migrateIfNeeded(loadData());
@@ -1890,7 +1585,7 @@ _onAuth(async () => {
   render();
 });
 
-/* ── CALENDAR DOWNLOAD (.ics) ── */
+/* ── Calendar download (.ics) ── */
 function indiaDownloadCalendar(){
   const startVal = document.getElementById("india__calStartDate").value;
   if(!startVal){ alert("Please select a start date for the calendar"); return; }
@@ -1902,22 +1597,10 @@ function indiaDownloadCalendar(){
   const [sy,sm,sd] = startVal.split("-").map(Number);
   const tripStart = new Date(sy,sm-1,sd);
 
-  const MONTH_MAP = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-
-  function parseBlockDate(title){
-    const m = title.match(/(\d{1,2})\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})/i);
-    if(m){
-      const mo = MONTH_MAP[m[2].toLowerCase()];
-      return new Date(parseInt(m[3]), mo, parseInt(m[1]));
-    }
-    return null;
-  }
-
   function fmtDate(dt){
     const y=dt.getFullYear(), mo=String(dt.getMonth()+1).padStart(2,"0"), d=String(dt.getDate()).padStart(2,"0");
     return `${y}${mo}${d}`;
   }
-
   function uid(){ return 'india-' + Math.random().toString(36).substr(2,9); }
   function escIcs(s){ return (s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
 
@@ -1939,7 +1622,7 @@ function indiaDownloadCalendar(){
 
     block.tasks.forEach(task=>{
       const summary = escIcs(task.text);
-      const desc = escIcs(`Block: ${block.title}${task.done?" [✓ Done]":""}`);
+      const desc = escIcs(`Block: ${block.title}${task.done?" [Done]":""}`);
       ics += [
         "BEGIN:VEVENT",
         `UID:${uid()}@india-trip-planner`,
@@ -1961,76 +1644,306 @@ function indiaDownloadCalendar(){
   const blob = new Blob([ics], { type:"text/calendar;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "India_Trip_2026.ics";
+  a.download = "India Trip 2026.ics";
   a.click();
   showToast(`↓ Calendar exported (${totalEvents} events)`);
 }
 window.indiaDownloadCalendar = indiaDownloadCalendar;
 
-/* ── PRINT B&W ── */
-function indiaOpenPrintBW(){
-  const blocks = getBlocks();
-  let sectionsHTML = "";
+/* Default calendar start date */
+document.getElementById("india__calStartDate").value = "2026-03-28";
 
-  blocks.forEach(block=>{
-    const tasks = block.tasks;
-    const done  = tasks.filter(t=>t.done).length;
-    const label = block.title;
+})();
+</script>
 
-    const taskRows = tasks.length > 0
-      ? tasks.map(t=>{
-          const strike = t.done ? "text-decoration:line-through;color:#aaa;" : "";
-          const box = t.done
-            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid #333;border-radius:2px;margin-right:7px;flex-shrink:0;background:#333;"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
-            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid #999;border-radius:2px;margin-right:7px;flex-shrink:0;"></span>`;
-          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #f0f0f0;">
-            ${box}<span style="font-size:12px;${strike}flex:1;">${escPrint(t.text)}</span>
-          </div>`;
-        }).join("")
-      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
-
-    sectionsHTML += `
-      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid #ccc;border-radius:6px;overflow:hidden;background:#fff;margin-bottom:0;">
-        <div style="padding:8px 12px 6px;border-bottom:1.5px solid #ddd;display:flex;justify-content:space-between;align-items:center;background:#f7f7f7;">
-          <span style="font-size:12px;font-weight:700;letter-spacing:0.02em;">${escPrint(label)}</span>
-          <span style="font-size:10px;color:#888;">${done}/${tasks.length}</span>
-        </div>
-        <div style="padding:4px 12px 8px;">${taskRows}</div>
-      </div>`;
-  });
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>${OT.brand.name} · Trip Planners</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'DM Sans',Georgia,sans-serif;font-weight:300;background:#fff;color:#111;padding:20px 24px;font-size:10.5pt;line-height:1.5;}
-    @page{size:A4;margin:14mm 12mm;}
-    @media print{body{padding:0;}.print-bar{display:none!important;}}
-    .print-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 24px;display:flex;align-items:center;gap:12px;z-index:99;margin-bottom:20px;}
-    .print-bar span{font-size:10pt;color:#555;flex:1;}
-    .print-bar button{padding:7px 20px;border:1.5px solid #111;border-radius:6px;background:#111;color:#fff;font-size:9pt;cursor:pointer;}
-    .print-bar .close{background:transparent;color:#888;border-color:#ccc;padding:7px 14px;}
-  </style></head><body>
-  <div class="print-bar">
-    <span>Ready to print — File → Print → Save as PDF</span>
-    <button onclick="window.print()">⎙ Print / Save as PDF</button>
-    <button class="close" onclick="window.close()">✕ Close</button>
-  </div>
-  <div style="border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:flex-end;">
-    <div>
-      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:22px;font-weight:400;letter-spacing:-0.01em;">India Trip Planner</div>
-      <div style="font-size:11px;color:#666;margin-top:3px;letter-spacing:0.05em;text-transform:uppercase;">28 March – 18 April 2026</div>
-    </div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
-  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:10px;color:#aaa;font-style:italic;">
-    <span>✦ India Trip Planner</span>
-    <span>Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
-  </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- ===== TASMANIA ===== -->
 <script>
+(function(){
 
+const DAY_KEY      = "DEC_JAN_TASKS_2026_2027";
+const PRETRAVEL_KEY= "TAS_PRETRAVEL_V1";
+const DAYBEFORE_KEY= "TAS_DAYBEFORE_V1";
+const ENDTRIP_KEY  = "TAS_ENDTRIP_V1";
+const WEEK_STATE_KEY = "TAS_WEEK_STATE_V1";
+const DAY_STATE_KEY  = "TAS_DAY_STATE_V1";
+
+const ALL_DAYS = [
+  "Sun 20 Dec 2026","Mon 21 Dec 2026","Tue 22 Dec 2026","Wed 23 Dec 2026","Thu 24 Dec 2026","Fri 25 Dec 2026","Sat 26 Dec 2026",
+  "Sun 27 Dec 2026","Mon 28 Dec 2026","Tue 29 Dec 2026","Wed 30 Dec 2026","Thu 31 Dec 2026","Fri 01 Jan 2027","Sat 02 Jan 2027",
+  "Sun 03 Jan 2027","Mon 04 Jan 2027","Tue 05 Jan 2027","Wed 06 Jan 2027"
+];
+
+const DEFAULT_PRETRAVEL = [
+  {text:"Book SeaLink Bruny ferry for CX-9 (29 Dec) at sealink.com.au",done:false},
+  {text:"Book The Saffron table for NYE dinner, 15 Hunter St (31 Dec)",done:false},
+  {text:"Cancel Waterfront Lodge Hobart and check refund (free cancel before 1 Dec)",done:false},
+  {text:"Check Regatta Grounds free parking and shuttle at hobartcity.com.au",done:false},
+  {text:"Check Mt Wellington road status at wellingtonpark.tas.gov.au",done:false},
+  {text:"Optional: book East Coast Natureworld Devils in the Dark (1 Jan)",done:false},
+  {text:"Call Glengarry Bush Maze and confirm Penny Royal open (4 Jan)",done:false},
+  {text:"Install My Aurora Forecast and SpaceWeatherLive, set Kp 4+ alerts",done:false},
+  {text:"Pack warm jacket, beanie and gloves for Gordon River and Bruny cruises",done:false},
+  {text:"Keep booking confirmations handy (Spirit #15839536 and all stays)",done:false},
+];
+const DEFAULT_DAYBEFORE = [
+  {text:"Check tomorrow's check-in and checkout times",done:false},
+  {text:"Buy groceries for next stop (see day notes)",done:false},
+  {text:"Pack cooler and vegetarian lunch for tour days",done:false},
+  {text:"Charge devices and pack red torch for penguin viewing (Bicheno)",done:false},
+  {text:"Set alarm for early departure (Strahan 8am, Gordon 8:15am, Bruny 8:30am)",done:false},
+  {text:"Lay out warm layers for cold water tours",done:false},
+  {text:"Check ferry check-in closes 45 mins before departure (Spirit 18:45)",done:false},
+  {text:"Fill fuel in the CX-9",done:false},
+];
+const DEFAULT_ENDTRIP = [
+  {text:"Check out of each stay and collect belongings",done:false},
+  {text:"Check the cabin or cottage for left items",done:false},
+  {text:"Back up photos from the trip",done:false},
+  {text:"Keep receipts and confirmation numbers for the trip record",done:false},
+  {text:"Write trip notes and what to repeat next time",done:false},
+  {text:"Check Waterfront Lodge refund received",done:false},
+  {text:"Wagga Wagga return: arrive 6 Jan and drive home to Cherrybrook",done:false},
+];
+
+const SEED_DAYS = {
+  "Sun 20 Dec 2026": ["Drive Sydney (Cherrybrook) to Wagga Wagga, about 5 hrs","Wagga Wagga Tourist Park, check-in 14:00 to 19:00 (AUD 134.45)"],
+  "Mon 21 Dec 2026": ["Drive Wagga Wagga to friend's place near Geelong, about 5 hrs","Early checkout window 02:30 to 10:00"],
+  "Tue 22 Dec 2026": ["Drive to Station Pier / North Geelong terminal","Spirit of Tasmania #15839536, depart 18:45 (check-in closes 45 mins before)","Mazda CX-9 in vehicle deck, porthole cabin for 4"],
+  "Wed 23 Dec 2026": ["Arrive Devonport 06:30","Woolworths Devonport (Rooke St), stock up for 2 nights","Drive to Cradle Mountain, about 1.5 hrs","Buy National Park Pass AUD 85 at Visitor Centre","Enchanted Walk (20 min, flat)","Wombat spotting at dusk","Discovery Resorts Cradle Mountain, #J-6606630"],
+  "Thu 24 Dec 2026": ["Free shuttle Visitor Centre to Dove Lake","Marion's Lookout (10 min)","Lake Lilla shoreline walk (15 min, flat)","Christmas Eve dinner at cabin","Pack all food for Christmas Day (shops closed)"],
+  "Fri 25 Dec 2026": ["Drive Cradle Mountain to Queenstown (drive-through stops)","Horsetail Falls (car stop, 5 min)","Ivan Blow Lookout (2 min walk)","Spion Kopf Lookout and Queenstown Oval drive-past","Drive to Strahan, about 45 mins","Strahan IGA groceries for 3 nights","Christmas dinner at cottage","Strahan Beach Tourist Park, Double's Suite"],
+  "Sat 26 Dec 2026": ["Ocean Beach and sand dunes (go early, sand gets hot)","Macquarie Harbour foreshore walk (15 min, flat)","Lunch at cottage","Hells Gate Lookout (short drive)","Sunset from Strahan waterfront (10 min walk)"],
+  "Sun 27 Dec 2026": ["Gordon River Cruise, depart 8:15am, about 6 hrs (booked)","Sarah Island, ancient Huon Pines, rainforest boardwalk, lighthouse","Bring packed vegetarian lunch and warm layers","Sunset from Strahan waterfront","Pack up for the big drive tomorrow"],
+  "Mon 28 Dec 2026": ["Leave Strahan by 8am (about 5.5 hrs driving)","Lake St Clair lakeside path (15 min, flat)","Russell Falls, Mt Field (20 min return, flat sealed path)","Tall Trees walk (15 min, flat loop)","Coles or Woolworths Hobart, big grocery run for 4 nights","Check in Hobart Bush Cabins Kingston, 14:00 to 20:00"],
+  "Tue 29 Dec 2026": ["Leave Kingston 8:30am","SeaLink ferry from Kettering about 8:50am (NOT YET BOOKED)","The Neck Reserve, steps to lookout (10 min)","Drive to Adventure Bay (30 min)","Bruny Island Wilderness Cruise, 11:00am, 3 hrs (booked)","Bring warm jacket, beanie, gloves and packed lunch","Return ferry about 4:30pm","Cook dinner at cabin"],
+  "Wed 30 Dec 2026": ["Tasman Arch viewpoint (5 to 10 min)","Devils Kitchen viewpoint (5 to 10 min)","Port Arthur Historic Site (allow 4 hrs, booked)","Harbour cruise, 2:45pm slot (booked)","Leave Port Arthur by 5pm","Cook dinner at cabin"],
+  "Thu 31 Dec 2026": ["MONA, 11:00am timed entry (booked, allow 3 hrs)","Regatta Grounds free parking and free shuttle (confirm at hobartcity.com.au)","City walk: Constitution Dock, Jones Boat Shed, Parliament House, Franklin Square, St David's Cathedral","Salamanca Arts Centre, Kelly's Steps, Battery Point","Dinner at The Saffron, 15 Hunter St (NOT YET BOOKED)","NYE family fireworks, 9:30pm, Sullivan's Cove","Free shuttle back to Regatta Grounds, drive to Kingston by about 10:30pm"],
+  "Fri 01 Jan 2027": ["Late checkout at Kingston","Drive to Bicheno, about 2 hrs","Bicheno Blowhole (20 min, flat coastal path)","Rock pools at low tide","Whalers Lookout (15 min, flat)","Bicheno IGA groceries for Bicheno and Freycinet","Redbill Beach penguins from about 8:30pm (red torch, no white lights)","Optional: East Coast Natureworld Devils in the Dark (not booked)","Wintersun Motel Bicheno, 35 Gordon St"],
+  "Sat 02 Jan 2027": ["Freycinet: Cape Tourville Lighthouse (10 min boardwalk)","Wineglass Bay Lookout (35 min return)","Honeymoon Bay, Sleepy Bay, Richardson's Beach","Drive to St Helens, about 1.5 hrs","Binalong Bay sunset on the orange rocks","Kellraine Holiday Units, 72 Tully St (full kitchen)"],
+  "Sun 03 Jan 2027": ["Bay of Fires morning: Binalong Bay, The Gardens, Swimcart Beach","St Helens coffee stop","Drive to Launceston, about 2 hrs","Cataract Gorge (chairlift, pool, peacocks)","Alexandra Suspension Bridge (20 min flat walk)","City Park: monkey enclosure, fountain","Optional: Tamar Island Wetlands, Grindelwald Swiss Village","Dinner at Bengal Tiger or Hari's Curry (Wellington St)","Discovery Parks Hadspen, cabin sleeps 6"],
+  "Mon 04 Jan 2027": ["Optional: Penny Royal Adventures (confirm open)","Optional: Bridestowe Lavender Farm (peak bloom, if sailing 7pm or later)","Optional: Glengarry Bush Maze (call before going)","Woolworths Launceston, stock up for ferry","Drive to Devonport, about 1.5 hrs","Spirit of Tasmania #15839536, depart 18:45"],
+  "Tue 05 Jan 2027": ["Arrive Geelong 06:30","Drive to friend's place (about 1 hr), lunch with friends","Drive to Wagga Wagga, about 5 hrs","Centralpoint Motel Wagga Wagga, 164 Tarcutta St"],
+  "Wed 06 Jan 2027": ["Morning checkout (10:00)","Drive Wagga Wagga to Cherrybrook / Sydney, about 4.5 hrs"]
+};
+
+function loadDays(){
+  let obj = {};
+  const r = _cget(DAY_KEY);
+  if(r){ try { obj = JSON.parse(r) || {}; } catch(e){ obj = {}; } }
+  ALL_DAYS.forEach(d=>{
+    if(!obj[d]) obj[d] = (SEED_DAYS[d] || []).map(t=>({text:t, done:false}));
+  });
+  return obj;
+}
+function saveDays(d){ _cset(DAY_KEY, JSON.stringify(d)); }
+
+function loadPrep(key, defaults){
+  try { const r=_cget(key); if(r) return JSON.parse(r); } catch(e){}
+  return defaults.map((t,i)=>({...t,id:key+'_'+i}));
+}
+function savePrep(key,data){ _cset(key,JSON.stringify(data)); }
+
+function loadWeekState(){ try { return JSON.parse(_cget(WEEK_STATE_KEY))||{}; } catch(e){ return {}; } }
+function saveWeekState(s){ _cset(WEEK_STATE_KEY,JSON.stringify(s)); }
+function loadDayState(){ try { return JSON.parse(_cget(DAY_STATE_KEY))||{}; } catch(e){ return {}; } }
+function saveDayState(s){ _cset(DAY_STATE_KEY,JSON.stringify(s)); }
+
+const _activeDayPerWeek = {};
+
+window.tasSwitchDay = function(weekId, dayKey){
+  _activeDayPerWeek[weekId] = dayKey;
+  document.querySelectorAll(`.tas-day-tab[data-week="${weekId}"]`).forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.day === dayKey);
+  });
+  renderDayContent(weekId, dayKey);
+  const state = loadDayState(); state[weekId] = dayKey; saveDayState(state);
+};
+
+window.tasToggleWeek = function(weekId){
+  const body = document.getElementById(weekId+'-body');
+  const toggle = document.getElementById(weekId+'-toggle');
+  if(!body||!toggle) return;
+  const collapsed = body.classList.toggle('collapsed');
+  toggle.classList.toggle('collapsed', collapsed);
+  const state = loadWeekState(); state[weekId] = collapsed; saveWeekState(state);
+};
+
+function restoreCollapseState(){
+  const wState = loadWeekState();
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
+    if(wState[wid]){
+      const body = document.getElementById(wid+'-body');
+      const toggle = document.getElementById(wid+'-toggle');
+      if(body) body.classList.add('collapsed');
+      if(toggle) toggle.classList.add('collapsed');
+    }
+  });
+  const dState = loadDayState();
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
+    const strip = document.getElementById(wid+'-strip');
+    if(!strip) return;
+    const tabs = [...strip.querySelectorAll('.tas-day-tab')];
+    if(!tabs.length) return;
+    const savedDay = dState[wid];
+    const targetDay = (savedDay && tabs.find(t=>t.dataset.day===savedDay))
+      ? savedDay
+      : tabs[0].dataset.day;
+    _activeDayPerWeek[wid] = targetDay;
+    tabs.forEach(t=>t.classList.toggle('active', t.dataset.day===targetDay));
+  });
+}
+
+function renderPrep(storageKey, defaults, bodyId, fillId, statsId){
+  const items = loadPrep(storageKey, defaults);
+  const body = document.getElementById(bodyId);
+  if(!body) return;
+  body.innerHTML = '';
+
+  const done = items.filter(t=>t.done).length;
+  const total = items.length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const fillEl = document.getElementById(fillId);
+  const statsEl = document.getElementById(statsId);
+  if(fillEl) fillEl.style.width = pct+'%';
+  if(statsEl) statsEl.textContent = total ? done+'/'+total : '';
+
+  const addRow = document.createElement('div');
+  addRow.className = 'tas-add-row';
+  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add item… (Enter to save)">';
+  addRow.querySelector('input').onkeydown = e => {
+    if(e.key==='Enter'){
+      const val = e.target.value.trim(); if(!val) return;
+      items.unshift({text:val, done:false, id:storageKey+'_'+Date.now()});
+      savePrep(storageKey, items);
+      renderPrep(storageKey, defaults, bodyId, fillId, statsId);
+      setTimeout(()=>body.querySelector('.tas-add-input')?.focus(), 0);
+    }
+  };
+  body.appendChild(addRow);
+
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'tas-task' + (item.done ? ' completed' : '');
+    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
+    const [cb, tx, del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
+    cb.onchange = () => { item.done=cb.checked; savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
+    tx.oninput  = e => { item.text=e.target.value; savePrep(storageKey,items); };
+    del.onclick = () => { items.splice(i,1); savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
+    const grip = row.querySelector('.tas-drag-handle');
+    let dragSrc = null;
+    grip.onpointerdown = () => { row.draggable=true; };
+    grip.onpointerup   = () => { row.draggable=false; };
+    grip.onmouseleave  = () => { row.draggable=false; };
+    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
+    body.addEventListener('dragover',  e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if(dragSrc===null||dragSrc===i) return;
+      items.splice(i,0,items.splice(dragSrc,1)[0]);
+      savePrep(storageKey,items);
+      renderPrep(storageKey,defaults,bodyId,fillId,statsId);
+    });
+    body.appendChild(row);
+  });
+}
+
+function updateTabCounts(){
+  const data = loadDays();
+  document.querySelectorAll('.tas-day-tab').forEach(tab=>{
+    const items = data[tab.dataset.day]||[];
+    const done = items.filter(t=>t.done).length;
+    const total = items.length;
+    const countEl = tab.querySelector('.tas-day-count');
+    if(countEl){
+      countEl.textContent = total ? done+'/'+total : '0';
+      tab.classList.toggle('has-tasks', total > 0);
+    }
+  });
+}
+
+function renderDayContent(weekId, dayKey){
+  const data = loadDays();
+  if(!data[dayKey]) data[dayKey]=[];
+  const items = data[dayKey];
+  const contentEl = document.getElementById(weekId+'-content');
+  if(!contentEl) return;
+  contentEl.innerHTML = '';
+
+  const addRow = document.createElement('div');
+  addRow.className = 'tas-add-row';
+  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add task… (Enter to save)">';
+  addRow.querySelector('input').onkeydown = e => {
+    if(e.key==='Enter'){
+      const val = e.target.value.trim(); if(!val) return;
+      data[dayKey].push({text:val, done:false});
+      saveDays(data);
+      renderDayContent(weekId, dayKey);
+      updateTabCounts();
+      setTimeout(()=>contentEl.querySelector('.tas-add-input')?.focus(),0);
+    }
+  };
+  contentEl.appendChild(addRow);
+
+  if(items.length === 0){
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:20px 0;text-align:center;font-size:13px;color:var(--text3);font-style:italic;';
+    empty.textContent = 'Nothing planned. Add a task above.';
+    contentEl.appendChild(empty);
+    return;
+  }
+
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'tas-task' + (item.done?' completed':'');
+    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
+    const [cb,tx,del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
+    cb.onchange = () => { item.done=cb.checked; saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
+    tx.oninput  = e => { item.text=e.target.value; saveDays(data); };
+    del.onclick = () => { items.splice(i,1); saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
+    const grip = row.querySelector('.tas-drag-handle');
+    let dayDragSrc = null;
+    grip.onpointerdown = () => { row.draggable=true; };
+    grip.onpointerup   = () => { row.draggable=false; };
+    grip.onmouseleave  = () => { row.draggable=false; };
+    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dayDragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
+    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
+    contentEl.addEventListener('dragover', e => e.preventDefault());
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      if(dayDragSrc===null||dayDragSrc===i) return;
+      items.splice(i,0,items.splice(dayDragSrc,1)[0]);
+      saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts();
+    });
+    contentEl.appendChild(row);
+  });
+}
+
+function renderDays(){
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
+    const activeDay = _activeDayPerWeek[wid];
+    if(activeDay) renderDayContent(wid, activeDay);
+  });
+  updateTabCounts();
+}
+
+_onAuth(async () => {
+  if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
+  renderPrep(PRETRAVEL_KEY, DEFAULT_PRETRAVEL, 'tas-pretravel-body', 'tas-pretravel-fill', 'tas-pretravel-stats');
+  renderPrep(DAYBEFORE_KEY, DEFAULT_DAYBEFORE, 'tas-daybefore-body', 'tas-daybefore-fill', 'tas-daybefore-stats');
+  renderPrep(ENDTRIP_KEY,   DEFAULT_ENDTRIP,   'tas-endtrip-body',   'tas-endtrip-fill',   'tas-endtrip-stats');
+  restoreCollapseState();
+  renderDays();
+});
+
+})();
+</script>
+
+<!-- ===== LEAFLET (loaded on the main page so the map can run) ===== -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- ===== ROAD TRIP (no storage dependency, runs on load) ===== -->
+<script>
 (function(){
 "use strict";
 const TRIPS = [
@@ -2152,10 +2065,7 @@ function renderCalendar(){
   }
 }
 
-/* ---------- Map ----------
-   One pin per place. Each pin label shows the date(s) you are there.
-   dir sets which side the label sits on, so labels for nearby places
-   (e.g. Kingston and Hobart) do not sit on top of each other. */
+/* ---------- Map ---------- */
 const PINS=[
  {id:"syd",lat:-33.73,lng:151.03,label:"20 Dec · 6 Jan",dir:"right",tas:false,name:"Cherrybrook, Sydney",notes:"Start 20 Dec. Home 6 Jan."},
  {id:"wag",lat:-35.12,lng:147.36,label:"20 Dec · 5 to 6 Jan",dir:"left",tas:false,name:"Wagga Wagga (Tourist Park and Centralpoint Motel)",notes:"Night 20 Dec and night 5 Jan."},
@@ -2175,7 +2085,6 @@ const PINS=[
  {id:"sth",lat:-41.32,lng:148.24,label:"2 to 3 Jan",dir:"left",tas:true,name:"St Helens (Kellraine Holiday Units)",notes:"Nights 2 Jan. Bay of Fires sunset 2 Jan, morning 3 Jan."},
  {id:"lau",lat:-41.52,lng:146.98,label:"3 to 4 Jan",dir:"right",tas:true,name:"Launceston (Discovery Parks Hadspen)",notes:"Night 3 Jan. Cataract Gorge and City Park."}
 ];
-/* Route legs. kind: drive or sea. alt: return leg, drawn offset so it does not sit on top of the outbound leg. */
 const LEGS=[
  {from:"syd",to:"wag",kind:"drive",date:"20 Dec"},
  {from:"wag",to:"gee",kind:"drive",date:"21 to 22 Dec"},
@@ -2240,597 +2149,86 @@ function ensureMap(){
   fitTas();
   setTimeout(()=>leafletMap.invalidateSize(),50);
 }
-window.roadOnMapShown=function(){ ensureMap(); if(leafletMap) setTimeout(()=>leafletMap.invalidateSize(),50); };
 
 buildRows();
 renderCalendar();
 buildMapList();
 
-/* Planner: run map setup when its tab becomes active (panel class changes). */
+/* Build the map once the Map tab is shown */
 const mapPanel=document.getElementById("panel-road-map");
 if(mapPanel){
-  new MutationObserver(()=>{ if(mapPanel.classList.contains("active")) window.roadOnMapShown(); })
-    .observe(mapPanel,{attributes:true,attributeFilter:["class"]});
+  new MutationObserver(()=>{
+    if(mapPanel.classList.contains("active")) { ensureMap(); setTimeout(()=>leafletMap&&leafletMap.invalidateSize(),50); }
+  }).observe(mapPanel,{attributes:true,attributeFilter:["class"]});
 }
-})();
-
-</script>
-</body></html>`;
-
-  const w = window.open("","_blank");
-  w.document.write(html); w.document.close();
-  w.onload=()=>{ w.focus(); };
-}
-window.indiaOpenPrintBW = indiaOpenPrintBW;
-
-/* ── PRINT COLOUR ── */
-function indiaOpenPrintColor(){
-  const blocks = getBlocks();
-
-  const PALETTES = [
-    { bg:'#fdf4e3', hdr:'#f8e9c8', accent:'#a07030', border:'#e5cfa0' },
-    { bg:'#fdeedd', hdr:'#f8e0c0', accent:'#b06020', border:'#e8c898' },
-    { bg:'#fde6dc', hdr:'#f8d4c4', accent:'#b04a30', border:'#e8b8a8' },
-    { bg:'#fff0e0', hdr:'#fce4c4', accent:'#c17b3f', border:'#f0d0a0' },
-    { bg:'#e8f4e8', hdr:'#d4ecd4', accent:'#2e7a3c', border:'#a8d4a8' },
-    { bg:'#e4eef8', hdr:'#ccdaee', accent:'#2e5e96', border:'#a8c4de' },
-  ];
-
-  let sectionsHTML = "";
-
-  blocks.forEach((block, bi)=>{
-    const pal = PALETTES[bi % PALETTES.length];
-    const tasks = block.tasks;
-    const done  = tasks.filter(t=>t.done).length;
-    const total = tasks.length;
-    const pct   = total ? Math.round(done/total*100) : 0;
-
-    const taskRows = tasks.length > 0
-      ? tasks.map(t=>{
-          const strike = t.done ? `text-decoration:line-through;color:${pal.accent};opacity:0.5;` : "";
-          const box = t.done
-            ? `<span style="display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;border:1.5px solid ${pal.accent};border-radius:3px;margin-right:7px;flex-shrink:0;background:${pal.accent};"><span style="color:#fff;font-size:10px;line-height:1;">✓</span></span>`
-            : `<span style="display:inline-block;width:13px;height:13px;border:1.5px solid ${pal.border};border-radius:3px;margin-right:7px;flex-shrink:0;background:#fff;"></span>`;
-          return `<div style="display:flex;align-items:center;padding:4px 0;border-bottom:1px solid ${pal.hdr};">
-            ${box}<span style="font-size:12px;${strike}flex:1;color:#1a1714;">${escPrint(t.text)}</span>
-          </div>`;
-        }).join("")
-      : `<div style="font-style:italic;color:#bbb;font-size:11px;padding:4px 0;">—</div>`;
-
-    const barFill = total ? `<div style="height:4px;background:${pal.hdr};border-radius:2px;margin:0 12px 8px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${pal.accent};border-radius:2px;"></div></div>` : "";
-
-    sectionsHTML += `
-      <div style="break-inside:avoid;page-break-inside:avoid;border:1.5px solid ${pal.border};border-radius:8px;overflow:hidden;background:${pal.bg};margin-bottom:0;">
-        <div style="padding:8px 12px 6px;border-bottom:1.5px solid ${pal.border};display:flex;justify-content:space-between;align-items:center;background:${pal.hdr};">
-          <span style="font-family:'DM Serif Display',Georgia,serif;font-size:13px;font-weight:400;color:${pal.accent};">${escPrint(block.title)}</span>
-          <span style="font-size:10px;color:${pal.accent};opacity:0.7;font-weight:600;">${done}/${total}</span>
-        </div>
-        ${barFill}
-        <div style="padding:0 12px 8px;">${taskRows}</div>
-      </div>`;
-  });
-
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>${OT.brand.name} · Trip Planners</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <style>
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:'DM Sans',Georgia,sans-serif;background:#fff;color:#1a1714;padding:20px 24px;}
-    @page{size:A4;margin:12mm 10mm;}
-    @media print{body{padding:0;}.print-bar{display:none!important;}}
-    .print-bar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e0e0e0;padding:10px 24px;display:flex;align-items:center;gap:12px;z-index:99;margin-bottom:20px;}
-    .print-bar span{font-size:10pt;color:#555;flex:1;}
-    .print-bar button{padding:7px 20px;border:1.5px solid #c17b3f;border-radius:6px;background:#c17b3f;color:#fff;font-size:9pt;cursor:pointer;}
-    .print-bar .close{background:transparent;color:#888;border-color:#ccc;padding:7px 14px;}
-  
-</style></head><body>
-  <div class="print-bar">
-    <span>Ready to print in colour — File → Print → Save as PDF</span>
-    <button onclick="window.print()">🎨 Print Colour</button>
-    <button class="close" onclick="window.close()">✕ Close</button>
-  </div>
-  <div style="background:linear-gradient(135deg,#f5f0ea 0%,#ede5d8 60%,#e0d4c4 100%);border-radius:10px;padding:18px 22px 14px;margin-bottom:18px;border:1.5px solid #d8ccbc;display:flex;justify-content:space-between;align-items:flex-end;">
-    <div>
-      <div style="font-family:'DM Serif Display',Georgia,serif;font-size:26px;font-weight:400;letter-spacing:-0.01em;color:#3a2e20;">India Trip Planner</div>
-      <div style="font-size:12px;color:#7a6a56;margin-top:4px;font-style:italic;">28 March – 18 April 2026 · Day-by-Day</div>
-    </div>
-    <div style="font-size:10px;color:#9a8878;text-align:right;">Printed ${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</div>
-  </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">${sectionsHTML}</div>
-  <div style="margin-top:16px;padding-top:8px;border-top:1px solid #e0d8ce;display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:10px;color:#b0a898;font-style:italic;">✦ India Trip Planner</span>
-    <span style="font-size:10px;color:#b0a898;">${new Date().toLocaleDateString('en-AU',{day:'2-digit',month:'short',year:'numeric'})}</span>
-  </div>
-  </body></html>`;
-
-  const w = window.open("","_blank");
-  w.document.write(html); w.document.close();
-  w.onload=()=>{ w.focus(); };
-}
-window.indiaOpenPrintColor = indiaOpenPrintColor;
-
-function escPrint(s){ return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-
 })();
 </script>
 
-<!-- ===== TASMANIA JS (REDESIGN) ===== -->
-<script>
-(function(){
-
-// ── Storage keys ──
-const DAY_KEY      = "DEC_JAN_TASKS_2026_2027";      // existing - preserved
-const PRETRAVEL_KEY= "TAS_PRETRAVEL_V1";
-const DAYBEFORE_KEY= "TAS_DAYBEFORE_V1";
-const ENDTRIP_KEY  = "TAS_ENDTRIP_V1";
-const WEEK_STATE_KEY = "TAS_WEEK_STATE_V1";
-const DAY_STATE_KEY  = "TAS_DAY_STATE_V1";
-
-// ── All trip days ──
-const ALL_DAYS = [
-  "Sun 20 Dec 2026","Mon 21 Dec 2026","Tue 22 Dec 2026","Wed 23 Dec 2026","Thu 24 Dec 2026","Fri 25 Dec 2026","Sat 26 Dec 2026",
-  "Sun 27 Dec 2026","Mon 28 Dec 2026","Tue 29 Dec 2026","Wed 30 Dec 2026","Thu 31 Dec 2026","Fri 01 Jan 2027","Sat 02 Jan 2027",
-  "Sun 03 Jan 2027","Mon 04 Jan 2027","Tue 05 Jan 2027","Wed 06 Jan 2027"
-];
-
-// ── Default prep items ──
-const DEFAULT_PRETRAVEL = [
-  {text:"Book SeaLink Bruny ferry for CX-9 (29 Dec) at sealink.com.au",done:false},
-  {text:"Book The Saffron table for NYE dinner, 15 Hunter St (31 Dec)",done:false},
-  {text:"Cancel Waterfront Lodge Hobart and check refund (free cancel before 1 Dec)",done:false},
-  {text:"Check Regatta Grounds free parking and shuttle at hobartcity.com.au",done:false},
-  {text:"Check Mt Wellington road status at wellingtonpark.tas.gov.au",done:false},
-  {text:"Optional: book East Coast Natureworld Devils in the Dark (1 Jan)",done:false},
-  {text:"Call Glengarry Bush Maze and confirm Penny Royal open (4 Jan)",done:false},
-  {text:"Install My Aurora Forecast and SpaceWeatherLive, set Kp 4+ alerts",done:false},
-  {text:"Pack warm jacket, beanie and gloves for Gordon River and Bruny cruises",done:false},
-  {text:"Keep booking confirmations handy (Spirit #15839536 and all stays)",done:false},
-];
-const DEFAULT_DAYBEFORE = [
-  {text:"Check tomorrow's check-in and checkout times",done:false},
-  {text:"Buy groceries for next stop (see day notes)",done:false},
-  {text:"Pack cooler and vegetarian lunch for tour days",done:false},
-  {text:"Charge devices and pack red torch for penguin viewing (Bicheno)",done:false},
-  {text:"Set alarm for early departure (Strahan 8am, Gordon 8:15am, Bruny 8:30am)",done:false},
-  {text:"Lay out warm layers for cold water tours",done:false},
-  {text:"Check ferry check-in closes 45 mins before departure (Spirit 18:45)",done:false},
-  {text:"Fill fuel in the CX-9",done:false},
-];
-const DEFAULT_ENDTRIP = [
-  {text:"Check out of each stay and collect belongings",done:false},
-  {text:"Check the cabin or cottage for left items",done:false},
-  {text:"Back up photos from the trip",done:false},
-  {text:"Keep receipts and confirmation numbers for the trip record",done:false},
-  {text:"Write trip notes and what to repeat next time",done:false},
-  {text:"Check Waterfront Lodge refund received",done:false},
-  {text:"Wagga Wagga return: arrive 6 Jan and drive home to Cherrybrook",done:false},
-];
-
-// ── Day itinerary seeds (used only for days with no saved data yet) ──
-const SEED_DAYS = {
-  "Sun 20 Dec 2026": ["Drive Sydney (Cherrybrook) to Wagga Wagga, about 5 hrs","Wagga Wagga Tourist Park, check-in 14:00 to 19:00 (AUD 134.45)"],
-  "Mon 21 Dec 2026": ["Drive Wagga Wagga to friend's place near Geelong, about 5 hrs","Early checkout window 02:30 to 10:00"],
-  "Tue 22 Dec 2026": ["Drive to Station Pier / North Geelong terminal","Spirit of Tasmania #15839536, depart 18:45 (check-in closes 45 mins before)","Mazda CX-9 in vehicle deck, porthole cabin for 4"],
-  "Wed 23 Dec 2026": ["Arrive Devonport 06:30","Woolworths Devonport (Rooke St), stock up for 2 nights","Drive to Cradle Mountain, about 1.5 hrs","Buy National Park Pass AUD 85 at Visitor Centre","Enchanted Walk (20 min, flat)","Wombat spotting at dusk","Discovery Resorts Cradle Mountain, #J-6606630"],
-  "Thu 24 Dec 2026": ["Free shuttle Visitor Centre to Dove Lake","Marion's Lookout (10 min)","Lake Lilla shoreline walk (15 min, flat)","Christmas Eve dinner at cabin","Pack all food for Christmas Day (shops closed)"],
-  "Fri 25 Dec 2026": ["Drive Cradle Mountain to Queenstown (drive-through stops)","Horsetail Falls (car stop, 5 min)","Ivan Blow Lookout (2 min walk)","Spion Kopf Lookout and Queenstown Oval drive-past","Drive to Strahan, about 45 mins","Strahan IGA groceries for 3 nights","Christmas dinner at cottage","Strahan Beach Tourist Park, Double's Suite"],
-  "Sat 26 Dec 2026": ["Ocean Beach and sand dunes (go early, sand gets hot)","Macquarie Harbour foreshore walk (15 min, flat)","Lunch at cottage","Hells Gate Lookout (short drive)","Sunset from Strahan waterfront (10 min walk)"],
-  "Sun 27 Dec 2026": ["Gordon River Cruise, depart 8:15am, about 6 hrs (booked)","Sarah Island, ancient Huon Pines, rainforest boardwalk, lighthouse","Bring packed vegetarian lunch and warm layers","Sunset from Strahan waterfront","Pack up for the big drive tomorrow"],
-  "Mon 28 Dec 2026": ["Leave Strahan by 8am (about 5.5 hrs driving)","Lake St Clair lakeside path (15 min, flat)","Russell Falls, Mt Field (20 min return, flat sealed path)","Tall Trees walk (15 min, flat loop)","Coles or Woolworths Hobart, big grocery run for 4 nights","Check in Hobart Bush Cabins Kingston, 14:00 to 20:00"],
-  "Tue 29 Dec 2026": ["Leave Kingston 8:30am","SeaLink ferry from Kettering about 8:50am (NOT YET BOOKED)","The Neck Reserve, steps to lookout (10 min)","Drive to Adventure Bay (30 min)","Bruny Island Wilderness Cruise, 11:00am, 3 hrs (booked)","Bring warm jacket, beanie, gloves and packed lunch","Return ferry about 4:30pm","Cook dinner at cabin"],
-  "Wed 30 Dec 2026": ["Tasman Arch viewpoint (5 to 10 min)","Devils Kitchen viewpoint (5 to 10 min)","Port Arthur Historic Site (allow 4 hrs, booked)","Harbour cruise, 2:45pm slot (booked)","Leave Port Arthur by 5pm","Cook dinner at cabin"],
-  "Thu 31 Dec 2026": ["MONA, 11:00am timed entry (booked, allow 3 hrs)","Regatta Grounds free parking and free shuttle (confirm at hobartcity.com.au)","City walk: Constitution Dock, Jones Boat Shed, Parliament House, Franklin Square, St David's Cathedral","Salamanca Arts Centre, Kelly's Steps, Battery Point","Dinner at The Saffron, 15 Hunter St (NOT YET BOOKED)","NYE family fireworks, 9:30pm, Sullivan's Cove","Free shuttle back to Regatta Grounds, drive to Kingston by about 10:30pm"],
-  "Fri 01 Jan 2027": ["Late checkout at Kingston","Drive to Bicheno, about 2 hrs","Bicheno Blowhole (20 min, flat coastal path)","Rock pools at low tide","Whalers Lookout (15 min, flat)","Bicheno IGA groceries for Bicheno and Freycinet","Redbill Beach penguins from about 8:30pm (red torch, no white lights)","Optional: East Coast Natureworld Devils in the Dark (not booked)","Wintersun Motel Bicheno, 35 Gordon St"],
-  "Sat 02 Jan 2027": ["Freycinet: Cape Tourville Lighthouse (10 min boardwalk)","Wineglass Bay Lookout (35 min return)","Honeymoon Bay, Sleepy Bay, Richardson's Beach","Drive to St Helens, about 1.5 hrs","Binalong Bay sunset on the orange rocks","Kellraine Holiday Units, 72 Tully St (full kitchen)"],
-  "Sun 03 Jan 2027": ["Bay of Fires morning: Binalong Bay, The Gardens, Swimcart Beach","St Helens coffee stop","Drive to Launceston, about 2 hrs","Cataract Gorge (chairlift, pool, peacocks)","Alexandra Suspension Bridge (20 min flat walk)","City Park: monkey enclosure, fountain","Optional: Tamar Island Wetlands, Grindelwald Swiss Village","Dinner at Bengal Tiger or Hari's Curry (Wellington St)","Discovery Parks Hadspen, cabin sleeps 6"],
-  "Mon 04 Jan 2027": ["Optional: Penny Royal Adventures (confirm open)","Optional: Bridestowe Lavender Farm (peak bloom, if sailing 7pm or later)","Optional: Glengarry Bush Maze (call before going)","Woolworths Launceston, stock up for ferry","Drive to Devonport, about 1.5 hrs","Spirit of Tasmania #15839536, depart 18:45"],
-  "Tue 05 Jan 2027": ["Arrive Geelong 06:30","Drive to friend's place (about 1 hr), lunch with friends","Drive to Wagga Wagga, about 5 hrs","Centralpoint Motel Wagga Wagga, 164 Tarcutta St"],
-  "Wed 06 Jan 2027": ["Morning checkout (10:00)","Drive Wagga Wagga to Cherrybrook / Sydney, about 4.5 hrs"]
-};
-
-// ── Load / save helpers ──
-function loadDays(){
-  let obj = {};
-  const r = _cget(DAY_KEY);
-  if(r){ try { obj = JSON.parse(r) || {}; } catch(e){ obj = {}; } }
-  ALL_DAYS.forEach(d=>{
-    if(!obj[d]) obj[d] = (SEED_DAYS[d] || []).map(t=>({text:t, done:false}));
-  });
-  return obj;
-}
-function saveDays(d){ _cset(DAY_KEY, JSON.stringify(d)); }
-
-function loadPrep(key, defaults){
-  try { const r=_cget(key); if(r) return JSON.parse(r); } catch(e){}
-  return defaults.map((t,i)=>({...t,id:key+'_'+i}));
-}
-function savePrep(key,data){ _cset(key,JSON.stringify(data)); }
-
-// ── Week & day collapse state ──
-function loadWeekState(){
-  try { return JSON.parse(_cget(WEEK_STATE_KEY))||{}; } catch(e){ return {}; }
-}
-function saveWeekState(s){ _cset(WEEK_STATE_KEY,JSON.stringify(s)); }
-function loadDayState(){
-  try { return JSON.parse(_cget(DAY_STATE_KEY))||{}; } catch(e){ return {}; }
-}
-function saveDayState(s){ _cset(DAY_STATE_KEY,JSON.stringify(s)); }
-
-// ── Active day per week (in-memory) ──
-const _activeDayPerWeek = {};
-
-// ── Switch day tab ──
-window.tasSwitchDay = function(weekId, dayKey){
-  _activeDayPerWeek[weekId] = dayKey;
-  // Update tab active states
-  document.querySelectorAll(`.tas-day-tab[data-week="${weekId}"]`).forEach(btn=>{
-    btn.classList.toggle('active', btn.dataset.day === dayKey);
-  });
-  // Render that day's content
-  renderDayContent(weekId, dayKey);
-  // Save active day state
-  const state = loadDayState(); state[weekId] = dayKey; saveDayState(state);
-};
-
-// ── Toggle week collapse ──
-window.tasToggleWeek = function(weekId){
-  const body = document.getElementById(weekId+'-body');
-  const toggle = document.getElementById(weekId+'-toggle');
-  if(!body||!toggle) return;
-  const collapsed = body.classList.toggle('collapsed');
-  toggle.classList.toggle('collapsed', collapsed);
-  const state = loadWeekState(); state[weekId] = collapsed; saveWeekState(state);
-};
-
-// ── Restore collapse + active day state on load ──
-function restoreCollapseState(){
-  const wState = loadWeekState();
-  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
-    if(wState[wid]){
-      const body = document.getElementById(wid+'-body');
-      const toggle = document.getElementById(wid+'-toggle');
-      if(body) body.classList.add('collapsed');
-      if(toggle) toggle.classList.add('collapsed');
-    }
-  });
-  // Restore active day per week (saved day key)
-  const dState = loadDayState();
-  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
-    const strip = document.getElementById(wid+'-strip');
-    if(!strip) return;
-    const tabs = [...strip.querySelectorAll('.tas-day-tab')];
-    if(!tabs.length) return;
-    const savedDay = dState[wid];
-    const targetDay = (savedDay && tabs.find(t=>t.dataset.day===savedDay))
-      ? savedDay
-      : tabs[0].dataset.day;
-    _activeDayPerWeek[wid] = targetDay;
-    tabs.forEach(t=>t.classList.toggle('active', t.dataset.day===targetDay));
-  });
-}
-
-// ── Render a prep panel ──
-function renderPrep(storageKey, defaults, bodyId, fillId, statsId){
-  const items = loadPrep(storageKey, defaults);
-  const body = document.getElementById(bodyId);
-  if(!body) return;
-  body.innerHTML = '';
-
-  const done = items.filter(t=>t.done).length;
-  const total = items.length;
-  const pct = total ? Math.round(done/total*100) : 0;
-  const fillEl = document.getElementById(fillId);
-  const statsEl = document.getElementById(statsId);
-  if(fillEl) fillEl.style.width = pct+'%';
-  if(statsEl) statsEl.textContent = total ? done+'/'+total : '';
-
-  // Add input at top
-  const addRow = document.createElement('div');
-  addRow.className = 'tas-add-row';
-  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add item… (Enter to save)">';
-  addRow.querySelector('input').onkeydown = e => {
-    if(e.key==='Enter'){
-      const val = e.target.value.trim(); if(!val) return;
-      items.unshift({text:val, done:false, id:storageKey+'_'+Date.now()});
-      savePrep(storageKey, items);
-      renderPrep(storageKey, defaults, bodyId, fillId, statsId);
-      setTimeout(()=>body.querySelector('.tas-add-input')?.focus(), 0);
-    }
-  };
-  body.appendChild(addRow);
-
-  items.forEach((item, i) => {
-    const row = document.createElement('div');
-    row.className = 'tas-task' + (item.done ? ' completed' : '');
-    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
-    const [cb, tx, del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
-    cb.onchange = () => { item.done=cb.checked; savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
-    tx.oninput  = e => { item.text=e.target.value; savePrep(storageKey,items); };
-    del.onclick = () => { items.splice(i,1); savePrep(storageKey,items); renderPrep(storageKey,defaults,bodyId,fillId,statsId); };
-    // Drag reorder
-    const grip = row.querySelector('.tas-drag-handle');
-    let dragSrc = null;
-    grip.onpointerdown = () => { row.draggable=true; };
-    grip.onpointerup   = () => { row.draggable=false; };
-    grip.onmouseleave  = () => { row.draggable=false; };
-    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
-    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
-    body.addEventListener('dragover',  e => e.preventDefault());
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      if(dragSrc===null||dragSrc===i) return;
-      items.splice(i,0,items.splice(dragSrc,1)[0]);
-      savePrep(storageKey,items);
-      renderPrep(storageKey,defaults,bodyId,fillId,statsId);
-    });
-    body.appendChild(row);
-  });
-}
-
-// ── Update tab count badges (called after any data change) ──
-function updateTabCounts(){
-  const data = loadDays();
-  document.querySelectorAll('.tas-day-tab').forEach(tab=>{
-    const key = tab.dataset.day;
-    const items = data[key]||[];
-    const done = items.filter(t=>t.done).length;
-    const total = items.length;
-    const countEl = tab.querySelector('.tas-day-count');
-    if(countEl){
-      countEl.textContent = total ? done+'/'+total : '0';
-      tab.classList.toggle('has-tasks', total > 0);
-    }
-  });
-}
-
-// ── Render a single day's content into its week content pane ──
-function renderDayContent(weekId, dayKey){
-  const data = loadDays();
-  if(!data[dayKey]) data[dayKey]=[];
-  const items = data[dayKey];
-  const contentEl = document.getElementById(weekId+'-content');
-  if(!contentEl) return;
-  contentEl.innerHTML = '';
-
-  // Add input
-  const addRow = document.createElement('div');
-  addRow.className = 'tas-add-row';
-  addRow.innerHTML = '<input class="tas-add-input" placeholder="Add task… (Enter to save)">';
-  addRow.querySelector('input').onkeydown = e => {
-    if(e.key==='Enter'){
-      const val = e.target.value.trim(); if(!val) return;
-      data[dayKey].push({text:val, done:false});
-      saveDays(data);
-      renderDayContent(weekId, dayKey);
-      updateTabCounts();
-      setTimeout(()=>contentEl.querySelector('.tas-add-input')?.focus(),0);
-    }
-  };
-  contentEl.appendChild(addRow);
-
-  if(items.length === 0){
-    const empty = document.createElement('div');
-    empty.style.cssText = 'padding:20px 0;text-align:center;font-size:13px;color:var(--text3);font-style:italic;';
-    empty.textContent = 'Nothing planned — add a task above';
-    contentEl.appendChild(empty);
-    return;
-  }
-
-  items.forEach((item, i) => {
-    const row = document.createElement('div');
-    row.className = 'tas-task' + (item.done?' completed':'');
-    row.innerHTML = `<span class="tas-drag-handle">⠿</span><input type="checkbox" ${item.done?'checked':''}><input type="text" value="${item.text.replace(/"/g,'&quot;')}"><button class="tas-task-btn" title="Remove">✕</button>`;
-    const [cb,tx,del] = row.querySelectorAll('input[type=checkbox],input[type=text],button');
-    cb.onchange = () => { item.done=cb.checked; saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
-    tx.oninput  = e => { item.text=e.target.value; saveDays(data); };
-    del.onclick = () => { items.splice(i,1); saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts(); };
-    const grip = row.querySelector('.tas-drag-handle');
-    let dayDragSrc = null;
-    grip.onpointerdown = () => { row.draggable=true; };
-    grip.onpointerup   = () => { row.draggable=false; };
-    grip.onmouseleave  = () => { row.draggable=false; };
-    row.addEventListener('dragstart', e => { if(!row.draggable){e.preventDefault();return;} dayDragSrc=i; row.classList.add('dragging'); e.dataTransfer.setData('text/plain',''); });
-    row.addEventListener('dragend',   () => { row.classList.remove('dragging'); row.draggable=false; });
-    contentEl.addEventListener('dragover', e => e.preventDefault());
-    row.addEventListener('drop', e => {
-      e.preventDefault();
-      if(dayDragSrc===null||dayDragSrc===i) return;
-      items.splice(i,0,items.splice(dayDragSrc,1)[0]);
-      saveDays(data); renderDayContent(weekId,dayKey); updateTabCounts();
-    });
-    contentEl.appendChild(row);
-  });
-}
-
-// ── Render all active day tabs on load ──
-function renderDays(){
-  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
-    const activeDay = _activeDayPerWeek[wid];
-    if(activeDay) renderDayContent(wid, activeDay);
-  });
-  updateTabCounts();
-}
-
-// ── Upgrade checkboxes ──
-function upgradeCbs(container){
-  container.querySelectorAll('input[type=checkbox]:not([data-tcb])').forEach(cb=>{
-    cb.setAttribute('data-tcb','1');
-    const wrap = document.createElement('span');
-    wrap.className = 'task-cb-svg' + (cb.checked?' tcb-on':'');
-    wrap.innerHTML = '<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;"><rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/><path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/></svg>';
-    cb.parentNode.insertBefore(wrap, cb.nextSibling);
-    wrap.onclick = e => { e.stopPropagation(); cb.checked=!cb.checked; cb.dispatchEvent(new Event('change',{bubbles:true})); wrap.classList.toggle('tcb-on',cb.checked); };
-    cb.addEventListener('change', ()=> wrap.classList.toggle('tcb-on',cb.checked));
-  });
-}
-
-// MutationObserver to upgrade checkboxes as rows are added
-new MutationObserver(muts=>{
-  muts.forEach(m=>m.addedNodes.forEach(n=>{
-    if(n.nodeType!==1) return;
-    upgradeCbs(n.querySelectorAll?n:document);
-  }));
-}).observe(document.getElementById('panel-tasmania')||document.body, {childList:true,subtree:true});
-
-// ── INIT ──
-_onAuth(async () => {
-  if(!Object.keys(_otCache).length) _otCache = await OT.getAll();
-  renderPrep(PRETRAVEL_KEY, DEFAULT_PRETRAVEL, 'tas-pretravel-body', 'tas-pretravel-fill', 'tas-pretravel-stats');
-  renderPrep(DAYBEFORE_KEY, DEFAULT_DAYBEFORE, 'tas-daybefore-body', 'tas-daybefore-fill', 'tas-daybefore-stats');
-  renderPrep(ENDTRIP_KEY,   DEFAULT_ENDTRIP,   'tas-endtrip-body',   'tas-endtrip-fill',   'tas-endtrip-stats');
-  restoreCollapseState();
-  renderDays();
-});
-
-})();
-</script>
-
-
+<!-- ===== LOGO CHECK, NAV COLLAPSE, BRAND NAME ===== -->
 <script>
 (function(){
   var el=document.getElementById("logoCheck");
-  if(!el)return;
-  var checked=false;
-  function runCheck(){
-    el.classList.remove("uncheck","is-checked");
-    void el.offsetWidth;
-    el.classList.add("animating");
-    el.addEventListener("animationend",function done(e){
-      if(e.animationName==="logoTickDraw"){
-        el.removeEventListener("animationend",done);
-        el.classList.remove("animating");
-        el.classList.add("is-checked");
-        checked=true;
-      }
-    });
-  }
-  function runUncheck(){
-    el.classList.remove("animating","is-checked");
-    void el.offsetWidth;
-    el.classList.add("uncheck");
-    el.addEventListener("animationend",function done(e){
-      if(e.animationName==="logoBoxUnfill"){
-        el.removeEventListener("animationend",done);
-        el.classList.remove("uncheck");
-        checked=false;
-      }
-    });
-  }
-  setTimeout(runCheck,500);
-  el.addEventListener("click",function(){ if(checked){runUncheck();}else{runCheck();} });
-})();
-</script>
-
-
-<script>
-/* ── Task checkbox B (overshoot tick) ── */
-(function(){
-  function upgradeCb(cb){
-    if(cb._cbUpgraded) return;
-    cb._cbUpgraded = true;
-    var svgWrap = document.createElement('span');
-    svgWrap.className = 'task-cb-svg' + (cb.checked ? ' tcb-on' : '');
-    svgWrap.innerHTML =
-      '<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;">' +
-        '<rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/>' +
-        '<path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/>' +
-      '</svg>';
-    cb.parentNode.insertBefore(svgWrap, cb.nextSibling);
-    svgWrap.addEventListener('click', function(e){
-      e.stopPropagation();
-      cb.checked = !cb.checked;
-      var evt = new Event('change', {bubbles:true});
-      cb.dispatchEvent(evt);
-      svgWrap.classList.toggle('tcb-on', cb.checked);
-    });
-    cb.addEventListener('change', function(){
-      svgWrap.classList.toggle('tcb-on', cb.checked);
-    });
-  }
-  function upgradeAll(){
-    document.querySelectorAll('.task input[type=checkbox]:not([data-tcb])').forEach(function(cb){
-      cb.setAttribute('data-tcb','1'); upgradeCb(cb);
-    });
-  }
-  upgradeAll();
-  var obs = new MutationObserver(function(muts){
-    muts.forEach(function(m){
-      m.addedNodes.forEach(function(n){
-        if(n.nodeType!==1) return;
-        if(n.matches && n.matches('.task input[type=checkbox]')){ upgradeCb(n); n.setAttribute('data-tcb','1'); }
-        if(n.querySelectorAll) n.querySelectorAll('.task input[type=checkbox]:not([data-tcb])').forEach(function(cb){
-          cb.setAttribute('data-tcb','1'); upgradeCb(cb);
-        });
+  if(el){
+    var checked=false;
+    function runCheck(){
+      el.classList.remove("uncheck","is-checked");
+      void el.offsetWidth;
+      el.classList.add("animating");
+      el.addEventListener("animationend",function done(e){
+        if(e.animationName==="logoTickDraw"){
+          el.removeEventListener("animationend",done);
+          el.classList.remove("animating");
+          el.classList.add("is-checked");
+          checked=true;
+        }
       });
-    });
-  });
-  obs.observe(document.body, {childList:true, subtree:true});
-})();
-</script>
+    }
+    function runUncheck(){
+      el.classList.remove("animating","is-checked");
+      void el.offsetWidth;
+      el.classList.add("uncheck");
+      el.addEventListener("animationend",function done(e){
+        if(e.animationName==="logoBoxUnfill"){
+          el.removeEventListener("animationend",done);
+          el.classList.remove("uncheck");
+          checked=false;
+        }
+      });
+    }
+    setTimeout(runCheck,500);
+    el.addEventListener("click",function(){ if(checked){runUncheck();}else{runCheck();} });
+  }
 
-<script>
-/* ── Nav collapse/expand ── */
-(function(){
-  var KEY = 'ONETRACK_NAV_COLLAPSED';
   var nav = document.getElementById('onetrack-nav');
   var btn = document.getElementById('nav-toggle-btn');
   var tab = document.getElementById('nav-show-tab');
-  if (!nav) return;
-
-  function isCollapsed() { return _cget('ONETRACK_NAV_COLLAPSED') === '1'; }
-
-  function applyState(collapsed, animate) {
-    if (!animate) { nav.style.transition = 'none'; }
-    if (collapsed) {
-      nav.classList.add('nav-collapsed');
-      document.body.classList.add('nav-is-collapsed');
-      if (btn) btn.textContent = '›';
-      if (btn) btn.title = 'Show sidebar';
-    } else {
-      nav.classList.remove('nav-collapsed');
-      document.body.classList.remove('nav-is-collapsed');
-      if (btn) btn.textContent = '‹';
-      if (btn) btn.title = 'Hide sidebar';
+  if (nav) {
+    var KEY = 'ONETRACK_NAV_COLLAPSED';
+    function isCollapsed() { return _cget(KEY) === '1'; }
+    function applyState(collapsed, animate) {
+      if (!animate) { nav.style.transition = 'none'; }
+      nav.classList.toggle('nav-collapsed', collapsed);
+      document.body.classList.toggle('nav-is-collapsed', collapsed);
+      if (btn) { btn.textContent = collapsed ? '›' : '‹'; btn.title = collapsed ? 'Show sidebar' : 'Hide sidebar'; }
+      if (!animate) { void nav.offsetWidth; nav.style.transition = ''; }
     }
-    if (!animate) {
-      // Force reflow then restore transition
-      void nav.offsetWidth;
-      nav.style.transition = '';
-    }
-  }
-
-  // Apply on load (no animation)
-  applyState(isCollapsed(), false);
-
-  // Toggle button in nav header
-  if (btn) {
-    btn.addEventListener('click', function(e) {
+    applyState(isCollapsed(), false);
+    if (btn) btn.addEventListener('click', function(e){
       e.stopPropagation();
       var next = !isCollapsed();
-      _cset('ONETRACK_NAV_COLLAPSED', next ? '1' : '0');
+      _cset(KEY, next ? '1' : '0');
       applyState(next, true);
     });
-  }
-
-  // Floating show-tab click
-  if (tab) {
-    tab.addEventListener('click', function() {
-      _cset('ONETRACK_NAV_COLLAPSED', '0');
+    if (tab) tab.addEventListener('click', function(){
+      _cset(KEY, '0');
       applyState(false, true);
     });
   }
-})();
-</script>
-<script>
-/* ── Fill sidebar brand name from storage.js (OT.brand.name) — shows
-   immediately, independent of Drive sign-in. ── */
-(function () {
+
   function fillBrandName() {
     if (typeof OT === "undefined" || !OT.brand) return;
-    ['otBrandName', 'otBrandNameAbout'].forEach(function (id) {
-      var el = document.getElementById(id);
-      if (el) el.textContent = OT.brand.name;
-    });
+    var el = document.getElementById('otBrandName');
+    if (el) el.textContent = OT.brand.name;
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', fillBrandName);
@@ -2839,37 +2237,68 @@ _onAuth(async () => {
   }
 })();
 </script>
-</body>
-</html>
+
+<!-- ===== TASK CHECKBOX UPGRADE (one shared implementation) ===== -->
+<script>
+(function(){
+  function upgradeCb(cb){
+    if(cb.dataset.tcb) return;
+    cb.dataset.tcb = "1";
+    var wrap = document.createElement('span');
+    wrap.className = 'task-cb-svg' + (cb.checked ? ' tcb-on' : '');
+    wrap.innerHTML =
+      '<svg width="18" height="18" viewBox="0 0 20 20" style="overflow:visible;">' +
+        '<rect class="tcb-box" x="2" y="2" width="16" height="16" rx="4"/>' +
+        '<path class="tcb-tick" d="M5 10 L8.5 13.5 L22 3"/>' +
+      '</svg>';
+    cb.parentNode.insertBefore(wrap, cb.nextSibling);
+    wrap.addEventListener('click', function(e){
+      e.stopPropagation();
+      cb.checked = !cb.checked;
+      cb.dispatchEvent(new Event('change', {bubbles:true}));
+      wrap.classList.toggle('tcb-on', cb.checked);
+    });
+    cb.addEventListener('change', function(){ wrap.classList.toggle('tcb-on', cb.checked); });
+  }
+  function upgradeWithin(root){
+    if(root.matches && root.matches('input[type=checkbox]')) upgradeCb(root);
+    if(root.querySelectorAll) root.querySelectorAll('input[type=checkbox]').forEach(upgradeCb);
+  }
+  upgradeWithin(document);
+  new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if(n.nodeType===1) upgradeWithin(n);
+      });
+    });
+  }).observe(document.body, {childList:true, subtree:true});
+})();
+</script>
+
 <!--
 ═══════════════════════════════════════════════════════════════════
-  VERSION HISTORY — 81. Trip Planners.html
+  VERSION HISTORY: Trip Planners.html
 ═══════════════════════════════════════════════════════════════════
-  v2.2· 02 Apr 2026
-      - Auto-rollover: on first load, unfinished tasks from past trip
-        days (Mar 28 – yesterday) are cascaded forward to the next day.
-        PRE_TRAVEL and RETURN_PREP are untouched. Runs once per device
-        (flagged in localStorage as INDIA_ROLLOVER_DONE_V1).
+  v2.3 · Fix build
+      - Print functions no longer contain </script> tags. Print
+        output is built by openPrintWindow() with no scripts.
+      - Road Trip scripts and Leaflet moved out of the print
+        template and onto the main page, so the map and calendar run.
+      - Missing CSS variables (--bg, --surface, --surface2, --text,
+        --text2, --text3, --border) defined for light and dark themes.
+      - Duplicate checkbox upgrade scripts merged into one.
+      - Duplicate nav-header and Tasmania compat CSS removed.
 
-  v2  · 30 Mar 2026
-      - Parent-child task logic: indent (↳) makes a task a child of
-        the task directly above it; unindent (↰) breaks the relationship
-      - Checking a parent auto-checks all children; checking all children
-        auto-checks the parent and sinks the whole group to bottom
-      - Smart date-aware block ordering: Today (col 1), Tomorrow (col 2),
-        Return Prep (col 3) always pinned to row 1; future days follow
-        in ascending order; past days sink to bottom; Pre-Travel last
-      - Today badge (accent glow border), Tomorrow badge, Past badge,
-        Return badge, Pre-Travel badge — all reading system date live
-      - Footer bazel added to all tabs matching 11. Days-Tasks style
+  v2.2 · 02 Apr 2026
+      - Auto-rollover of unfinished tasks from past trip days.
 
-  v1  · 28 Mar 2026
-      - Initial tabbed single-file architecture (India + Tasmania panels)
-      - India panel: dynamic blocks stored in localStorage, add/delete/
-        rename blocks, drag-and-drop tasks within and across blocks
-      - Move-to-block portal (⇄), done tasks sink to bottom
-      - Subtask indent toggle (↳), print B&W and colour, .ics calendar export
-      - Tasmania panel: static day grid with localStorage task persistence
-      - Shared topbar tab switcher with drag-to-reorder, dark mode toggle
+  v2 · 30 Mar 2026
+      - Parent-child task logic, smart date-aware block ordering,
+        Today/Tomorrow/Past/Return/Pre-Travel badges.
+
+  v1 · 28 Mar 2026
+      - Initial tabbed single-file architecture.
 ═══════════════════════════════════════════════════════════════════
 -->
+</body>
+</html>
