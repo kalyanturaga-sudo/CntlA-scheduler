@@ -714,7 +714,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <div class="header">
         <div class="header-left">
           <h1>Tasmania Trip Planner</h1>
-          <div class="subtitle">20 Dec 2026 – 15 Jan 2027</div>
+          <div class="subtitle">20 Dec 2026 – 6 Jan 2027</div>
         </div>
       </div>
 
@@ -843,7 +843,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         <!-- Week 3 · Jan 3 – 9 -->
         <div class="tas-week-group" id="tas-week-3">
           <div class="tas-week-header" onclick="tasToggleWeek('tas-week-3')">
-            <h3>Week 3 · Jan 3 – 9</h3>
+            <h3>Week 3 · Jan 3 – 6</h3>
             <span class="tas-week-toggle" id="tas-week-3-toggle">▾</span>
           </div>
           <div class="tas-week-body" id="tas-week-3-body">
@@ -864,59 +864,9 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
               <span class="tas-day-name">Wed</span>
               <span class="tas-day-date">06 Jan</span>
               <span class="tas-day-count" id="tas-count-Wed-06-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Thu 07 Jan 2027" onclick="tasSwitchDay('tas-week-3','Thu 07 Jan 2027')">
-              <span class="tas-day-name">Thu</span>
-              <span class="tas-day-date">07 Jan</span>
-              <span class="tas-day-count" id="tas-count-Thu-07-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Fri 08 Jan 2027" onclick="tasSwitchDay('tas-week-3','Fri 08 Jan 2027')">
-              <span class="tas-day-name">Fri</span>
-              <span class="tas-day-date">08 Jan</span>
-              <span class="tas-day-count" id="tas-count-Fri-08-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-3" data-day="Sat 09 Jan 2027" onclick="tasSwitchDay('tas-week-3','Sat 09 Jan 2027')">
-              <span class="tas-day-name">Sat</span>
-              <span class="tas-day-date">09 Jan</span>
-              <span class="tas-day-count" id="tas-count-Sat-09-Jan-2027">0</span>
             </button>
             </div>
             <div class="tas-day-content" id="tas-week-3-content"></div>
-          </div>
-        </div>
-
-        <!-- Week 4 · Jan 10 – 15 -->
-        <div class="tas-week-group" id="tas-week-4">
-          <div class="tas-week-header" onclick="tasToggleWeek('tas-week-4')">
-            <h3>Week 4 · Jan 10 – 15</h3>
-            <span class="tas-week-toggle" id="tas-week-4-toggle">▾</span>
-          </div>
-          <div class="tas-week-body" id="tas-week-4-body">
-            <div class="tas-day-strip" id="tas-week-4-strip">
-              <button class="tas-day-tab active" data-week="tas-week-4" data-day="Sun 10 Jan 2027" onclick="tasSwitchDay('tas-week-4','Sun 10 Jan 2027')">
-              <span class="tas-day-name">Sun</span>
-              <span class="tas-day-date">10 Jan</span>
-              <span class="tas-day-count" id="tas-count-Sun-10-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Mon 11 Jan 2027" onclick="tasSwitchDay('tas-week-4','Mon 11 Jan 2027')">
-              <span class="tas-day-name">Mon</span>
-              <span class="tas-day-date">11 Jan</span>
-              <span class="tas-day-count" id="tas-count-Mon-11-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Tue 12 Jan 2027" onclick="tasSwitchDay('tas-week-4','Tue 12 Jan 2027')">
-              <span class="tas-day-name">Tue</span>
-              <span class="tas-day-date">12 Jan</span>
-              <span class="tas-day-count" id="tas-count-Tue-12-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Wed 13 Jan 2027" onclick="tasSwitchDay('tas-week-4','Wed 13 Jan 2027')">
-              <span class="tas-day-name">Wed</span>
-              <span class="tas-day-date">13 Jan</span>
-              <span class="tas-day-count" id="tas-count-Wed-13-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Thu 14 Jan 2027" onclick="tasSwitchDay('tas-week-4','Thu 14 Jan 2027')">
-              <span class="tas-day-name">Thu</span>
-              <span class="tas-day-date">14 Jan</span>
-              <span class="tas-day-count" id="tas-count-Thu-14-Jan-2027">0</span>
-            </button><button class="tas-day-tab" data-week="tas-week-4" data-day="Fri 15 Jan 2027" onclick="tasSwitchDay('tas-week-4','Fri 15 Jan 2027')">
-              <span class="tas-day-name">🏁 Fri</span>
-              <span class="tas-day-date">15 Jan</span>
-              <span class="tas-day-count" id="tas-count-Fri-15-Jan-2027">0</span>
-            </button>
-            </div>
-            <div class="tas-day-content" id="tas-week-4-content"></div>
           </div>
         </div>
 
@@ -2068,36 +2018,73 @@ const DAY_STATE_KEY  = "TAS_DAY_STATE_V1";
 const ALL_DAYS = [
   "Sun 20 Dec 2026","Mon 21 Dec 2026","Tue 22 Dec 2026","Wed 23 Dec 2026","Thu 24 Dec 2026","Fri 25 Dec 2026","Sat 26 Dec 2026",
   "Sun 27 Dec 2026","Mon 28 Dec 2026","Tue 29 Dec 2026","Wed 30 Dec 2026","Thu 31 Dec 2026","Fri 01 Jan 2027","Sat 02 Jan 2027",
-  "Sun 03 Jan 2027","Mon 04 Jan 2027","Tue 05 Jan 2027","Wed 06 Jan 2027","Thu 07 Jan 2027","Fri 08 Jan 2027","Sat 09 Jan 2027",
-  "Sun 10 Jan 2027","Mon 11 Jan 2027","Tue 12 Jan 2027","Wed 13 Jan 2027","Thu 14 Jan 2027","Fri 15 Jan 2027"
+  "Sun 03 Jan 2027","Mon 04 Jan 2027","Tue 05 Jan 2027","Wed 06 Jan 2027"
 ];
 
 // ── Default prep items ──
 const DEFAULT_PRETRAVEL = [
-  {text:"Book accommodation",done:false},{text:"Book flights",done:false},
-  {text:"Arrange car hire or transport",done:false},{text:"Notify bank of travel",done:false},
-  {text:"Travel insurance sorted",done:false},{text:"Pack bags",done:false},
-  {text:"Check weather forecast",done:false},{text:"Download offline maps",done:false},
-  {text:"Exchange or arrange cash",done:false},{text:"Charge all devices",done:false},
+  {text:"Book SeaLink Bruny ferry for CX-9 (29 Dec) at sealink.com.au",done:false},
+  {text:"Book The Saffron table for NYE dinner, 15 Hunter St (31 Dec)",done:false},
+  {text:"Cancel Waterfront Lodge Hobart and check refund (free cancel before 1 Dec)",done:false},
+  {text:"Check Regatta Grounds free parking and shuttle at hobartcity.com.au",done:false},
+  {text:"Check Mt Wellington road status at wellingtonpark.tas.gov.au",done:false},
+  {text:"Optional: book East Coast Natureworld Devils in the Dark (1 Jan)",done:false},
+  {text:"Call Glengarry Bush Maze and confirm Penny Royal open (4 Jan)",done:false},
+  {text:"Install My Aurora Forecast and SpaceWeatherLive, set Kp 4+ alerts",done:false},
+  {text:"Pack warm jacket, beanie and gloves for Gordon River and Bruny cruises",done:false},
+  {text:"Keep booking confirmations handy (Spirit #15839536 and all stays)",done:false},
 ];
 const DEFAULT_DAYBEFORE = [
-  {text:"Confirm all bookings",done:false},{text:"Pack hand luggage",done:false},
-  {text:"Set alarms",done:false},{text:"Prepare snacks for travel",done:false},
-  {text:"Check transport to airport/station",done:false},{text:"Iron and lay out clothes",done:false},
-  {text:"Charge phone and devices",done:false},{text:"Print or download tickets",done:false},
+  {text:"Check tomorrow's check-in and checkout times",done:false},
+  {text:"Buy groceries for next stop (see day notes)",done:false},
+  {text:"Pack cooler and vegetarian lunch for tour days",done:false},
+  {text:"Charge devices and pack red torch for penguin viewing (Bicheno)",done:false},
+  {text:"Set alarm for early departure (Strahan 8am, Gordon 8:15am, Bruny 8:30am)",done:false},
+  {text:"Lay out warm layers for cold water tours",done:false},
+  {text:"Check ferry check-in closes 45 mins before departure (Spirit 18:45)",done:false},
+  {text:"Fill fuel in the CX-9",done:false},
 ];
 const DEFAULT_ENDTRIP = [
-  {text:"Check out of accommodation",done:false},{text:"Return hire car",done:false},
-  {text:"Collect all belongings from room",done:false},{text:"Settle any outstanding bills",done:false},
-  {text:"Back up photos",done:false},{text:"Unpack and do laundry",done:false},
-  {text:"Write trip notes / journal",done:false},{text:"Thank hosts / leave reviews",done:false},
+  {text:"Check out of each stay and collect belongings",done:false},
+  {text:"Check the cabin or cottage for left items",done:false},
+  {text:"Back up photos from the trip",done:false},
+  {text:"Keep receipts and confirmation numbers for the trip record",done:false},
+  {text:"Write trip notes and what to repeat next time",done:false},
+  {text:"Check Waterfront Lodge refund received",done:false},
+  {text:"Wagga Wagga return: arrive 6 Jan and drive home to Cherrybrook",done:false},
 ];
+
+// ── Day itinerary seeds (used only for days with no saved data yet) ──
+const SEED_DAYS = {
+  "Sun 20 Dec 2026": ["Drive Sydney (Cherrybrook) to Wagga Wagga, about 5 hrs","Wagga Wagga Tourist Park, check-in 14:00 to 19:00 (AUD 134.45)"],
+  "Mon 21 Dec 2026": ["Drive Wagga Wagga to friend's place near Geelong, about 5 hrs","Early checkout window 02:30 to 10:00"],
+  "Tue 22 Dec 2026": ["Drive to Station Pier / North Geelong terminal","Spirit of Tasmania #15839536, depart 18:45 (check-in closes 45 mins before)","Mazda CX-9 in vehicle deck, porthole cabin for 4"],
+  "Wed 23 Dec 2026": ["Arrive Devonport 06:30","Woolworths Devonport (Rooke St), stock up for 2 nights","Drive to Cradle Mountain, about 1.5 hrs","Buy National Park Pass AUD 85 at Visitor Centre","Enchanted Walk (20 min, flat)","Wombat spotting at dusk","Discovery Resorts Cradle Mountain, #J-6606630"],
+  "Thu 24 Dec 2026": ["Free shuttle Visitor Centre to Dove Lake","Marion's Lookout (10 min)","Lake Lilla shoreline walk (15 min, flat)","Christmas Eve dinner at cabin","Pack all food for Christmas Day (shops closed)"],
+  "Fri 25 Dec 2026": ["Drive Cradle Mountain to Queenstown (drive-through stops)","Horsetail Falls (car stop, 5 min)","Ivan Blow Lookout (2 min walk)","Spion Kopf Lookout and Queenstown Oval drive-past","Drive to Strahan, about 45 mins","Strahan IGA groceries for 3 nights","Christmas dinner at cottage","Strahan Beach Tourist Park, Double's Suite"],
+  "Sat 26 Dec 2026": ["Ocean Beach and sand dunes (go early, sand gets hot)","Macquarie Harbour foreshore walk (15 min, flat)","Lunch at cottage","Hells Gate Lookout (short drive)","Sunset from Strahan waterfront (10 min walk)"],
+  "Sun 27 Dec 2026": ["Gordon River Cruise, depart 8:15am, about 6 hrs (booked)","Sarah Island, ancient Huon Pines, rainforest boardwalk, lighthouse","Bring packed vegetarian lunch and warm layers","Sunset from Strahan waterfront","Pack up for the big drive tomorrow"],
+  "Mon 28 Dec 2026": ["Leave Strahan by 8am (about 5.5 hrs driving)","Lake St Clair lakeside path (15 min, flat)","Russell Falls, Mt Field (20 min return, flat sealed path)","Tall Trees walk (15 min, flat loop)","Coles or Woolworths Hobart, big grocery run for 4 nights","Check in Hobart Bush Cabins Kingston, 14:00 to 20:00"],
+  "Tue 29 Dec 2026": ["Leave Kingston 8:30am","SeaLink ferry from Kettering about 8:50am (NOT YET BOOKED)","The Neck Reserve, steps to lookout (10 min)","Drive to Adventure Bay (30 min)","Bruny Island Wilderness Cruise, 11:00am, 3 hrs (booked)","Bring warm jacket, beanie, gloves and packed lunch","Return ferry about 4:30pm","Cook dinner at cabin"],
+  "Wed 30 Dec 2026": ["Tasman Arch viewpoint (5 to 10 min)","Devils Kitchen viewpoint (5 to 10 min)","Port Arthur Historic Site (allow 4 hrs, booked)","Harbour cruise, 2:45pm slot (booked)","Leave Port Arthur by 5pm","Cook dinner at cabin"],
+  "Thu 31 Dec 2026": ["MONA, 11:00am timed entry (booked, allow 3 hrs)","Regatta Grounds free parking and free shuttle (confirm at hobartcity.com.au)","City walk: Constitution Dock, Jones Boat Shed, Parliament House, Franklin Square, St David's Cathedral","Salamanca Arts Centre, Kelly's Steps, Battery Point","Dinner at The Saffron, 15 Hunter St (NOT YET BOOKED)","NYE family fireworks, 9:30pm, Sullivan's Cove","Free shuttle back to Regatta Grounds, drive to Kingston by about 10:30pm"],
+  "Fri 01 Jan 2027": ["Late checkout at Kingston","Drive to Bicheno, about 2 hrs","Bicheno Blowhole (20 min, flat coastal path)","Rock pools at low tide","Whalers Lookout (15 min, flat)","Bicheno IGA groceries for Bicheno and Freycinet","Redbill Beach penguins from about 8:30pm (red torch, no white lights)","Optional: East Coast Natureworld Devils in the Dark (not booked)","Wintersun Motel Bicheno, 35 Gordon St"],
+  "Sat 02 Jan 2027": ["Freycinet: Cape Tourville Lighthouse (10 min boardwalk)","Wineglass Bay Lookout (35 min return)","Honeymoon Bay, Sleepy Bay, Richardson's Beach","Drive to St Helens, about 1.5 hrs","Binalong Bay sunset on the orange rocks","Kellraine Holiday Units, 72 Tully St (full kitchen)"],
+  "Sun 03 Jan 2027": ["Bay of Fires morning: Binalong Bay, The Gardens, Swimcart Beach","St Helens coffee stop","Drive to Launceston, about 2 hrs","Cataract Gorge (chairlift, pool, peacocks)","Alexandra Suspension Bridge (20 min flat walk)","City Park: monkey enclosure, fountain","Optional: Tamar Island Wetlands, Grindelwald Swiss Village","Dinner at Bengal Tiger or Hari's Curry (Wellington St)","Discovery Parks Hadspen, cabin sleeps 6"],
+  "Mon 04 Jan 2027": ["Optional: Penny Royal Adventures (confirm open)","Optional: Bridestowe Lavender Farm (peak bloom, if sailing 7pm or later)","Optional: Glengarry Bush Maze (call before going)","Woolworths Launceston, stock up for ferry","Drive to Devonport, about 1.5 hrs","Spirit of Tasmania #15839536, depart 18:45"],
+  "Tue 05 Jan 2027": ["Arrive Geelong 06:30","Drive to friend's place (about 1 hr), lunch with friends","Drive to Wagga Wagga, about 5 hrs","Centralpoint Motel Wagga Wagga, 164 Tarcutta St"],
+  "Wed 06 Jan 2027": ["Morning checkout (10:00)","Drive Wagga Wagga to Cherrybrook / Sydney, about 4.5 hrs"]
+};
 
 // ── Load / save helpers ──
 function loadDays(){
+  let obj = {};
   const r = _cget(DAY_KEY);
-  if(r) return JSON.parse(r);
-  const obj={}; ALL_DAYS.forEach(d=>obj[d]=[]); return obj;
+  if(r){ try { obj = JSON.parse(r) || {}; } catch(e){ obj = {}; } }
+  ALL_DAYS.forEach(d=>{
+    if(!obj[d]) obj[d] = (SEED_DAYS[d] || []).map(t=>({text:t, done:false}));
+  });
+  return obj;
 }
 function saveDays(d){ _cset(DAY_KEY, JSON.stringify(d)); }
 
@@ -2146,7 +2133,7 @@ window.tasToggleWeek = function(weekId){
 // ── Restore collapse + active day state on load ──
 function restoreCollapseState(){
   const wState = loadWeekState();
-  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
     if(wState[wid]){
       const body = document.getElementById(wid+'-body');
       const toggle = document.getElementById(wid+'-toggle');
@@ -2156,7 +2143,7 @@ function restoreCollapseState(){
   });
   // Restore active day per week (saved day key)
   const dState = loadDayState();
-  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
     const strip = document.getElementById(wid+'-strip');
     if(!strip) return;
     const tabs = [...strip.querySelectorAll('.tas-day-tab')];
@@ -2305,7 +2292,7 @@ function renderDayContent(weekId, dayKey){
 
 // ── Render all active day tabs on load ──
 function renderDays(){
-  ['tas-week-1','tas-week-2','tas-week-3','tas-week-4'].forEach(wid=>{
+  ['tas-week-1','tas-week-2','tas-week-3'].forEach(wid=>{
     const activeDay = _activeDayPerWeek[wid];
     if(activeDay) renderDayContent(wid, activeDay);
   });
