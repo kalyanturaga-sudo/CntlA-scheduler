@@ -436,6 +436,20 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
 .road-label::before { display:none; }
 .road-map-note { font-size:12px; color:#6b6970; margin-top:8px; }
 
+
+.route-status{font-size:13px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);margin:0 0 10px;color:var(--text2)}
+.route-validation{font-size:13px;padding:10px 12px;border:1px solid #e7c98b;border-radius:8px;background:#fff8e9;color:#694a11;margin:0 0 12px;display:none}
+.route-validation ul{margin:6px 0 0;padding-left:20px}.route-list-title{font-size:16px;margin:18px 0 8px}
+.map-list{columns:1!important;max-height:none!important}.map-list li{padding:6px 0;border-bottom:1px solid var(--border)}
+.map-list .route-meta{color:var(--text2);font-size:12px}.map-list a{margin-right:10px;color:var(--accent);font-weight:600}
+.route-warning{color:#9a5b00;font-weight:600}.route-ok{color:#23643a;font-weight:600}
+@media(min-width:1000px){.map-list{columns:2!important}}
+
+
+.friend-location-tools{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:12px;margin:0 0 12px;display:grid;gap:8px}
+.friend-location-row{display:flex;gap:8px;flex-wrap:wrap}.friend-location-row input{flex:1;min-width:240px;padding:9px 10px;border:1px solid var(--border);border-radius:7px;font:inherit;background:var(--surface2);color:var(--text)}
+.friend-location-row button{padding:9px 12px;border:1px solid var(--border);border-radius:7px;background:var(--accent);color:#fff;font:inherit;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -650,12 +664,12 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <div class="header">
         <div class="header-left">
           <h1>Road Trip · Drive Schedule</h1>
-          <div class="subtitle">20 Dec 2026 – 6 Jan 2027 · Mazda CX-9 · Change a start time and the arrival updates</div>
+          <div class="subtitle">20 Dec 2026 – 6 Jan 2027 · Mazda CX-9 · Edit a start time; arrival/calendar update and your changes are saved in this browser</div>
         </div>
       </div>
       <div class="road-toolbar">
         <button id="road-reset" type="button">Reset start times to defaults</button>
-        <span class="legend">Arrival = start time + approx drive time. Sea crossings show the booked arrival time.</span>
+        <span class="legend">Arrival = start time + estimated duration. Edits save locally in this browser. Ferry times must be checked against your booking; Bruny ferry times are illustrative until booked.</span>
       </div>
       <div class="wrap">
         <table>
@@ -667,7 +681,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
           <tbody id="road-rows"></tbody>
         </table>
       </div>
-      <div class="road-map-note">Start times tagged proposed are suggestions. Planned comes from your itinerary notes. Booked is fixed by a booking. Drive times and distances are estimates, so check them in Google Maps.</div>
+      <div class="road-map-note">Proposed/planned times are estimates; booked sailing times should match the booking confirmation. Changes are saved in this browser only. Road distances and durations are routing estimates, not live traffic. Ferry times and the friend's address still need confirmation.</div>
     </div>
   </div>
 
@@ -694,7 +708,7 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
       <div class="header">
         <div class="header-left">
           <h1>Road Trip · Map</h1>
-          <div class="subtitle">One route, 20 Dec to 6 Jan, labelled by date</div>
+          <div class="subtitle">Road-following routes where available · 20 Dec 2026 to 6 Jan 2027</div>
         </div>
       </div>
       <div class="road-toolbar">
@@ -702,9 +716,17 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
         <button id="road-fit-all" type="button">Show whole route</button>
         <span class="key"><i></i>Drive</span><span class="key"><i class="sea"></i>Ferry</span>
       </div>
+      <div class="friend-location-tools">
+        <label for="friend-address-input"><strong>Friend's place near Geelong — exact address</strong></label>
+        <div class="friend-location-row"><input id="friend-address-input" type="text" autocomplete="street-address" placeholder="Enter full street address, suburb and postcode"><button id="friend-address-apply" type="button">Locate and save</button></div>
+        <div id="friend-address-status" class="route-meta" role="status" aria-live="polite">The source file did not contain this address. Until you enter it, those two road legs are not routed.</div>
+      </div>
+      <div id="road-map-status" class="route-status" role="status" aria-live="polite">Preparing routes…</div>
+      <div id="road-validation" class="route-validation" aria-live="polite"></div>
       <div id="road-map-canvas"></div>
+      <h3 class="route-list-title">Route legs and navigation</h3>
       <ol class="map-list" id="road-maplist"></ol>
-      <div class="road-map-note">Each pin is labelled with the date you are there. Pins at the same place are merged. Straight lines between stops are approximate, not road routes. Pins are placed from memory, so check them. The Friend's place stay near Geelong is not pinned.</div>
+      <div class="road-map-note">Road lines are requested from the OSRM routing service and require an internet connection. If routing fails, a straight-line fallback is clearly labelled. Route estimates do not include live traffic, road closures, parking, breaks or ferry queues. Use the navigation links for current directions. Enter the friend's full address in the field above to geocode and save it locally; until then, related road legs remain unrouted. The map requires internet access and does not include live traffic or closures.</div>
     </div>
   </div>
 
@@ -1947,33 +1969,36 @@ _onAuth(async () => {
 (function(){
 "use strict";
 const TRIPS = [
-  { day:"Sun", date:"20 Dec 2026", from:"Cherrybrook, Sydney", start:"08:00", tag:"proposed", mins:300, km:"~470", to:"Wagga Wagga", cin:"14:00 to 19:00", cout:"02:30 to 10:00 (21 Dec)", stay:"Wagga Wagga Tourist Park, 16 Allonby Ave, Forest Hill" },
-  { day:"Mon", date:"21 Dec 2026", from:"Wagga Wagga", start:"08:00", tag:"proposed", mins:300, km:"~520", to:"Friend's place, near Geelong", cin:"Not stated", cout:"Not stated", stay:"Friend's place, about 1 hr from Geelong" },
-  { day:"Tue", date:"22 Dec 2026", from:"Friend's place", start:"14:00", tag:"proposed", mins:60, km:"~80", to:"Geelong terminal, North Geelong", cin:"-", cout:"-", stay:"Spirit of Tasmania (overnight)" },
-  { day:"Tue", date:"22 Dec 2026", from:"Geelong terminal (sailing)", start:"18:45", tag:"booked", mins:705, km:"Sea crossing", to:"Devonport terminal", cin:"Boards 18:45", cout:"Arrives 06:30 (23 Dec)", stay:"Spirit of Tasmania, booking #15839536", sea:true },
-  { day:"Wed", date:"23 Dec 2026", from:"Devonport terminal", start:"08:30", tag:"proposed", mins:90, km:"~100", to:"Cradle Mountain", cin:"Not stated", cout:"Not stated (until 25 Dec)", stay:"Discovery Resorts Cradle Mountain" },
-  { day:"Fri", date:"25 Dec 2026", from:"Cradle Mountain", start:"08:30", tag:"proposed", mins:120, km:"~100", to:"Queenstown (drive-through)", cin:"Not stated", cout:"Not stated (until 28 Dec)", stay:"Strahan Beach Tourist Park" },
-  { day:"Fri", date:"25 Dec 2026", from:"Queenstown", start:"11:00", tag:"proposed", mins:45, km:"~40", to:"Strahan", cin:"Not stated", cout:"Not stated (until 28 Dec)", stay:"Strahan Beach Tourist Park" },
-  { day:"Mon", date:"28 Dec 2026", from:"Strahan", start:"08:00", tag:"planned", mins:150, km:"~170", to:"Lake St Clair", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Mon", date:"28 Dec 2026", from:"Lake St Clair", start:"10:30", tag:"proposed", mins:90, km:"~130", to:"Mt Field", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Mon", date:"28 Dec 2026", from:"Mt Field", start:"12:30", tag:"proposed", mins:90, km:"~80", to:"Kingston", cin:"14:00 to 20:00", cout:"07:00 to 10:00 (1 Jan)", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Tue", date:"29 Dec 2026", from:"Kingston", start:"08:30", tag:"planned", mins:20, km:"~25", to:"Kettering ferry terminal", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Tue", date:"29 Dec 2026", from:"Roberts Point, Bruny Island", start:"09:05", tag:"proposed", mins:30, km:"~35", to:"Adventure Bay", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Tue", date:"29 Dec 2026", from:"Adventure Bay", start:"16:15", tag:"proposed", mins:50, km:"~60", to:"Kingston, after return ferry", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Wed", date:"30 Dec 2026", from:"Kingston", start:"09:00", tag:"proposed", mins:75, km:"~100", to:"Port Arthur", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Wed", date:"30 Dec 2026", from:"Port Arthur", start:"17:00", tag:"planned", mins:75, km:"~100", to:"Kingston", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Thu", date:"31 Dec 2026", from:"Kingston", start:"10:00", tag:"proposed", mins:25, km:"~25", to:"MONA", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Thu", date:"31 Dec 2026", from:"MONA", start:"14:00", tag:"proposed", mins:10, km:"~10", to:"Regatta Grounds, Hobart", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Thu", date:"31 Dec 2026", from:"Regatta Grounds", start:"21:00", tag:"proposed", mins:25, km:"~25", to:"Kingston", cin:"-", cout:"-", stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd" },
-  { day:"Fri", date:"1 Jan 2027", from:"Kingston", start:"10:00", tag:"proposed", mins:120, km:"~200", to:"Bicheno", cin:"14:00 to 20:00", cout:"Until 10:00 (2 Jan)", stay:"Wintersun Motel Bicheno, 35 Gordon St" },
-  { day:"Sat", date:"2 Jan 2027", from:"Bicheno", start:"08:00", tag:"proposed", mins:45, km:"~35", to:"Freycinet (Coles Bay)", cin:"14:00 to 19:00", cout:"Until 10:00 (3 Jan)", stay:"Kellraine Holiday Units, 72 Tully St, St Helens" },
-  { day:"Sat", date:"2 Jan 2027", from:"Freycinet", start:"15:00", tag:"proposed", mins:90, km:"~120", to:"St Helens", cin:"14:00 to 19:00", cout:"Until 10:00 (3 Jan)", stay:"Kellraine Holiday Units, 72 Tully St, St Helens" },
-  { day:"Sun", date:"3 Jan 2027", from:"St Helens", start:"08:30", tag:"proposed", mins:135, km:"~190", to:"Launceston, via Binalong Bay", cin:"14:00", cout:"10:00 (4 Jan)", stay:"Discovery Parks Hadspen, 9 Main St, Launceston" },
-  { day:"Mon", date:"4 Jan 2027", from:"Launceston", start:"11:00", tag:"proposed", mins:90, km:"~100", to:"Devonport terminal", cin:"-", cout:"-", stay:"Spirit of Tasmania (overnight)" },
-  { day:"Mon", date:"4 Jan 2027", from:"Devonport terminal (sailing)", start:"18:45", tag:"booked", mins:705, km:"Sea crossing", to:"Geelong terminal", cin:"Boards 18:45", cout:"Arrives 06:30 (5 Jan)", stay:"Spirit of Tasmania, booking #15839536", sea:true },
-  { day:"Tue", date:"5 Jan 2027", from:"Geelong terminal", start:"06:45", tag:"proposed", mins:60, km:"~80", to:"Friend's place", cin:"14:00 to 20:00", cout:"Until 10:00 (6 Jan)", stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St" },
-  { day:"Tue", date:"5 Jan 2027", from:"Friend's place", start:"13:00", tag:"proposed", mins:300, km:"~520", to:"Wagga Wagga", cin:"14:00 to 20:00", cout:"Until 10:00 (6 Jan)", stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St" },
-  { day:"Wed", date:"6 Jan 2027", from:"Wagga Wagga", start:"10:00", tag:"proposed", mins:270, km:"~470", to:"Cherrybrook, Sydney", cin:"-", cout:"10:00", stay:"Home, Cherrybrook" }
+  {day:"Sun",date:"20 Dec 2026",from:"Cherrybrook, Sydney",fromId:"syd",start:"08:00",tag:"proposed",mins:300,km:"~470",to:"Wagga Wagga Tourist Park",toId:"wagpark",cin:"14:00–19:00",cout:"02:30–10:00 (21 Dec)",stay:"Wagga Wagga Tourist Park, 16 Allonby Ave, Forest Hill",kind:"drive"},
+  {day:"Mon",date:"21 Dec 2026",from:"Wagga Wagga Tourist Park",fromId:"wagpark",start:"08:00",tag:"proposed",mins:300,km:"~520",to:"Friend's place near Geelong (approx.)",toId:"friend",cin:"Confirm with host",cout:"Confirm with host",stay:"Friend's place — exact address not provided",kind:"drive"},
+  {day:"Tue",date:"22 Dec 2026",from:"Friend's place near Geelong (approx.)",fromId:"friend",start:"14:00",tag:"proposed",mins:60,km:"~80",to:"Spirit of Tasmania Geelong terminal",toId:"gee",cin:"Check-in closes about 18:00; verify ticket",cout:"",stay:"Spirit of Tasmania booking #15839536",kind:"drive"},
+  {day:"Tue",date:"22 Dec 2026",from:"Geelong terminal — sailing",fromId:"gee",start:"18:45",tag:"booked",mins:705,km:"Sea crossing",to:"Devonport terminal",toId:"dev",cin:"18:45 sailing; verify booking",cout:"Arrives 06:30 (23 Dec; verify ticket)",stay:"Spirit of Tasmania, booking #15839536",kind:"sea",sea:true},
+  {day:"Wed",date:"23 Dec 2026",from:"Devonport terminal (112 Wright St)",fromId:"dev",start:"08:30",tag:"proposed",mins:90,km:"~100",to:"Discovery Resorts, Cradle Mountain",toId:"cra",cin:"Not stated",cout:"Not stated (until 25 Dec)",stay:"Discovery Resorts Cradle Mountain",kind:"drive"},
+  {day:"Fri",date:"25 Dec 2026",from:"Cradle Mountain",fromId:"cra",start:"08:00",tag:"proposed",mins:150,km:"~100",to:"Queenstown (drive-through)",toId:"que",cin:"Not stated",cout:"Not stated (until 28 Dec)",stay:"Strahan Beach Tourist Park",kind:"drive"},
+  {day:"Fri",date:"25 Dec 2026",from:"Queenstown (drive-through)",fromId:"que",start:"11:30",tag:"proposed",mins:45,km:"~40",to:"Strahan",toId:"str",cin:"Not stated",cout:"Not stated (until 28 Dec)",stay:"Strahan Beach Tourist Park",kind:"drive"},
+  {day:"Mon",date:"28 Dec 2026",from:"Strahan",fromId:"str",start:"07:00",tag:"planned",mins:150,km:"~170",to:"Lake St Clair",toId:"lsc",cin:"14:00–20:00",cout:"07:00–10:00 (1 Jan)",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Mon",date:"28 Dec 2026",from:"Lake St Clair",fromId:"lsc",start:"10:45",tag:"proposed",mins:120,km:"~130",to:"Mt Field (Russell Falls / Tall Trees)",toId:"mtf",cin:"14:00–20:00",cout:"07:00–10:00 (1 Jan)",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Mon",date:"28 Dec 2026",from:"Mt Field",fromId:"mtf",start:"14:30",tag:"proposed",mins:90,km:"~80",to:"Kingston",toId:"kin",cin:"14:00–20:00",cout:"07:00–10:00 (1 Jan)",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Tue",date:"29 Dec 2026",from:"Kingston",fromId:"kin",start:"08:00",tag:"planned",mins:20,km:"~25",to:"Kettering ferry terminal",toId:"ket",cin:"Arrive early for vehicle queue",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Tue",date:"29 Dec 2026",from:"Kettering ferry terminal",fromId:"ket",start:"09:00",tag:"planned",mins:15,km:"Ferry",to:"Roberts Point, Bruny Island",toId:"rob",cin:"TIMETABLE NOT CONFIRMED",cout:"",stay:"SeaLink Bruny crossing — NOT BOOKED; time is illustrative",kind:"sea",sea:true},
+  {day:"Tue",date:"29 Dec 2026",from:"Roberts Point, Bruny Island",fromId:"rob",start:"09:30",tag:"proposed",mins:30,km:"~35",to:"Adventure Bay",toId:"adv",cin:"Cruise booked for 11:00",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Tue",date:"29 Dec 2026",from:"Adventure Bay",fromId:"adv",start:"15:45",tag:"proposed",mins:30,km:"~35",to:"Roberts Point, Bruny Island",toId:"rob",cin:"Return ferry time TBC",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Tue",date:"29 Dec 2026",from:"Roberts Point, Bruny Island",fromId:"rob",start:"16:45",tag:"planned",mins:15,km:"Ferry",to:"Kettering ferry terminal",toId:"ket",cin:"TIMETABLE NOT CONFIRMED",cout:"",stay:"SeaLink Bruny return crossing — NOT BOOKED; time is illustrative",kind:"sea",sea:true},
+  {day:"Tue",date:"29 Dec 2026",from:"Kettering ferry terminal",fromId:"ket",start:"17:15",tag:"proposed",mins:20,km:"~25",to:"Kingston",toId:"kin",cin:"",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Wed",date:"30 Dec 2026",from:"Kingston",fromId:"kin",start:"09:00",tag:"proposed",mins:75,km:"~100",to:"Port Arthur Historic Site",toId:"pa",cin:"Harbour cruise 14:45",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Wed",date:"30 Dec 2026",from:"Port Arthur Historic Site",fromId:"pa",start:"17:00",tag:"planned",mins:75,km:"~100",to:"Kingston",toId:"kin",cin:"",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Thu",date:"31 Dec 2026",from:"Kingston",fromId:"kin",start:"10:00",tag:"proposed",mins:25,km:"~25",to:"MONA, Berriedale",toId:"mona",cin:"11:00 timed entry",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Thu",date:"31 Dec 2026",from:"MONA, Berriedale",fromId:"mona",start:"14:00",tag:"proposed",mins:10,km:"~10",to:"Regatta Grounds, Hobart",toId:"regatta",cin:"Confirm parking/shuttle plan",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Thu",date:"31 Dec 2026",from:"Regatta Grounds (after fireworks/shuttle)",fromId:"regatta",start:"22:15",tag:"proposed",mins:25,km:"~25",to:"Kingston",toId:"kin",cin:"After fireworks; allow traffic delay",cout:"",stay:"Hobart Bush Cabins Kingston, 330 Proctors Rd",kind:"drive"},
+  {day:"Fri",date:"1 Jan 2027",from:"Kingston",fromId:"kin",start:"10:00",tag:"proposed",mins:150,km:"~200",to:"Wintersun Motel, Bicheno",toId:"bic",cin:"14:00–20:00",cout:"Until 10:00 (2 Jan)",stay:"Wintersun Motel Bicheno, 35 Gordon St",kind:"drive"},
+  {day:"Sat",date:"2 Jan 2027",from:"Bicheno",fromId:"bic",start:"08:00",tag:"proposed",mins:45,km:"~35",to:"Coles Bay / Freycinet entrance",toId:"fre",cin:"14:00–19:00",cout:"Until 10:00 (3 Jan)",stay:"Kellraine Holiday Units, 72 Tully St, St Helens",kind:"drive"},
+  {day:"Sat",date:"2 Jan 2027",from:"Coles Bay / Freycinet",fromId:"fre",start:"15:00",tag:"proposed",mins:90,km:"~120",to:"Kellraine Holiday Units, St Helens",toId:"sth",cin:"14:00–19:00",cout:"Until 10:00 (3 Jan)",stay:"Kellraine Holiday Units, 72 Tully St, St Helens",kind:"drive"},
+  {day:"Sun",date:"3 Jan 2027",from:"St Helens",fromId:"sth",start:"10:00",tag:"proposed",mins:135,km:"~190",to:"Discovery Parks Hadspen",toId:"lau",cin:"Confirm check-in time",cout:"10:00 (4 Jan)",stay:"Discovery Parks Hadspen, 9 Main St, Hadspen",kind:"drive"},
+  {day:"Mon",date:"4 Jan 2027",from:"Discovery Parks Hadspen",fromId:"lau",start:"13:00",tag:"proposed",mins:90,km:"~100",to:"Devonport terminal (112 Wright St)",toId:"dev",cin:"Check-in closes about 18:00; verify ticket",cout:"",stay:"Spirit of Tasmania (overnight)",kind:"drive"},
+  {day:"Mon",date:"4 Jan 2027",from:"Devonport terminal — sailing",fromId:"dev",start:"18:45",tag:"booked",mins:705,km:"Sea crossing",to:"Geelong terminal",toId:"gee",cin:"18:45 sailing; verify booking",cout:"Arrives 06:30 (5 Jan; verify ticket)",stay:"Spirit of Tasmania, booking #15839536",kind:"sea",sea:true},
+  {day:"Tue",date:"5 Jan 2027",from:"Geelong terminal",fromId:"gee",start:"08:00",tag:"proposed",mins:60,km:"~80",to:"Friend's place (approx.)",toId:"friend",cin:"Confirm with host",cout:"",stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St",kind:"drive"},
+  {day:"Tue",date:"5 Jan 2027",from:"Friend's place (approx.)",fromId:"friend",start:"13:00",tag:"proposed",mins:300,km:"~520",to:"Centralpoint Motel, Wagga Wagga",toId:"wagmotel",cin:"14:00–20:00",cout:"Until 10:00 (6 Jan)",stay:"Centralpoint Motel Wagga Wagga, 164 Tarcutta St",kind:"drive"},
+  {day:"Wed",date:"6 Jan 2027",from:"Wagga Wagga",fromId:"wagmotel",start:"10:00",tag:"proposed",mins:270,km:"~470",to:"Cherrybrook, Sydney",toId:"syd",cin:"",cout:"10:00",stay:"Home, Cherrybrook",kind:"drive"}
 ];
 
 function toMinutes(hhmm){ const [h,m]=hhmm.split(":").map(Number); return h*60+m; }
@@ -1992,6 +2017,9 @@ function formatDuration(mins){
 
 /* ---------- Schedule ---------- */
 const tbody=document.getElementById("road-rows");
+const ROAD_TIME_KEY = "TRIP_PLANNERS_ROAD_STARTS_V2";
+function readRoadTimes(){ try { return JSON.parse(localStorage.getItem(ROAD_TIME_KEY)||"{}"); } catch(e){ return {}; } }
+function saveRoadTimes(){ const out={}; tbody.querySelectorAll("input[data-idx]").forEach(inp=>{out[inp.dataset.idx]=inp.value;}); try { localStorage.setItem(ROAD_TIME_KEY,JSON.stringify(out)); } catch(e){} }
 function updateArrival(i){
   const t=TRIPS[i];
   const input=tbody.querySelector(`input[data-idx="${i}"]`);
@@ -2003,11 +2031,13 @@ function buildRows(){
   TRIPS.forEach((t,i)=>{
     const tr=document.createElement("tr");
     if(t.sea) tr.className="sea";
+    const savedTimes=readRoadTimes();
+    const savedStart=savedTimes[i] || t.start;
     tr.innerHTML=`
       <td>${t.day}</td><td>${t.date}</td><td>${t.from}</td>
-      <td><input type="time" value="${t.start}" data-idx="${i}" aria-label="Start time">
+      <td><input type="time" value="${savedStart}" data-idx="${i}" aria-label="Start time">
           <span class="tag ${t.tag}">${t.tag}</span></td>
-      <td>${formatDuration(t.mins)}</td><td>${t.km}</td>
+      <td id="road-duration-${i}">${formatDuration(t.mins)}</td><td id="road-km-${i}">${t.km}</td>
       <td class="arr" id="road-arr-${i}"></td>
       <td>${t.to}</td><td>${t.cin}</td><td>${t.cout}</td><td>${t.stay}</td>`;
     tbody.appendChild(tr);
@@ -2015,14 +2045,16 @@ function buildRows(){
   });
 }
 tbody.addEventListener("input", e=>{
-  if(e.target.matches("input[type=time]")){ updateArrival(Number(e.target.dataset.idx)); renderCalendar(); }
+  if(e.target.matches("input[type=time]")){ updateArrival(Number(e.target.dataset.idx)); saveRoadTimes(); renderCalendar(); renderValidation(); document.querySelectorAll("#road-maplist li[data-trip-index]").forEach(li=>{const i=Number(li.dataset.tripIndex),label=li.querySelector(".route-start");if(label)label.textContent="start "+getStart(i);}); }
 });
 document.getElementById("road-reset").addEventListener("click", ()=>{
   tbody.querySelectorAll("input[type=time]").forEach(inp=>{
     inp.value=TRIPS[Number(inp.dataset.idx)].start;
     updateArrival(Number(inp.dataset.idx));
   });
-  renderCalendar();
+  try { localStorage.removeItem(ROAD_TIME_KEY); } catch(e){}
+  renderCalendar(); renderValidation();
+  document.querySelectorAll("#road-maplist li[data-trip-index]").forEach(li=>{const i=Number(li.dataset.tripIndex),label=li.querySelector(".route-start");if(label)label.textContent="start "+getStart(i);});
 });
 
 /* ---------- Calendar ---------- */
@@ -2065,94 +2097,171 @@ function renderCalendar(){
   }
 }
 
-/* ---------- Map ---------- */
+/* ---------- Map: routes derive from the same TRIPS data as schedule/calendar ---------- */
 const PINS=[
- {id:"syd",lat:-33.73,lng:151.03,label:"20 Dec · 6 Jan",dir:"right",tas:false,name:"Cherrybrook, Sydney",notes:"Start 20 Dec. Home 6 Jan."},
- {id:"wag",lat:-35.12,lng:147.36,label:"20 Dec · 5 to 6 Jan",dir:"left",tas:false,name:"Wagga Wagga (Tourist Park and Centralpoint Motel)",notes:"Night 20 Dec and night 5 Jan."},
- {id:"gee",lat:-38.10,lng:144.36,label:"22 Dec · 5 Jan",dir:"left",tas:false,name:"Geelong terminal (Spirit of Tasmania)",notes:"Board 22 Dec 18:45. Arrive 5 Jan 06:30. Friend's place stays not pinned."},
- {id:"dev",lat:-41.17,lng:146.37,label:"23 Dec · 4 Jan",dir:"right",tas:true,name:"Devonport terminal",notes:"Arrive 23 Dec 06:30. Board 4 Jan 18:45."},
- {id:"cra",lat:-41.68,lng:145.94,label:"23 to 25 Dec",dir:"left",tas:true,name:"Cradle Mountain (Discovery Resorts)",notes:"Nights 23 to 25 Dec. Buy Park Pass here."},
- {id:"que",lat:-42.08,lng:145.55,label:"25 Dec",dir:"top",tas:true,name:"Queenstown (drive-through)",notes:"Lookouts only on Christmas Day."},
- {id:"str",lat:-42.15,lng:145.33,label:"25 to 28 Dec",dir:"left",tas:true,name:"Strahan Beach Tourist Park",notes:"Nights 25 to 28 Dec. Gordon River cruise 27 Dec."},
- {id:"lsc",lat:-42.12,lng:146.18,label:"28 Dec",dir:"top",tas:true,name:"Lake St Clair",notes:"Lakeside walk on the drive to Kingston."},
- {id:"mtf",lat:-42.68,lng:146.68,label:"28 Dec",dir:"right",tas:true,name:"Mt Field (Russell Falls, Tall Trees)",notes:"Russell Falls and Tall Trees walks."},
- {id:"kin",lat:-42.99,lng:147.30,label:"28 to 31 Dec",dir:"left",tas:true,name:"Hobart Bush Cabins Kingston",notes:"Base 28 Dec to 1 Jan. Day trips return here 29, 30 and 31 Dec."},
- {id:"bru",lat:-43.36,lng:147.32,label:"29 Dec",dir:"bottom",tas:true,name:"Bruny Island (Adventure Bay)",notes:"SeaLink ferry from Kettering (not yet booked). Wilderness cruise 11:00."},
- {id:"pa",lat:-43.15,lng:147.85,label:"30 Dec",dir:"right",tas:true,name:"Port Arthur",notes:"Harbour cruise 14:45. Leave by 17:00."},
- {id:"hob",lat:-42.885,lng:147.345,label:"31 Dec",dir:"right",tas:true,name:"MONA and Hobart waterfront",notes:"MONA 11:00 timed entry. Free parking at Regatta Grounds. NYE fireworks 21:30. The Saffron not yet booked."},
- {id:"bic",lat:-41.87,lng:148.30,label:"1 Jan",dir:"left",tas:true,name:"Bicheno (Wintersun Motel)",notes:"Night 1 Jan. Penguins at Redbill Beach after dark."},
- {id:"fre",lat:-42.13,lng:148.30,label:"2 Jan",dir:"right",tas:true,name:"Freycinet (Wineglass Bay)",notes:"Day trip, covered by Park Pass."},
- {id:"sth",lat:-41.32,lng:148.24,label:"2 to 3 Jan",dir:"left",tas:true,name:"St Helens (Kellraine Holiday Units)",notes:"Nights 2 Jan. Bay of Fires sunset 2 Jan, morning 3 Jan."},
- {id:"lau",lat:-41.52,lng:146.98,label:"3 to 4 Jan",dir:"right",tas:true,name:"Launceston (Discovery Parks Hadspen)",notes:"Night 3 Jan. Cataract Gorge and City Park."}
-];
-const LEGS=[
- {from:"syd",to:"wag",kind:"drive",date:"20 Dec"},
- {from:"wag",to:"gee",kind:"drive",date:"21 to 22 Dec"},
- {from:"gee",to:"dev",kind:"sea",date:"22 Dec, ferry"},
- {from:"dev",to:"cra",kind:"drive",date:"23 Dec"},
- {from:"cra",to:"que",kind:"drive",date:"25 Dec"},
- {from:"que",to:"str",kind:"drive",date:"25 Dec"},
- {from:"str",to:"lsc",kind:"drive",date:"28 Dec"},
- {from:"lsc",to:"mtf",kind:"drive",date:"28 Dec"},
- {from:"mtf",to:"kin",kind:"drive",date:"28 Dec"},
- {from:"kin",to:"bru",kind:"sea",date:"29 Dec, Bruny ferry"},
- {from:"kin",to:"pa",kind:"drive",date:"30 Dec"},
- {from:"kin",to:"hob",kind:"drive",date:"31 Dec"},
- {from:"kin",to:"bic",kind:"drive",date:"1 Jan"},
- {from:"bic",to:"fre",kind:"drive",date:"2 Jan"},
- {from:"fre",to:"sth",kind:"drive",date:"2 Jan"},
- {from:"sth",to:"lau",kind:"drive",date:"3 Jan"},
- {from:"lau",to:"dev",kind:"drive",date:"4 Jan"},
- {from:"dev",to:"gee",kind:"sea",date:"4 Jan, ferry",alt:true},
- {from:"gee",to:"wag",kind:"drive",date:"5 Jan",alt:true},
- {from:"wag",to:"syd",kind:"drive",date:"6 Jan",alt:true}
+ {id:"syd",lat:-33.721,lng:151.045,label:"20 Dec · 6 Jan",dir:"right",tas:false,name:"Cherrybrook, Sydney (suburb centre)",notes:"Approximate suburb marker, not a home address."},
+ {id:"wagpark",lat:-35.15353,lng:147.47779,label:"20 Dec",dir:"left",tas:false,name:"Wagga Wagga Tourist Park",notes:"16 Allonby Avenue, Forest Hill."},
+ {id:"friend",lat:-38.16,lng:144.35,label:"21–22 Dec · 5 Jan",dir:"left",tas:false,name:"Friend's place (approximate placeholder)",notes:"Exact address was not present in the source file. Replace this coordinate before relying on directions or distance."},
+ {id:"gee",lat:-38.101,lng:144.372,label:"22 Dec · 5 Jan",dir:"left",tas:false,name:"Spirit of Tasmania Geelong terminal",notes:"136 Corio Quay Road, North Geelong VIC 3215."},
+ {id:"dev",lat:-41.1705,lng:146.3545,label:"23 Dec · 4 Jan",dir:"right",tas:true,name:"Spirit of Tasmania Devonport terminal",notes:"For sailings after 24 Oct 2026, the operator lists 112 Wright Street, East Devonport. Verify terminal on booking confirmation."},
+ {id:"cra",lat:-41.684,lng:145.94,label:"23–25 Dec",dir:"left",tas:true,name:"Discovery Resorts, Cradle Mountain",notes:"3816 Cradle Mountain Road; confirm which resort entrance applies to the booking."},
+ {id:"que",lat:-42.08,lng:145.55,label:"25 Dec",dir:"top",tas:true,name:"Queenstown (drive-through)",notes:"Lookouts are short stops; allow for the winding road and photo stops."},
+ {id:"str",lat:-42.15,lng:145.33,label:"25–28 Dec",dir:"left",tas:true,name:"Strahan Beach Tourist Park",notes:"Gordon River cruise listed for 27 Dec."},
+ {id:"lsc",lat:-42.12,lng:146.18,label:"28 Dec",dir:"top",tas:true,name:"Lake St Clair visitor area",notes:"Coordinate is approximate for the visitor/lakeside area; confirm intended car park."},
+ {id:"mtf",lat:-42.68,lng:146.72,label:"28 Dec",dir:"right",tas:true,name:"Mount Field National Park visitor area",notes:"Russell Falls and Tall Trees require separate walking time."},
+ {id:"kin",lat:-42.99,lng:147.31,label:"28–31 Dec",dir:"left",tas:true,name:"Hobart Bush Cabins, Kingston",notes:"330 Proctors Road; base for day trips."},
+ {id:"ket",lat:-43.124,lng:147.245,label:"29 Dec",dir:"bottom",tas:true,name:"Kettering ferry terminal",notes:"Arrive early for vehicle loading; Bruny sailing not booked in the source itinerary."},
+ {id:"rob",lat:-43.147,lng:147.296,label:"29 Dec",dir:"bottom",tas:true,name:"Roberts Point ferry terminal, Bruny Island",notes:"Approximate terminal marker. Check the selected SeaLink sailing."},
+ {id:"adv",lat:-43.36,lng:147.32,label:"29 Dec",dir:"right",tas:true,name:"Adventure Bay, Bruny Island",notes:"Wilderness cruise listed for 11:00; return ferry still needs booking."},
+ {id:"pa",lat:-43.15,lng:147.85,label:"30 Dec",dir:"right",tas:true,name:"Port Arthur Historic Site",notes:"Harbour cruise listed for 14:45."},
+ {id:"mona",lat:-42.834,lng:147.296,label:"31 Dec",dir:"left",tas:true,name:"MONA, Berriedale",notes:"11:00 timed entry; this is separate from Hobart waterfront."},
+ {id:"regatta",lat:-42.88,lng:147.32,label:"31 Dec",dir:"right",tas:true,name:"Regatta Grounds, Hobart",notes:"Parking/shuttle arrangement and event-day access must be confirmed."},
+ {id:"waterfront",lat:-42.882,lng:147.331,label:"31 Dec",dir:"top",tas:true,name:"Sullivan's Cove / Hobart waterfront",notes:"City walk and 21:30 fireworks are listed here; this is separate from MONA and the Regatta Grounds. Shuttle transfer is not a driving route."},
+ {id:"bic",lat:-41.87,lng:148.30,label:"1 Jan",dir:"left",tas:true,name:"Wintersun Motel, Bicheno",notes:"35 Gordon Street; penguin viewing at Redbill Beach after dark."},
+ {id:"fre",lat:-42.12,lng:148.24,label:"2 Jan",dir:"right",tas:true,name:"Coles Bay / Freycinet entrance",notes:"Driving destination is Coles Bay/park access, not the remote Wineglass Bay lookout itself."},
+ {id:"sth",lat:-41.316443,lng:148.238844,label:"2–3 Jan",dir:"left",tas:true,name:"Kellraine Holiday Units, St Helens",notes:"72 Tully Street; coordinate source is approximate address geocoding."},
+ {id:"lau",lat:-41.50,lng:147.07,label:"3–4 Jan",dir:"right",tas:true,name:"Discovery Parks Hadspen",notes:"9 Main Street, Hadspen. Coordinate is approximate; use the full address in navigation."},
+ {id:"wagmotel",lat:-35.108,lng:147.362,label:"5 Jan",dir:"left",tas:false,name:"Centralpoint Motel, Wagga Wagga",notes:"164 Tarcutta Street; confirm the exact entrance in navigation."}
 ];
 const PIN_BY_ID={}; PINS.forEach(p=>PIN_BY_ID[p.id]=p);
-
-let leafletMap=null;
-
-function buildMapList(){
-  const ol=document.getElementById("road-maplist");
-  if(!ol) return;
-  ol.innerHTML=PINS.map(p=>`<li><strong>${p.name}</strong> <span class="d">${p.label}</span><br>${p.notes}</li>`).join("");
+const FRIEND_LOCATION_KEY="TRIP_PLANNERS_FRIEND_LOCATION_V1";
+try { const saved=JSON.parse(localStorage.getItem(FRIEND_LOCATION_KEY)||"null"); if(saved && Number.isFinite(Number(saved.lat)) && Number.isFinite(Number(saved.lng))){ const f=PIN_BY_ID.friend; f.lat=Number(saved.lat); f.lng=Number(saved.lng); f.address=saved.address||""; f.approximate=false; f.name="Friend's place"; f.notes="Location geocoded from the address saved in this browser."; } } catch(e){}
+let leafletMap=null, routeLayer=null, markerLayer=null, routeLoading=false;
+const PIN_MARKERS={};
+function googleDirections(a,b){
+ const origin=encodeURIComponent(`${a.lat},${a.lng}`), destination=encodeURIComponent(`${b.lat},${b.lng}`);
+ return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
 }
-function fitTas(){ leafletMap.fitBounds(PINS.filter(p=>p.tas).map(p=>[p.lat,p.lng]),{padding:[24,24]}); }
-function fitAll(){ leafletMap.fitBounds(PINS.map(p=>[p.lat,p.lng]),{padding:[24,24]}); }
-
+function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function fitTas(){ if(leafletMap) leafletMap.fitBounds(PINS.filter(p=>p.tas).map(p=>[p.lat,p.lng]),{padding:[24,24]}); }
+function fitAll(){ if(leafletMap) leafletMap.fitBounds(PINS.map(p=>[p.lat,p.lng]),{padding:[24,24]}); }
+function legDate(t){return `${t.day} ${t.date}`;}
+function routeLegs(){return TRIPS.filter(t=>t.fromId && t.toId && PIN_BY_ID[t.fromId] && PIN_BY_ID[t.toId]);}
+function buildMapList(){
+ const ol=document.getElementById("road-maplist"); if(!ol)return;
+ const legs=routeLegs();
+ ol.innerHTML=legs.map((t,i)=>{
+   const a=PIN_BY_ID[t.fromId], b=PIN_BY_ID[t.toId];
+   const kind=t.sea?"Ferry / sea crossing":"Road route";
+   const note=t.sea?`<span class="route-warning">Ferry time/status must be confirmed.</span>`:`Approx. ${escapeHtml(t.km)} km · ${formatDuration(t.mins)} planned (not live traffic).`;
+   const friendPending=(t.fromId==="friend"||t.toId==="friend") && PIN_BY_ID.friend.approximate;
+   const ferryLink=(t.fromId==="gee"||t.toId==="gee"||t.fromId==="dev"||t.toId==="dev")?"https://www.spiritoftasmania.com.au/sailing-information/terminal-information/":"https://www.sealink.com.au/bruny-island/";
+   const link=t.sea?ferryLink:googleDirections(a,b);
+   const nav=friendPending?`<span class="route-warning">Navigation disabled until the exact address is entered.</span>`:`<a href="${link}" target="_blank" rel="noopener">${t.sea?"Check ferry operator / timetable":"Open driving directions"}</a>`;
+   return `<li data-trip-index="${TRIPS.indexOf(t)}"><strong>${escapeHtml(legDate(t))}: ${escapeHtml(t.from)} → ${escapeHtml(t.to)}</strong><br><span class="route-meta"><span class="route-kind">${kind}</span> · <span class="route-start">start ${escapeHtml(getStart(TRIPS.indexOf(t)))}</span> · <span id="route-planned-${i}">${note}</span></span><br>${nav} <span class="route-meta" id="route-summary-${i}">${friendPending?"Waiting for exact friend address…":"Route geometry loading…"}</span></li>`;
+ }).join("");
+}
+function renderValidation(){
+ const box=document.getElementById("road-validation"); if(!box)return;
+ const warnings=[];
+ const times=TRIPS.map((t,i)=>({t,i,start:getStart(i),startM:toMinutes(getStart(i)),endM:toMinutes(getStart(i))+t.mins}));
+ // Check sequential legs on the same date when destination and next origin are the same.
+ for(let i=0;i<times.length-1;i++){
+   const a=times[i],b=times[i+1];
+   if(a.t.date===b.t.date && a.t.toId===b.t.fromId && !a.t.sea && !b.t.sea && b.startM<a.endM){
+     warnings.push(`${a.t.date}: ${a.t.to} arrives around ${formatClock(a.endM)} but the next leg starts at ${b.start}; allow more time.`);
+   }
+ }
+ const friend=PIN_BY_ID.friend;
+ if(PIN_BY_ID.friend.approximate) warnings.push("Friend's place is only an approximate map placeholder; enter the exact address above before relying on route distances or navigation.");
+ warnings.push("Bruny Island ferry legs are illustrative only and marked NOT BOOKED; confirm vehicle sailing times and queue requirements before relying on the schedule.");
+ warnings.push("28 Dec, 2 Jan and 3 Jan include walks/attractions: retain the revised buffers and cut optional stops if running late.");
+ warnings.push("31 Dec return time is only an estimate after fireworks; event traffic, shuttle queues and road closures may delay the drive.");
+ box.style.display="block";
+ box.innerHTML=`<strong>Planning checks</strong><ul>${warnings.map(w=>`<li>${escapeHtml(w)}</li>`).join("")}</ul>`;
+}
+function formatClock(total){const m=((total%1440)+1440)%1440;return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;}
+async function fetchRoadGeometry(a,b){
+ const url=`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson&steps=false`;
+ const res=await fetch(url,{headers:{"Accept":"application/json"}});
+ if(!res.ok)throw new Error(`Routing service returned ${res.status}`);
+ const data=await res.json(); if(data.code!=="Ok"||!data.routes?.[0]?.geometry?.coordinates)throw new Error(data.message||"No route found");
+ return {coords:data.routes[0].geometry.coordinates.map(c=>[c[1],c[0]]),distance:data.routes[0].distance/1000,duration:data.routes[0].duration/60};
+}
+async function drawRoutes(){
+ if(routeLoading||!leafletMap)return; routeLoading=true;
+ const status=document.getElementById("road-map-status");
+ if(status)status.textContent="Requesting road-following geometry for driving legs. This needs an internet connection; ferry legs remain schematic.";
+ let ok=0, fallback=0;
+ const legs=routeLegs();
+ for(let i=0;i<legs.length;i++){
+   const t=legs[i],a=PIN_BY_ID[t.fromId],b=PIN_BY_ID[t.toId];
+   const sea=!!t.sea;
+   let points=[[a.lat,a.lng],[b.lat,b.lng]], meta="", routeFallback=false;
+   if(!sea && (t.fromId==="friend" || t.toId==="friend") && PIN_BY_ID.friend.approximate){
+     fallback++; routeFallback=true; meta=" · not routed: enter the exact friend's address above";
+   } else if(!sea){
+     try{
+       const r=await fetchRoadGeometry(a,b); points=r.coords; ok++;
+       // Use the road-routing duration plus a modest planning allowance in the shared schedule.
+       t.routedKm=r.distance; t.routedMins=Math.ceil(r.duration*1.15+10);
+       t.mins=t.routedMins; t.km=`~${Math.round(r.distance)} km`;
+       const rowIndex=TRIPS.indexOf(t);
+       const durationCell=document.getElementById(`road-duration-${rowIndex}`), kmCell=document.getElementById(`road-km-${rowIndex}`);
+       if(durationCell)durationCell.textContent=formatDuration(t.mins)+" incl. buffer";
+       if(kmCell)kmCell.textContent=t.km;
+       const plannedCell=document.getElementById(`route-planned-${legs.indexOf(t)}`);
+       if(plannedCell)plannedCell.textContent=`Routed ${r.distance.toFixed(1)} km · ${formatDuration(t.mins)} including planning buffer`;
+       updateArrival(rowIndex);
+       meta=` · routed ${r.distance.toFixed(1)} km, ${Math.round(r.duration)} min raw routing estimate; schedule adds 15% + 10 min buffer`;
+     }catch(e){fallback++;routeFallback=true;meta=" · straight-line fallback (road routing unavailable)";}
+   } else { meta=" · sea crossing shown schematically; confirm sailing"; }
+   const line=L.polyline(points,{color:sea?"#23804a":(routeFallback?"#888":"#2358b8"),weight:sea?3:4,opacity:.82,dashArray:(sea||routeFallback)?"8 8":null}).addTo(routeLayer);
+   line.bindTooltip(`${legDate(t)} · ${t.from} → ${t.to}`,{sticky:true});
+   const summary=document.getElementById(`route-summary-${i}`); if(summary)summary.textContent=meta;
+   // Public OSRM demo service: keep requests serial and modest.
+   if(!sea) await new Promise(resolve=>setTimeout(resolve,120));
+ }
+ renderCalendar(); renderValidation();
+ if(status)status.innerHTML=`Routing complete: <strong>${ok}</strong> road legs routed, <strong>${fallback}</strong> fallback line(s), and <strong>${legs.filter(t=>t.sea).length}</strong> schematic ferry crossing(s). Road-route durations now feed the schedule with a 15% + 10 min planning allowance; placeholder friend-address legs are not auto-routed. No live traffic or closure data is included.`;
+ routeLoading=false;
+}
+async function locateFriendAddress(){
+ const input=document.getElementById("friend-address-input"), status=document.getElementById("friend-address-status"), button=document.getElementById("friend-address-apply");
+ const address=(input?.value||"").trim(); if(routeLoading){if(status)status.textContent="Wait for the current route lookup to finish, then try again.";return;} if(!address){if(status)status.textContent="Enter the full address first.";return;}
+ if(status)status.textContent="Looking up the address…"; if(button)button.disabled=true;
+ try{
+   const url="https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q="+encodeURIComponent(address);
+   const response=await fetch(url,{headers:{"Accept":"application/json"}}); if(!response.ok)throw new Error("Address lookup service unavailable");
+   const hits=await response.json(); if(!hits.length)throw new Error("No matching address found. Add suburb and postcode and try again.");
+   const f=PIN_BY_ID.friend; f.lat=Number(hits[0].lat); f.lng=Number(hits[0].lon); f.address=address; f.approximate=false; f.name="Friend's place"; f.notes="Geocoded from the address saved in this browser.";
+   try{localStorage.setItem(FRIEND_LOCATION_KEY,JSON.stringify({address,lat:f.lat,lng:f.lng}));}catch(e){}
+   if(PIN_MARKERS.friend){PIN_MARKERS.friend.setLatLng([f.lat,f.lng]);PIN_MARKERS.friend.setPopupContent(`<strong>Friend's place</strong><br>${escapeHtml(address)}<br>Geocoded address saved in this browser.<br><a href="https://www.google.com/maps/search/?api=1&query=${f.lat},${f.lng}" target="_blank" rel="noopener">Open in Google Maps</a>`);}
+   if(status)status.textContent="Address located and saved in this browser. Rebuilding the route legs…";
+   if(routeLayer)routeLayer.clearLayers(); buildMapList(); renderValidation();
+   if(leafletMap){routeLoading=false;await drawRoutes();}
+   if(status)status.textContent="Address located and saved in this browser. The two friend-related road legs can now be routed.";
+ }catch(e){if(status)status.textContent=e.message||"Address lookup failed. Check the address and internet connection.";}
+ finally{if(button)button.disabled=false;}
+}
 function ensureMap(){
-  if(leafletMap){ leafletMap.invalidateSize(); return; }
-  const el=document.getElementById("road-map-canvas");
-  if(!el || typeof L==="undefined") return;
-  leafletMap=L.map(el,{zoomControl:true});
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:18, attribution:"&copy; OpenStreetMap contributors"
-  }).addTo(leafletMap);
-
-  LEGS.forEach(l=>{
-    const a=PIN_BY_ID[l.from], b=PIN_BY_ID[l.to];
-    const o=l.alt?[0.12,0.12]:[0,0];
-    const sea=l.kind==="sea";
-    L.polyline([[a.lat+o[0],a.lng+o[1]],[b.lat+o[0],b.lng+o[1]]],{
-      color: sea?"#23643a":"#1d4fd6", weight:4, opacity:0.85, dashArray: sea?"8 8":null
-    }).bindTooltip(l.date,{sticky:true}).addTo(leafletMap);
-  });
-
-  PINS.forEach(p=>{
-    L.circleMarker([p.lat,p.lng],{radius:8,color:"#fff",weight:2,fillColor:"#1d4fd6",fillOpacity:1})
-      .bindPopup(`<strong>${p.name}</strong><br>${p.label}<br>${p.notes}`)
-      .bindTooltip(p.label,{permanent:true,direction:p.dir,className:"road-label",offset:[0,0]})
-      .addTo(leafletMap);
-  });
-
-  document.getElementById("road-fit-tas").addEventListener("click",()=>fitTas());
-  document.getElementById("road-fit-all").addEventListener("click",()=>fitAll());
-  fitTas();
-  setTimeout(()=>leafletMap.invalidateSize(),50);
+ if(leafletMap){leafletMap.invalidateSize();return;}
+ const el=document.getElementById("road-map-canvas"); if(!el||typeof L==="undefined"){
+   const st=document.getElementById("road-map-status");if(st)st.textContent="Map library did not load. Check internet access or use the navigation links below.";return;
+ }
+ leafletMap=L.map(el,{zoomControl:true});
+ L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:18,attribution:"&copy; OpenStreetMap contributors"}).addTo(leafletMap);
+ routeLayer=L.layerGroup().addTo(leafletMap); markerLayer=L.layerGroup().addTo(leafletMap);
+ PINS.forEach(p=>{
+   const marker=L.circleMarker([p.lat,p.lng],{radius:7,color:"#fff",weight:2,fillColor:p.tas?"#2358b8":"#8b5b35",fillOpacity:1})
+    .bindPopup(`<strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(p.label)}<br>${escapeHtml(p.notes)}<br><a href="https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}" target="_blank" rel="noopener">Open in Google Maps</a>`)
+    .bindTooltip(p.label,{permanent:true,direction:p.dir,className:"road-label",offset:[0,0]}).addTo(markerLayer);
+   PIN_MARKERS[p.id]=marker;
+ });
+ document.getElementById("road-fit-tas").addEventListener("click",fitTas);
+ document.getElementById("road-fit-all").addEventListener("click",fitAll);
+ fitTas();setTimeout(()=>leafletMap&&leafletMap.invalidateSize(),50);
+ drawRoutes();
 }
 
 buildRows();
 renderCalendar();
 buildMapList();
+renderValidation();
+const friendAddressInput=document.getElementById("friend-address-input");
+try{const savedFriend=JSON.parse(localStorage.getItem(FRIEND_LOCATION_KEY)||"null");if(friendAddressInput&&savedFriend?.address)friendAddressInput.value=savedFriend.address;}catch(e){}
+document.getElementById("friend-address-apply")?.addEventListener("click",locateFriendAddress);
+document.getElementById("friend-address-input")?.addEventListener("keydown",e=>{if(e.key==="Enter")locateFriendAddress();});
 
 /* Build the map once the Map tab is shown */
 const mapPanel=document.getElementById("panel-road-map");
@@ -2279,6 +2388,11 @@ if(mapPanel){
 ═══════════════════════════════════════════════════════════════════
   VERSION HISTORY: Trip Planners.html
 ═══════════════════════════════════════════════════════════════════
+  v2.4 · Maps tab updated
+      - Road Trip map draws driving routes, has friend address lookup,
+        Google Maps links and a map status message.
+      - Road Trip schedule start times are saved in this browser.
+
   v2.3 · Fix build
       - Print functions no longer contain </script> tags. Print
         output is built by openPrintWindow() with no scripts.
