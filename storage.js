@@ -1,127 +1,49 @@
 /* ============================================================
-   storage.js  —  Ctrl+A Shared Storage Engine  v5.7
+   storage.js  —  Ctrl+A Shared Storage Engine  v6.0
    ------------------------------------------------------------
-   v5.7: PERSISTENT SESSION. Two changes, both here in this one
-   file (plus the two localStorage lines in oauth-callback.html)
-   so no page-level HTML needed touching:
+   v6.0 changes:
+     - NEWER EDIT WINS, PER KEY. Every key carries a timestamp in
+       ONETRACK_KEY_TIMES (stored inside the data file, so it syncs).
+       Deletes are timestamped too, so a removal on one device beats
+       an older value on another.
+     - NO GOOGLE LOGIN ON NORMAL PAGE LOADS. Pages open straight from
+       the local mirror. Drive is only contacted by Sync now or Live.
+     - SYNC NOW: popup sign-in if needed, back up this device, merge
+       by timestamp, upload.
+     - LIVE: every 5 s checks Drive's modified time, downloads only
+       when it changed, and pushes local edits ~5 s after each change.
+     - 30 min IDLE + EXPIRED TOKEN: no background renewal while idle.
+       The next click shows "Refresh / Sign in".
+     - LAST 5 BACKUPS kept on this device. Undo restores the newest.
+     - STATUS DOT (bottom-right): green pulse = Live, blue = Synced
+       (hover shows time), amber = paused, grey = offline / unlinked,
+       red = last sync failed.
 
-     A. The access token now lives in localStorage instead of
-        sessionStorage. sessionStorage is wiped the moment a tab
-        closes, so closing the tab or restarting the browser
-        forced a fresh sign-in even when the token still had 55
-        minutes left on it. localStorage survives both.
+   Unchanged from v5.x: nav (NAV_PAGES + drag order), theme engine
+   (dark / accent / font scale), global footer, brand loop.
 
-     B. SILENT RENEWAL. Google access tokens are hard-capped at
-        1 hour and that cannot be changed from a static site.
-        What CAN change is whether you SEE it. We now lazily load
-        Google Identity Services and call requestAccessToken with
-        prompt:'' — which reissues a token with no UI at all as
-        long as you're still signed in to Google in this browser
-        and have already granted consent. It runs:
-          - on a 60s timer, 5 minutes before expiry, and
-          - as an automatic retry when a Drive call 401s.
-        The old "Session expired / Sign in" banner now only
-        appears if silent renewal genuinely fails.
+   PUBLIC API
+     Data:    get, set, remove, keys, getAll, setAll, clear
+     Ready:   onReady, isReady, onSync, isAuthoritative, onChange
+     Sync:    sync(), setLive(on), isLive(), undoLastSync(),
+              getBackups(), getStatus(), onStatus(fn), lastSyncAt()
+     Auth:    signIn(), forget()
+     Theme:   isDark(), applyTheme(), setTitle()
+     Nav:     navPages, getNavLabel(id), setNavLabel(id, label)
+     Brand:   brand, renderBrandFooter() (no-op, kept for old pages)
 
-     The full-page redirect flow (_signIn) is untouched and is
-     still what handles first-ever sign-in and hard failures.
-   ------------------------------------------------------------
-   v5.4: Rebranded Taskmaster -> Ctrl+A. Same DISPLAY-ONLY rule as
-   v5.1 below — the ONLY change is APP_BRAND (name + tagline). The
-   internal storage keys, the Drive file name (onetrack-data.json),
-   and the localStorage keys all still KEEP their ONETRACK_* names
-   on purpose. Do NOT rename them — it would orphan saved data.
-   ------------------------------------------------------------
-   v5.1: Rebranded Onetrack -> Taskmaster. This is a DISPLAY-ONLY
-   change (title text, nav brand, banner/tooltip copy, console
-   labels). Every internal storage key, the Drive file name, and
-   the localStorage keys below all KEEP their ONETRACK_* names on
-   purpose — they're a stable internal schema, not the product
-   name. Renaming them would orphan existing saved data. See
-   APP_BRAND below for the one place that controls user-facing
-   name/tagline text going forward.
-   ------------------------------------------------------------
-   v5.0: storage.js now does THREE jobs instead of one, so every
-   HTML page only ever needs ONE shared script tag:
-
-     1. STORAGE  (unchanged from v4.0) — Drive sync, OAuth.
-     2. NAV      (new) — builds the sidebar links into
-        <div id="onetrack-nav-links"></div> on every page, with
-        drag-to-reorder (grip-dot handle). Settings is always
-        pinned at the bottom and is not draggable.
-     3. THEME    (new) — applies dark mode, accent colour, and
-        font scale to every page from one place, instead of each
-        page having its own copy (which is why pages used to look
-        inconsistent with each other).
-
-   PUBLIC API — all unchanged, every HTML file works as-is:
-     await OT.get(key) / OT.set(key,value) / OT.remove(key)
-     await OT.keys() / OT.getAll() / OT.setAll(obj) / OT.clear()
-     OT.onReady(fn)  /  OT.isReady()  /  OT.onChange(fn)  (new)
-     OT.brand  —  { name, tagline }  (new, v5.1 — read instead of
-       hardcoding "Onetrack"/"Taskmaster" text on each page)
-     OT.renderBrandFooter(containerId, version, lastUpdated)
-       (new, v5.2/5.3 — fills a <div id="..."></div> with one muted
-       line: "{tagline} · {version} · Last updated DD-MMM-YY HH:MM".
-       Always DISPLAYED in Australia/Sydney (AEST/AEDT) time, no
-       matter what time zone the viewing device is set to. Pass
-       lastUpdated as an ISO string with an explicit offset, e.g.
-       "2026-06-28T09:20:00+10:00", so the underlying instant is
-       unambiguous — lastUpdated is the moment YOU edited that
-       page's code, not when it's viewed.)
-
-   HOW STORAGE WORKS (v4.0, unchanged):
-   1. Banner shows "Sign in to sync".
-   2. Tapping Sign in saves the current page URL, then does a
-      normal full-page redirect to Google's consent screen.
-   3. Google redirects back to oauth-callback.html (a single
-      fixed page, registered as the OAuth redirect URI).
-   4. That page grabs the token from the URL, stores it in
-      sessionStorage, and redirects back to the original page.
-   5. This storage.js picks up the token from sessionStorage on
-      load — no popup, no GIS script, no ITP issues.
-   6. Token lives in sessionStorage (this browser tab/session
-      only) — expires after ~1 hour, same re-sign-in cadence as
-      before, just via redirect instead of popup.
-
-   HOW NAV WORKS (v5.0, new):
-   - The page list + labels live in NAV_PAGES below — edit that
-     array (and nowhere else) to add/rename/remove a page.
-   - Drag order is saved in localStorage (ONETRACK_NAV_ORDER) —
-     instant, same-origin, no Drive round-trip needed, works the
-     moment you drop.
-   - Every page must have <div id="onetrack-nav-links"></div>
-     inside its <nav id="onetrack-nav">...</nav> for this to have
-     somewhere to render into.
-
-   HOW THEME WORKS (v5.0, new):
-   - Reads TODAY_DARK / ONETRACK_ACCENT / ONETRACK_ACCENT_DARK /
-     ONETRACK_FONT_SCALE from the synced file (same keys Settings
-     already writes — Settings doesn't need to change).
-   - A tiny snapshot of those values is mirrored into localStorage
-     (ONETRACK_THEME_SNAPSHOT) purely so the very next page load
-     can paint the correct theme INSTANTLY, before the Drive file
-     has even finished loading — this is what prevents the
-     "flash of wrong theme" that each page used to prevent on its
-     own with a private copy of this exact logic.
-   - Also sets a handful of extra per-section CSS variables
-     (--ft-accent, --pt-accent, --roh-accent, --esh-accent,
-     --kal-accent, --trv-accent, --rtn-accent and their *-soft
-     versions) on every page. Most pages don't use these and the
-     extra variables are simply ignored — but Checklists.html
-     does use them for its per-section colour theming, and this
-     is what keeps that working without needing page-specific
-     code anywhere.
-
-   CONFIG:
+   BEFORE THIS VERSION GOES LIVE
+     Google Cloud Console → OAuth client → Authorized JavaScript
+     origins must include https://kalyanturaga-sudo.github.io
+     (sign-in now uses the Google popup, not a full-page redirect).
    ============================================================ */
+
+  /* ── CONFIG ── */
   const GOOGLE_CLIENT_ID = '356548061716-4fjrgh28vetubhuu2cf4ano859tnftuv.apps.googleusercontent.com';
   const DRIVE_FILE_NAME  = 'onetrack-data.json';
-  const REDIRECT_URI     = 'https://kalyanturaga-sudo.github.io/CntlA-scheduler/oauth-callback.html';
 
   /* ── BRAND CONFIG — change product name/tagline ONLY here.
-     Internal storage keys / file names above are untouched on
-     purpose (see header note). ── */
+     Internal storage keys / file names are untouched on purpose. ── */
   const APP_BRAND = {
     name:    'Ctrl+A',
     tagline: 'Capture all. Control all.',
@@ -131,26 +53,20 @@
 
   /* ── NAV CONFIG — edit this list to add/rename/remove a page ── */
   const NAV_PAGES = [
-    { id: 'ttb',        file: 'TT&B.html',           label: 'TT&B' },
-    { id: 'routines',   file: 'Routines.html',       label: 'Routines & Chores' },
-    { id: 'jobs',       file: 'Jobs.html',           label: 'Jobs' },
-    { id: 'checklists', file: 'Checklists.html',     label: 'Checklists' },
-    { id: 'trip',       file: 'Trip Planners.html',  label: 'Trip Planners' },
-    { id: 'meal',       file: 'Meal Planner.html',   label: 'Meal Planner' },
-    { id: 'workout',    file: 'Workout Planner.html',label: 'Workout Planner' },
-    { id: 'marathon',   file: 'Marathon Training.html',label: 'Marathon Training' },
-    { id: 'libraries',  file: 'Libraries.html',      label: 'Libraries' },
+    { id: 'ttb',        file: 'TT&B.html',            label: 'TT&B' },
+    { id: 'routines',   file: 'Routines.html',        label: 'Routines & Chores' },
+    { id: 'jobs',       file: 'Jobs.html',            label: 'Jobs' },
+    { id: 'checklists', file: 'Checklists.html',      label: 'Checklists' },
+    { id: 'trip',       file: 'Trip Planners.html',   label: 'Trip Planners' },
+    { id: 'meal',       file: 'Meal Planner.html',    label: 'Meal Planner' },
+    { id: 'workout',    file: 'Workout Planner.html', label: 'Workout Planner' },
+    { id: 'marathon',   file: 'Marathon Training.html', label: 'Marathon Training' },
+    { id: 'libraries',  file: 'Libraries.html',       label: 'Libraries' },
   ];
-  /* Settings is intentionally NOT in NAV_PAGES — it's pinned at the
-     bottom of the sidebar always, and is never draggable. */
+  /* Settings is intentionally NOT in NAV_PAGES — pinned at the bottom. */
   const NAV_SETTINGS = { id: 'settings', file: 'Settings.html', label: 'Settings' };
 
-  /* ── BASE PALETTE — change colours here ONLY. This is injected as a
-     <style> tag into every page automatically; no page has its own
-     copy of these anymore. Per-page CSS still defines layout-specific
-     vars (--radius, --nav-width, --shadow, per-section gradients,
-     button colours, etc.) — only the shared bg/surface/text scale
-     lives here. ── */
+  /* ── BASE PALETTE — shared bg/surface/text scale. Change colours here. ── */
   const BASE_THEME = {
     light: {
       '--bg': '#f3f2f0', '--surface': '#ffffff', '--surface2': '#f8f7f5',
@@ -168,189 +84,116 @@
 (function (global) {
   'use strict';
 
-  /* drive.file = this app can only see files IT created or that the
-     user explicitly opens with it. It is a NON-SENSITIVE scope, so
-     Google does NOT require app verification — that is why we use it
-     instead of the full 'drive' scope. */
-  const SCOPE        = 'https://www.googleapis.com/auth/drive.file';
-  const BANNER_ID     = 'ot-storage-banner';
-  const INDICATOR_ID  = 'ot-sync-indicator';
+  /* drive.file = this app only sees files it created or the user opened
+     with it. Non-sensitive scope, so no app verification is needed. */
+  const SCOPE = 'https://www.googleapis.com/auth/drive.file';
+
+  /* ── Storage keys (internal names kept on purpose — see header) ── */
+  const KT           = 'ONETRACK_KEY_TIMES';    // per-key timestamps, lives inside the data
+  const MIRROR_KEY   = 'ONETRACK_LOCAL_MIRROR'; // this device's copy of the data
+  const BACKUPS_KEY  = 'ONETRACK_BACKUPS';      // this device only, newest first
+  const LIVE_KEY     = 'ONETRACK_LIVE';         // device pref: '1' | '0'
+  const LAST_SYNC_KEY = 'ONETRACK_LAST_SYNC';
+  const SIGNED_IN_KEY = 'ONETRACK_SIGNED_IN';   // '1' once a token has ever been granted
+  const CONSENT_KEY  = 'ONETRACK_CONSENTED';    // '1' once Google consent was granted
+  const TOKEN_KEY    = 'OT_ACCESS_TOKEN';
+  const EXP_KEY      = 'OT_TOKEN_EXPIRES';
+  const THEME_SNAPSHOT_KEY = 'ONETRACK_THEME_SNAPSHOT';
+  const NAV_ORDER_KEY = 'ONETRACK_NAV_ORDER';
+  const NAV_LABEL_PREFIX = 'ONETRACK_NAV_LABEL_';
+
+  const LIVE_MS      = 5000;     // Live: check Drive every 5 s
+  const PUSH_MS      = 5000;     // Live: push local edits ~5 s after a change
+  const IDLE_MS      = 30 * 60 * 1000;
+  const WATCH_MS     = 60 * 1000;
+  const MAX_BACKUPS  = 5;
+
+  const THEME_KEYS = [
+    'TODAY_DARK', 'ONETRACK_ACCENT', 'ONETRACK_ACCENT_DARK',
+    'ONETRACK_ACCENT_SOFT', 'ONETRACK_ACCENT_DARK_SOFT', 'ONETRACK_FONT_SCALE',
+  ];
+  const EXTRA_ACCENT_VARS = ['--ft-accent', '--pt-accent', '--roh-accent', '--esh-accent', '--kal-accent', '--trv-accent', '--rtn-accent'];
+  const EXTRA_SOFT_VARS   = ['--ft-soft', '--pt-soft', '--roh-soft', '--esh-soft', '--trv-soft', '--rtn-soft'];
 
   /* ── Internal state ── */
-  let _accessToken = null;
-  let _tokenClient = null;      // v5.7 — GIS silent-renewal client
-  let _renewInFlight = null;    // v5.7 — de-dupes concurrent renewals
-  let _fileId      = null;
-  let _cache       = null;
-  let _ready       = false;
-  let _readyQueue  = [];
-  // Keys written via OT.set()/remove() while not yet connected to Drive
-  // (or while a load is in flight) get tracked here, then replayed on
-  // top of the loaded file in _loadFromFile() so they're never silently
-  // lost when the real Drive data arrives.
-  let _pendingLocal = {};
-  let _writeTimer  = null;
-  let _changeListeners = [];
-  // True once the AUTHORITATIVE store is confirmed loaded: Drive when signed in,
-  // or the local mirror once we know there's no Drive this session. Pages use
-  // this to avoid seeding defaults over data that simply hasn't loaded yet.
+  let _cache = null;            // the data object (includes KT)
+  let _ready = false;
+  let _readyQueue = [];
   let _authoritative = false;
+  let _changeListeners = [];
   let _syncListeners = [];
+  let _statusListeners = [];
+
+  let _token = null;            // Google access token (in memory + localStorage)
+  let _tokenExp = 0;
+  let _tokenClient = null;
+  let _renewInFlight = null;
+
+  let _fileId = null;
+  let _remoteMod = null;        // Drive modifiedTime we last saw/wrote
+  let _dirty = false;           // local edits not yet on Drive
+  let _pushTimer = null;
+  let _liveTimer = null;
+  let _busy = false;            // a Drive round-trip is in flight
+  let _syncing = false;         // a manual Sync now is running
+  let _live = false;
+  let _lastSyncAt = 0;
+  let _lastActivity = Date.now();
+  let _lastError = null;
 
   /* ══════════════════════════════════════════════════════════
-     INDICATOR
+     SMALL HELPERS
   ══════════════════════════════════════════════════════════ */
 
-  function _createIndicator() {
-    if (document.getElementById(INDICATOR_ID)) return;
-    const el = document.createElement('div');
-    el.id = INDICATOR_ID;
-    el.title = APP_BRAND.name + ' storage: unlinked';
-    el.style.cssText = `
-      position: fixed; top: 14px; right: 14px;
-      width: 10px; height: 10px; border-radius: 50%;
-      background: #9e9891; z-index: 99999; transition: background 0.3s;
-      box-shadow: 0 0 0 2px rgba(158,152,145,0.25); cursor: pointer;
-    `;
-    document.body.appendChild(el);
-    el.addEventListener('click', () => _signIn());
+  function _lsGet(k)    { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function _lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function _lsDel(k)    { try { localStorage.removeItem(k); } catch (e) {} }
+  function _log(...a)   { console.log('[' + APP_BRAND.name + ' storage]', ...a); }
+  function _warn(...a)  { console.warn('[' + APP_BRAND.name + ' storage]', ...a); }
+  function _has(obj, k) { return Object.prototype.hasOwnProperty.call(obj, k); }
+
+  function _readMirror() {
+    try { return JSON.parse(_lsGet(MIRROR_KEY)) || {}; } catch (e) { return {}; }
   }
-
-  function _setIndicator(state) {
-    const el = document.getElementById(INDICATOR_ID);
-    if (!el) return;
-    const states = {
-      saving:   { bg: '#1d4fd6', sh: 'rgba(29,79,214,0.25)',  title: APP_BRAND.name + ': saving…' },
-      saved:    { bg: '#3a8c5c', sh: 'rgba(58,140,92,0.25)',   title: APP_BRAND.name + ': saved ✓' },
-      error:    { bg: '#c0392b', sh: 'rgba(192,57,43,0.25)',   title: APP_BRAND.name + ': error — click to re-link' },
-      unlinked: { bg: '#9e9891', sh: 'rgba(158,152,145,0.25)', title: APP_BRAND.name + ': click to sign in' },
-      loading:  { bg: '#6b9fd4', sh: 'rgba(107,159,212,0.25)', title: APP_BRAND.name + ': connecting…' },
-    };
-    const s = states[state] || states.unlinked;
-    el.style.background = s.bg;
-    el.style.boxShadow  = `0 0 0 2px ${s.sh}`;
-    el.title = s.title;
+  function _writeMirror() {
+    try { localStorage.setItem(MIRROR_KEY, JSON.stringify(_cache || {})); } catch (e) {}
   }
-
-  /* ══════════════════════════════════════════════════════════
-     BANNER
-  ══════════════════════════════════════════════════════════ */
-
-  function _showBanner(msg, btnLabel, onClick) {
-    let banner = document.getElementById(BANNER_ID);
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = BANNER_ID;
-      banner.style.cssText = `
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        background: #18181d; color: #ededf0; padding: 14px 20px;
-        border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px;
-        display: flex; align-items: center; gap: 14px; z-index: 99999;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
-        max-width: 500px; width: calc(100vw - 40px);
-      `;
-      document.body.appendChild(banner);
-    }
-    banner.innerHTML = `
-      <span style="font-size:20px;">☁️</span>
-      <span style="flex:1;line-height:1.5;">${msg}</span>
-      <button id="ot-pick-btn" style="
-        background:#3a8c5c;color:#fff;border:none;padding:9px 16px;
-        border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;
-        font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;
-      ">${btnLabel}</button>
-    `;
-    document.getElementById('ot-pick-btn').addEventListener('click', onClick);
-  }
-
-  function _hideBanner() {
-    const el = document.getElementById(BANNER_ID);
-    if (el) el.remove();
-  }
-
-  function _signInBannerMsg() {
-    return [
-      '<strong style="color:#5b7fff;">Sign in with Google</strong><br><span style="color:#a3a1a8;font-size:12px;">Connect your Google Drive to sync your checklists.</span>',
-      'Sign in',
-      _signIn,
-    ];
+  function _getBackups() {
+    try { return JSON.parse(_lsGet(BACKUPS_KEY)) || []; } catch (e) { return []; }
   }
 
   /* ══════════════════════════════════════════════════════════
-     REDIRECT-BASED SIGN-IN
+     TOKEN
   ══════════════════════════════════════════════════════════ */
 
-  /* Random, unguessable value round-tripped through Google and checked
-     in oauth-callback.html. Blocks a third party from feeding us a
-     token we never asked for (CSRF on the redirect). */
-  function _makeState() {
-    const buf = new Uint8Array(16);
-    (window.crypto || window.msCrypto).getRandomValues(buf);
-    return Array.from(buf, b => b.toString(16).padStart(2, '0')).join('');
+  function _loadToken() {
+    const t = _lsGet(TOKEN_KEY);
+    const e = parseInt(_lsGet(EXP_KEY) || '0', 10);
+    if (t && e && Date.now() < e) { _token = t; _tokenExp = e; }
+  }
+  function _tokenValid() { return !!_token && Date.now() < _tokenExp; }
+
+  function _storeToken(tok, expiresIn) {
+    _token = tok;
+    // Shave 60 s so we never hand Drive a token that dies mid-request.
+    _tokenExp = Date.now() + ((parseInt(expiresIn, 10) || 3600) - 60) * 1000;
+    _lsSet(TOKEN_KEY, tok);
+    _lsSet(EXP_KEY, String(_tokenExp));
+    _lsSet(SIGNED_IN_KEY, '1');
+    _lsSet(CONSENT_KEY, '1');
+  }
+  function _dropToken() {
+    _token = null;
+    _tokenExp = 0;
+    _lsDel(TOKEN_KEY);
+    _lsDel(EXP_KEY);
+    _setStatus();
   }
 
-  function _signIn() {
-    sessionStorage.setItem('OT_RETURN_PATH', window.location.href);
-
-    const state = _makeState();
-    sessionStorage.setItem('OT_OAUTH_STATE', state);
-
-    /* response_type=token  = OAuth 2.0 implicit flow. The token comes
-       straight back in the URL fragment, so there is NO server-side
-       code-for-token exchange and NO client secret anywhere. That is
-       what lets this run as a pure static GitHub Pages site. */
-    const params = new URLSearchParams({
-      client_id:     GOOGLE_CLIENT_ID,
-      redirect_uri:  REDIRECT_URI,
-      response_type: 'token',
-      scope:         SCOPE,
-      state:         state,
-      include_granted_scopes: 'true',
-    });
-    window.location.href =
-      'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
-  }
-
-  function _checkForExistingToken() {
-    const token   = localStorage.getItem('OT_ACCESS_TOKEN');
-    const expires = localStorage.getItem('OT_TOKEN_EXPIRES');
-    const oauthErr = sessionStorage.getItem('OT_OAUTH_ERROR');
-
-    if (oauthErr) {
-      sessionStorage.removeItem('OT_OAUTH_ERROR');
-      console.error('[' + APP_BRAND.name + ' storage] OAuth error:', oauthErr);
-      _setIndicator('error');
-      _showBanner(
-        `<strong style="color:#c0392b;">Sign-in failed</strong><br><span style="color:#a3a1a8;font-size:12px;">${oauthErr}. Try again.</span>`,
-        'Sign in', _signIn
-      );
-      return false;
-    }
-
-    if (token && expires && Date.now() < parseInt(expires, 10)) {
-      _accessToken = token;
-      return true;
-    }
-    return false;
-  }
-
-  /* ══════════════════════════════════════════════════════════
-     SILENT RENEWAL  (v5.7)
-     ------------------------------------------------------------
-     Loads Google Identity Services on demand — no <script> tag
-     needs adding to any HTML page. requestAccessToken({prompt:''})
-     reissues a token with zero UI when the browser still has a
-     live Google session + prior consent for this client_id.
-     If it can't (signed out of Google, consent revoked, third
-     party cookies fully blocked) it simply resolves false and the
-     caller falls back to the visible redirect sign-in.
-  ══════════════════════════════════════════════════════════ */
-
+  /* Loads Google Identity Services on demand; no <script> needed in any page. */
   function _loadGIS() {
     return new Promise((resolve) => {
-      if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-        return resolve(true);
-      }
+      if (window.google && google.accounts && google.accounts.oauth2) return resolve(true);
       const existing = document.getElementById('ot-gis-script');
       if (existing) {
         existing.addEventListener('load', () => resolve(true));
@@ -361,259 +204,580 @@
       sc.id = 'ot-gis-script';
       sc.src = 'https://accounts.google.com/gsi/client';
       sc.async = true;
-      sc.defer = true;
       sc.onload  = () => resolve(true);
       sc.onerror = () => resolve(false);
       document.head.appendChild(sc);
     });
   }
 
-  function _storeToken(token, expiresInSeconds) {
-    _accessToken = token;
-    localStorage.setItem('OT_ACCESS_TOKEN', token);
-    localStorage.setItem(
-      'OT_TOKEN_EXPIRES',
-      // Shave 60s so we never hand a token to Drive that dies mid-request.
-      String(Date.now() + ((parseInt(expiresInSeconds, 10) || 3600) - 60) * 1000)
-    );
-  }
-
-  /* Resolves true if we now hold a fresh token, false otherwise.
-     Never throws, never shows UI. */
-  function _renewSilently() {
-    if (_renewInFlight) return _renewInFlight;
-
-    _renewInFlight = (async () => {
-      const ok = await _loadGIS();
-      if (!ok) return false;
-
-      try {
-        if (!_tokenClient) {
-          _tokenClient = google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_CLIENT_ID,
-            scope: SCOPE,
-            prompt: '',                 // '' = silent. Do NOT change to 'consent'.
-            callback: () => {},         // replaced per-request below
-            error_callback: () => {},
-          });
-        }
-      } catch (e) {
-        console.warn('[' + APP_BRAND.name + ' storage] GIS init failed:', e);
-        return false;
+  /* prompt '' = silent (no UI if Google session + consent exist).
+     prompt 'consent' / 'select_account' = may open the Google popup.
+     Resolves true with a fresh token, false otherwise. Never throws. */
+  async function _requestToken(prompt) {
+    const ok = await _loadGIS();
+    if (!ok) return false;
+    try {
+      if (!_tokenClient) {
+        _tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: GOOGLE_CLIENT_ID,
+          scope: SCOPE,
+          prompt: '',
+          callback: () => {},
+          error_callback: () => {},
+        });
       }
+    } catch (e) { _warn('GIS init failed:', e); return false; }
 
-      const got = await new Promise((resolve) => {
-        // 8s ceiling so a silent attempt can never hang the app.
-        const timer = setTimeout(() => resolve(false), 8000);
-
-        _tokenClient.callback = (resp) => {
-          clearTimeout(timer);
-          if (resp && resp.access_token) {
-            _storeToken(resp.access_token, resp.expires_in);
-            console.log('[' + APP_BRAND.name + ' storage] token renewed silently');
-            resolve(true);
-          } else {
-            resolve(false);
-          }
-        };
-        _tokenClient.error_callback = () => { clearTimeout(timer); resolve(false); };
-
-        try {
-          _tokenClient.requestAccessToken({ prompt: '' });
-        } catch (e) {
-          clearTimeout(timer);
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => resolve(false), prompt ? 120000 : 8000);
+      _tokenClient.callback = (resp) => {
+        clearTimeout(timer);
+        if (resp && resp.access_token) {
+          _storeToken(resp.access_token, resp.expires_in);
+          _setStatus();
+          resolve(true);
+        } else {
           resolve(false);
         }
-      });
+      };
+      _tokenClient.error_callback = () => { clearTimeout(timer); resolve(false); };
+      try { _tokenClient.requestAccessToken({ prompt: prompt }); }
+      catch (e) { clearTimeout(timer); resolve(false); }
+    });
+  }
 
-      if (got) { _hideBanner(); _setIndicator('saved'); }
-      return got;
-    })();
-
-    _renewInFlight.finally(() => { _renewInFlight = null; });
+  function _renewSilently() {
+    if (_renewInFlight) return _renewInFlight;
+    _renewInFlight = _requestToken('').finally(() => { _renewInFlight = null; });
     return _renewInFlight;
   }
 
-  /* Fires every 60s; renews once we're inside the last 5 minutes of
-     the token's life, so a Drive call almost never 401s in the first
-     place. Cheap — it's a timestamp comparison until it's needed. */
-  function _startRenewalWatchdog() {
-    setInterval(() => {
-      if (!_accessToken) return;
-      const exp = parseInt(localStorage.getItem('OT_TOKEN_EXPIRES') || '0', 10);
-      if (exp && Date.now() > exp - 5 * 60 * 1000) _renewSilently();
-    }, 60 * 1000);
-
-    // Coming back to a tab that slept through its expiry is the other
-    // common way to land on a dead token.
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible' || !_accessToken) return;
-      const exp = parseInt(localStorage.getItem('OT_TOKEN_EXPIRES') || '0', 10);
-      if (exp && Date.now() > exp - 5 * 60 * 1000) _renewSilently();
-    });
+  /* Used by Sync now / Live / the dot: silent first, then the popup. */
+  async function _interactiveSignIn() {
+    if (_tokenValid()) return true;
+    const first = await _requestToken(_lsGet(CONSENT_KEY) ? '' : 'consent');
+    if (first) return true;
+    return _requestToken('select_account');
   }
 
   /* ══════════════════════════════════════════════════════════
-     DRIVE REST CALLS
+     DRIVE REST
   ══════════════════════════════════════════════════════════ */
 
-  async function _driveFetch(url, opts = {}) {
-    opts.headers = Object.assign({}, opts.headers, {
-      Authorization: 'Bearer ' + _accessToken,
-    });
-    const res = await fetch(url, opts);
-
-    if (res.status === 401) {
-      /* v5.7: don't give up and nag the user — try a silent renewal
-         first and replay the exact same request. _retried guards
-         against an infinite loop if the new token also 401s. */
-      if (!opts._otRetried) {
-        _setIndicator('loading');
-        const renewed = await _renewSilently();
-        if (renewed) {
-          const retryOpts = Object.assign({}, opts, { _otRetried: true });
-          retryOpts.headers = Object.assign({}, opts.headers, {
-            Authorization: 'Bearer ' + _accessToken,
-          });
-          return _driveFetch(url, retryOpts);
-        }
-      }
-
-      // Silent renewal genuinely failed — now it's worth asking.
-      _accessToken = null;
-      localStorage.removeItem('OT_ACCESS_TOKEN');
-      localStorage.removeItem('OT_TOKEN_EXPIRES');
-      _hideBanner();
-      _setIndicator('unlinked');
-      _showBanner(
-        '<strong style="color:#5b7fff;">Session expired</strong><br><span style="color:#a3a1a8;font-size:12px;">Sign in again to keep syncing.</span>',
-        'Sign in', _signIn
-      );
-      throw new Error('401 Unauthorized — token expired');
+  async function _api(url, opts, retried) {
+    opts = opts || {};
+    if (!_token) throw new Error('not signed in');
+    const res = await fetch(url, Object.assign({}, opts, {
+      headers: Object.assign({}, opts.headers, { Authorization: 'Bearer ' + _token }),
+    }));
+    if (res.status === 401 && !retried) {
+      if (await _renewSilently()) return _api(url, opts, true);
+      _dropToken();
+      throw new Error('session expired');
     }
+    if (!res.ok) throw new Error('Drive HTTP ' + res.status);
     return res;
   }
 
-  async function _findOrCreateFile() {
+  async function _ensureFileId() {
+    if (_fileId) return _fileId;
     const q = encodeURIComponent(`name='${DRIVE_FILE_NAME}' and trashed=false`);
-    const searchRes = await _driveFetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`
-    );
-    const searchData = await searchRes.json();
+    const s = await (await _api(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`)).json();
+    if (s.files && s.files.length) { _fileId = s.files[0].id; return _fileId; }
+    const c = await (await _api('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' }),
+    })).json();
+    _fileId = c.id;
+    return _fileId;
+  }
 
-    if (searchData.files && searchData.files.length > 0) {
-      return searchData.files[0].id;
-    }
+  async function _fetchRemoteMeta() {
+    return (await (await _api(`https://www.googleapis.com/drive/v3/files/${_fileId}?fields=modifiedTime`)).json());
+  }
 
-    const createRes = await _driveFetch(
-      'https://www.googleapis.com/drive/v3/files',
+  async function _fetchRemote() {
+    const meta = await _fetchRemoteMeta();
+    const text = await (await _api(`https://www.googleapis.com/drive/v3/files/${_fileId}?alt=media`)).text();
+    let data = {};
+    try { data = text.trim() ? JSON.parse(text) : {}; }
+    catch (e) { _warn('Drive file unreadable, treating as empty:', e); }
+    return { data: data, modifiedTime: meta.modifiedTime || null };
+  }
+
+  async function _pushCache() {
+    const res = await _api(
+      `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media&fields=modifiedTime`,
       {
-        method: 'POST',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: DRIVE_FILE_NAME, mimeType: 'application/json' }),
+        body: JSON.stringify(_cache, null, 2),
       }
     );
-    const created = await createRes.json();
-    return created.id;
-  }
-
-  async function _loadFromFile() {
-    const res = await _driveFetch(
-      `https://www.googleapis.com/drive/v3/files/${_fileId}?alt=media`
-    );
-    const text = await res.text();
-    let fileData;
-    try {
-      fileData = text.trim() ? JSON.parse(text) : {};
-    } catch (err) {
-      console.warn('[' + APP_BRAND.name + ' storage] Could not parse Drive file, starting fresh:', err);
-      fileData = {};
-    }
-    // Merge rather than overwrite: any keys set locally (e.g. a theme
-    // toggle clicked before this load finished) win over the file's
-    // stale copy of those same keys, instead of being silently discarded.
-    // Drive remains the source of truth for everything not just changed
-    // in this tab.
-    _cache = { ...fileData, ..._pendingLocal };
-    _pendingLocal = {};
-  }
-
-  async function _writeToFile() {
-    // Always keep the local mirror current so logged-out / offline edits
-    // survive a reload. Cheap and synchronous.
-    _writeMirror();
-    if (!_fileId || !_accessToken) return;  // not signed in: local-only
-    try {
-      _setIndicator('saving');
-      await _driveFetch(
-        `https://www.googleapis.com/upload/drive/v3/files/${_fileId}?uploadType=media`,
-        {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(_cache, null, 2),
-        }
-      );
-      _setIndicator('saved');
-    } catch (err) {
-      console.error('[' + APP_BRAND.name + ' storage] Write error:', err);
-      _setIndicator('error');
-    }
-  }
-
-  function _scheduleSave() {
-    if (_writeTimer) clearTimeout(_writeTimer);
-    _writeTimer = setTimeout(() => {
-      _writeToFile();
-      _writeTimer = null;
-    }, 300);
-  }
-
-  async function _connectToFile() {
-    try {
-      _setIndicator('loading');
-      _fileId = await _findOrCreateFile();
-      await _loadFromFile();
-      _hideBanner();
-      _setIndicator('saved');
-      _applyTheme(_cache || {});
-      _authoritative = true;   // Drive is now the source of truth
-      _markReady();
-      _fireSync();             // repaint any page that first rendered from the mirror
-    } catch (err) {
-      console.error('[' + APP_BRAND.name + ' storage] Connect error:', err);
-      _setIndicator('error');
-    }
+    let j = {};
+    try { j = await res.json(); } catch (e) {}
+    _remoteMod = j.modifiedTime || null;
+    _dirty = false;
   }
 
   /* ══════════════════════════════════════════════════════════
-     READY SYSTEM
+     MERGE — newer edit wins, per key
+     A key with no timestamp counts as 1 when present (so local data
+     from before v6 is not silently dropped) and 0 when absent.
+     Ties go to Drive. A deletion is a key whose timestamp is newer
+     than the other side's value and which is absent from that side.
   ══════════════════════════════════════════════════════════ */
 
-  function _markReady() {
-    _ready = true;
-    _readyQueue.forEach(fn => fn());
-    _readyQueue = [];
-  }
+  function _merge(local, remote) {
+    const lt = local[KT] || {};
+    const rt = remote[KT] || {};
+    const keys = new Set([
+      ...Object.keys(local), ...Object.keys(remote),
+      ...Object.keys(lt), ...Object.keys(rt),
+    ]);
+    keys.delete(KT);
 
-  function _fireChange(key, value) {
-    _changeListeners.forEach(fn => {
-      try { fn(key, value); } catch (e) { console.error('[' + APP_BRAND.name + ' storage] onChange listener error:', e); }
+    const out = {};
+    const times = {};
+    keys.forEach((k) => {
+      const l = (lt[k] != null) ? lt[k] : (_has(local, k) ? 1 : 0);
+      const r = (rt[k] != null) ? rt[k] : (_has(remote, k) ? 1 : 0);
+      const src = (r >= l) ? remote : local;
+      if (_has(src, k)) out[k] = src[k];
+      const t = Math.max(l, r);
+      if (t) times[k] = t;
     });
+    out[KT] = times;
+    return out;
   }
 
-  // Fired once the authoritative store is loaded (and on later full reloads).
-  // Lets a page that already painted from the offline mirror repaint with the
-  // real data once it arrives.
-  function _fireSync() {
-    _syncListeners.forEach(fn => {
-      try { fn(); } catch (e) { console.error('[' + APP_BRAND.name + ' storage] onSync listener error:', e); }
+  /* Pull from Drive, merge into this device, push the result back. */
+  async function _mergeWithDrive() {
+    await _ensureFileId();
+    const remote = await _fetchRemote();
+    _cache = _merge(_cache || {}, remote.data);
+    _remoteMod = remote.modifiedTime;
+    await _pushCache();
+    _writeMirror();
+    _applyTheme(_cache);
+    _fireSync();
+    _setStatus();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     BACKUPS — this device only, last MAX_BACKUPS kept
+  ══════════════════════════════════════════════════════════ */
+
+  function _backupNow() {
+    if (!_cache) return;
+    const list = _getBackups();
+    list.unshift({ at: Date.now(), data: _cache });
+    _lsSet(BACKUPS_KEY, JSON.stringify(list.slice(0, MAX_BACKUPS)));
+  }
+
+  /* Restores the newest backup on this device and overwrites Drive
+     with it. Every restored key gets a fresh timestamp, so the restored
+     copy wins on other devices too. */
+  async function undoLastSync() {
+    const list = _getBackups();
+    if (!list.length) return false;
+    const newest = list[0];
+    const rest = list.slice(1);
+    const now = Date.now();
+    const times = {};
+    Object.keys(newest.data).forEach((k) => { if (k !== KT) times[k] = now; });
+    _cache = Object.assign({}, newest.data, { [KT]: times });
+    _lsSet(BACKUPS_KEY, JSON.stringify(rest));
+    _writeMirror();
+    _applyTheme(_cache);
+    _fireSync();
+    if (_tokenValid()) {
+      try { await _ensureFileId(); await _pushCache(); }
+      catch (e) { _warn('Undo could not reach Drive:', e); _lastError = e.message; }
+    } else {
+      _dirty = true;
+    }
+    _setStatus();
+    return true;
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     SYNC NOW
+  ══════════════════════════════════════════════════════════ */
+
+  async function syncNow() {
+    if (_syncing) return false;
+    if (!_tokenValid()) {
+      const ok = await _interactiveSignIn();
+      if (!ok) { _lastError = 'Sign-in needed'; _setStatus(); return false; }
+    }
+    _syncing = true;
+    _setStatus();
+    try {
+      _backupNow();
+      await _mergeWithDrive();
+      _lastSyncAt = Date.now();
+      _lsSet(LAST_SYNC_KEY, String(_lastSyncAt));
+      _lastError = null;
+      return true;
+    } catch (e) {
+      _lastError = e.message || String(e);
+      _warn('Sync failed:', e);
+      return false;
+    } finally {
+      _syncing = false;
+      _setStatus();
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     LIVE — check every 5 s, push edits ~5 s after each change
+  ══════════════════════════════════════════════════════════ */
+
+  async function _liveTick() {
+    if (!_live || _busy || _syncing) return;
+    if (!_tokenValid()) { _setStatus(); return; }
+    _busy = true;
+    try {
+      await _ensureFileId();
+      const meta = await _fetchRemoteMeta();
+      if (_dirty || (meta.modifiedTime && meta.modifiedTime !== _remoteMod)) {
+        await _mergeWithDrive();
+      }
+    } catch (e) {
+      _lastError = e.message || String(e);
+    } finally {
+      _busy = false;
+      _setStatus();
+    }
+  }
+
+  function _schedulePush() {
+    if (_pushTimer) clearTimeout(_pushTimer);
+    _pushTimer = setTimeout(() => {
+      _pushTimer = null;
+      if (_live) _liveTick();
+    }, PUSH_MS);
+  }
+
+  async function setLive(on) {
+    _live = !!on;
+    _lsSet(LIVE_KEY, _live ? '1' : '0');
+    if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+    if (_live) {
+      if (!_tokenValid()) await _interactiveSignIn();
+      _liveTimer = setInterval(_liveTick, LIVE_MS);
+      _liveTick();
+    }
+    _setStatus();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     IDLE + WATCHDOG
+     - Active tab, token within 5 min of expiry, user not idle:
+       renew silently in the background.
+     - Idle > 30 min and token expired: nothing happens until the
+       next click, which shows the Refresh / Sign in prompt.
+  ══════════════════════════════════════════════════════════ */
+
+  function _startWatchdog() {
+    setInterval(() => {
+      if (!_token || !_tokenExp) return;
+      const idle = Date.now() - _lastActivity > IDLE_MS;
+      if (!idle && Date.now() > _tokenExp - 5 * 60 * 1000) {
+        _renewSilently().then(() => _setStatus());
+      }
+    }, WATCH_MS);
+  }
+
+  function _trackActivity() {
+    const onAct = () => {
+      const idle = Date.now() - _lastActivity;
+      _lastActivity = Date.now();
+      if (_lsGet(SIGNED_IN_KEY) !== '1' || _tokenValid()) return;
+      if (idle > IDLE_MS) {
+        _showBanner(
+          '<strong style="color:#5b7fff;">Session expired</strong><br><span style="color:#a3a1a8;font-size:12px;">Refresh to keep syncing.</span>',
+          [
+            ['Refresh', () => _renewSilently().then((ok) => ok || _requestToken('select_account'))],
+            ['Sign in', () => _requestToken('select_account')],
+          ]
+        );
+      } else {
+        _renewSilently().then(() => _setStatus());
+      }
+    };
+    document.addEventListener('pointerdown', onAct, true);
+    document.addEventListener('keydown', onAct, true);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     STATUS DOT (bottom-right) + STATUS API
+  ══════════════════════════════════════════════════════════ */
+
+  const DOT_ID = 'ot-status-dot';
+  const DOT_STYLE = {
+    live:     { color: '#3a8c5c', pulse: true,  label: 'Live — checking Drive every 5 s' },
+    synced:   { color: '#1d4fd6', pulse: false, label: 'Synced' },
+    syncing:  { color: '#1d4fd6', pulse: true,  label: 'Syncing…' },
+    paused:   { color: '#e8a90c', pulse: false, label: 'Paused — click to refresh' },
+    offline:  { color: '#9e9891', pulse: false, label: 'Offline' },
+    unlinked: { color: '#9e9891', pulse: false, label: 'Not linked — click to sign in' },
+    error:    { color: '#c0392b', pulse: false, label: 'Last sync failed' },
+  };
+
+  function _computeStatus() {
+    const signedIn = _lsGet(SIGNED_IN_KEY) === '1' || !!_token;
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    let state;
+    if (_syncing) state = 'syncing';
+    else if (!signedIn) state = offline ? 'offline' : 'unlinked';
+    else if (offline) state = 'offline';
+    else if (!_tokenValid()) state = 'paused';
+    else if (_lastError) state = 'error';
+    else if (_live) state = 'live';
+    else state = 'synced';
+    return {
+      state: state,
+      live: _live,
+      signedIn: signedIn,
+      dirty: _dirty,
+      lastSyncAt: _lastSyncAt || null,
+      backups: _getBackups().length,
+      error: _lastError,
+    };
+  }
+
+  function _injectDotStyles() {
+    if (document.getElementById('ot-dot-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ot-dot-styles';
+    style.textContent = `
+      #${DOT_ID} {
+        position: fixed; right: 14px; bottom: 12px;
+        width: 12px; height: 12px; border-radius: 50%;
+        z-index: 99999; cursor: pointer; background: #9e9891;
+        transition: background 0.3s;
+      }
+      #${DOT_ID}.ot-pulse { animation: otPulse 1.8s ease-out infinite; }
+      @keyframes otPulse {
+        0%   { box-shadow: 0 0 0 0 currentColor; }
+        70%  { box-shadow: 0 0 0 7px transparent; }
+        100% { box-shadow: 0 0 0 0 transparent; }
+      }
+      @media (prefers-reduced-motion: reduce) { #${DOT_ID}.ot-pulse { animation: none; } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function _createDot() {
+    if (document.getElementById(DOT_ID)) return;
+    _injectDotStyles();
+    const el = document.createElement('div');
+    el.id = DOT_ID;
+    el.setAttribute('role', 'button');
+    el.addEventListener('click', async () => {
+      const st = _computeStatus();
+      if (st.state === 'unlinked' || st.state === 'paused') {
+        await _interactiveSignIn();
+        _setStatus();
+      } else if (st.state !== 'syncing') {
+        syncNow();
+      }
+    });
+    document.body.appendChild(el);
+  }
+
+  function _renderDot(st) {
+    const el = document.getElementById(DOT_ID);
+    if (!el) return;
+    const s = DOT_STYLE[st.state] || DOT_STYLE.unlinked;
+    el.style.background = s.color;
+    el.style.color = s.color;
+    el.classList.toggle('ot-pulse', s.pulse);
+    let title = APP_BRAND.name + ': ' + s.label;
+    if (st.state === 'synced' && st.lastSyncAt) {
+      title += ' · ' + new Date(st.lastSyncAt).toLocaleString();
+    }
+    el.title = title;
+  }
+
+  function _setStatus() {
+    const st = _computeStatus();
+    _renderDot(st);
+    _statusListeners.forEach((fn) => {
+      try { fn(st); } catch (e) { _warn('onStatus listener error:', e); }
     });
   }
 
   /* ══════════════════════════════════════════════════════════
-     SHARED STYLES (grip-dot drag handle, nav link layout)
-     Injected once so every page looks identical — no more
-     copy-pasted CSS per file.
+     BANNER (used only for the idle "Refresh / Sign in" prompt)
+  ══════════════════════════════════════════════════════════ */
+
+  const BANNER_ID = 'ot-storage-banner';
+
+  function _hideBanner() {
+    const el = document.getElementById(BANNER_ID);
+    if (el) el.remove();
+  }
+
+  function _showBanner(html, buttons) {
+    _hideBanner();
+    const b = document.createElement('div');
+    b.id = BANNER_ID;
+    b.style.cssText = `
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #18181d; color: #ededf0; padding: 14px 20px;
+      border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+      display: flex; align-items: center; gap: 12px; z-index: 99999;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+      max-width: 520px; width: calc(100vw - 40px);
+    `;
+    b.innerHTML = `<span style="font-size:20px;">☁️</span><span style="flex:1;line-height:1.5;">${html}</span>`;
+    buttons.forEach(([label, fn]) => {
+      const btn = document.createElement('button');
+      btn.textContent = label;
+      btn.style.cssText = `
+        background:#3a8c5c;color:#fff;border:none;padding:9px 14px;
+        border-radius:8px;font-size:13px;font-family:'DM Sans',sans-serif;
+        font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0;
+      `;
+      btn.addEventListener('click', () => { _hideBanner(); fn(); });
+      b.appendChild(btn);
+    });
+    document.body.appendChild(b);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     THEME MODULE
+  ══════════════════════════════════════════════════════════ */
+
+  function _cssVars(obj) {
+    return Object.entries(obj).map(([k, v]) => `${k}:${v};`).join('');
+  }
+  function _injectBaseTheme() {
+    if (document.getElementById('ot-base-theme')) return;
+    const style = document.createElement('style');
+    style.id = 'ot-base-theme';
+    style.textContent =
+      `:root{${_cssVars(BASE_THEME.light)}}` +
+      `[data-theme="dark"]{${_cssVars(BASE_THEME.dark)}}`;
+    document.head.insertBefore(style, document.head.firstChild);
+  }
+
+  function _hexToSoft(hex, alpha) {
+    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  function _applyTheme(cache) {
+    cache = cache || {};
+    const html = document.documentElement;
+
+    const darkSaved = cache['TODAY_DARK'];
+    const dark = (darkSaved !== undefined && darkSaved !== null)
+      ? darkSaved === '1'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    html.dataset.theme = dark ? 'dark' : '';
+
+    const lightHex = cache['ONETRACK_ACCENT'] || '#1d4fd6';
+    const darkHex  = cache['ONETRACK_ACCENT_DARK'] || '#5b7fff';
+    const hex  = dark ? darkHex : lightHex;
+    const soft = _hexToSoft(hex, dark ? 0.14 : 0.12);
+    html.style.setProperty('--accent', hex);
+    html.style.setProperty('--accent-soft', soft);
+    EXTRA_ACCENT_VARS.forEach(v => html.style.setProperty(v, hex));
+    EXTRA_SOFT_VARS.forEach(v => html.style.setProperty(v, soft));
+
+    const fs = parseFloat(cache['ONETRACK_FONT_SCALE'] || '1');
+    html.style.zoom = fs;   // zoom scales px-based layouts; 1 = untouched
+
+    try {
+      localStorage.setItem(THEME_SNAPSHOT_KEY, JSON.stringify({
+        dark: dark ? '1' : '0', accent: lightHex, accentDark: darkHex, fontScale: fs,
+      }));
+    } catch (e) {}
+  }
+
+  function _applyThemeFromSnapshot() {
+    let snap = null;
+    try { snap = JSON.parse(localStorage.getItem(THEME_SNAPSHOT_KEY)); } catch (e) {}
+    if (snap) {
+      _applyTheme({
+        TODAY_DARK: snap.dark,
+        ONETRACK_ACCENT: snap.accent,
+        ONETRACK_ACCENT_DARK: snap.accentDark,
+        ONETRACK_FONT_SCALE: snap.fontScale,
+      });
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.dataset.theme = 'dark';
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     BRAND FOOTER (global, bottom-centre, Sydney time)
+  ══════════════════════════════════════════════════════════ */
+
+  const _MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const BRAND_TIME_ZONE = 'Australia/Sydney';
+
+  function _formatBrandDate(d) {
+    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-AU', {
+      timeZone: BRAND_TIME_ZONE,
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(d);
+    const get = type => (parts.find(p => p.type === type) || {}).value || '';
+    let hh = get('hour');
+    if (hh === '24') hh = '00';
+    const monthNum = parseInt(get('month'), 10);
+    const mmm = _MONTH_ABBR[monthNum - 1] || get('month');
+    return `${get('day')}-${mmm}-${get('year')} ${hh}:${get('minute')}`;
+  }
+
+  /* Deprecated no-op: the footer is global now. Kept so old calls don't throw. */
+  function _renderBrandFooter() {}
+
+  function _injectGlobalFooterStyles() {
+    if (document.getElementById('ot-global-footer-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'ot-global-footer-styles';
+    style.textContent = `
+      #ot-global-footer {
+        position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%);
+        z-index: 9998; pointer-events: none; text-align: center;
+        max-width: calc(100vw - 32px); white-space: nowrap;
+        overflow: hidden; text-overflow: ellipsis;
+        font-family: 'DM Sans', sans-serif; font-size: 11px; font-style: italic;
+        color: var(--text3, #8a8478);
+        background: var(--bg, transparent); padding: 3px 12px; border-radius: 8px;
+        opacity: 0.9;
+      }
+      @media (max-width: 640px) { #ot-global-footer { display: none; } }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function _renderGlobalFooter() {
+    if (!document.body) return;
+    _injectGlobalFooterStyles();
+    let el = document.getElementById('ot-global-footer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ot-global-footer';
+      document.body.appendChild(el);
+    }
+    let when = new Date(document.lastModified);
+    if (isNaN(when.getTime()) || when.getTime() === 0) when = null;
+    const stamp = _formatBrandDate(when);
+    const parts = [APP_BRAND.tagline, APP_VERSION, stamp ? ('Last updated ' + stamp) : null].filter(Boolean);
+    el.textContent = parts.join(' | ');
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     SHARED STYLES + NAV MODULE
   ══════════════════════════════════════════════════════════ */
 
   function _injectSharedStyles() {
@@ -636,16 +800,7 @@
     document.head.appendChild(style);
   }
 
-  /* Same plain character + same look as the existing Days/slot drag handle
-     elsewhere in the app — kept visually identical on purpose. */
   const _GRIP_CHAR = '⠿';
-
-  /* ══════════════════════════════════════════════════════════
-     NAV MODULE — builds the sidebar links + drag-to-reorder
-     into <div id="onetrack-nav-links"> on every page.
-  ══════════════════════════════════════════════════════════ */
-
-  const NAV_ORDER_KEY = 'ONETRACK_NAV_ORDER';
   let _navDragId = null;
 
   function _loadNavOrder() {
@@ -658,7 +813,6 @@
     } catch (e) {}
     return ids;
   }
-
   let _navOrder = _loadNavOrder();
 
   function _saveNavOrder(order) {
@@ -670,21 +824,14 @@
     catch (e) { return ''; }
   }
 
-  /* ── Per-page nav-label override (renamable tabs) ──
-     Stored in localStorage so it is available synchronously at nav-build
-     time on every page, before Drive/data has loaded. */
-  const NAV_LABEL_PREFIX = 'ONETRACK_NAV_LABEL_';
   function _navLabelOverride(id) {
     try { return localStorage.getItem(NAV_LABEL_PREFIX + id) || null; }
     catch (e) { return null; }
   }
   function _setNavLabelOverride(id, label) {
     try {
-      if (label && String(label).trim()) {
-        localStorage.setItem(NAV_LABEL_PREFIX + id, String(label).trim());
-      } else {
-        localStorage.removeItem(NAV_LABEL_PREFIX + id);
-      }
+      if (label && String(label).trim()) localStorage.setItem(NAV_LABEL_PREFIX + id, String(label).trim());
+      else localStorage.removeItem(NAV_LABEL_PREFIX + id);
     } catch (e) {}
   }
 
@@ -708,7 +855,6 @@
     label.className = 'ot-nav-label';
     label.textContent = _navLabelOverride(page.id) || page.label;
     a.appendChild(label);
-
     return a;
   }
 
@@ -745,7 +891,6 @@
         _navDragId = null;
         _buildNav();
       });
-      // Prevent a drag-and-drop from also firing a navigation click
       a.addEventListener('click', e => {
         if (a.classList.contains('ot-dragging')) e.preventDefault();
       });
@@ -758,227 +903,60 @@
     container.innerHTML = '';
     const byId = {};
     NAV_PAGES.forEach(p => { byId[p.id] = p; });
-
     _navOrder.forEach(id => {
       const page = byId[id];
       if (page) container.appendChild(_makeNavLink(page, true));
     });
-    // Settings always pinned last, never draggable
     container.appendChild(_makeNavLink(NAV_SETTINGS, false));
-
     _wireNavDrag(container);
   }
 
   /* ══════════════════════════════════════════════════════════
-     THEME MODULE — dark mode, accent colour, font scale,
-     applied centrally instead of once per page.
+     READY SYSTEM
   ══════════════════════════════════════════════════════════ */
 
-  const THEME_SNAPSHOT_KEY = 'ONETRACK_THEME_SNAPSHOT';
-
-  // Local mirror of the whole data cache, kept in localStorage. This lets
-  // every page render and save even when the user is not signed into Drive
-  // (e.g. a fresh visit to the public site). When signed in, Drive stays
-  // the source of truth; this is just a same-device fallback/offline cache.
-  const LOCAL_MIRROR_KEY = 'ONETRACK_LOCAL_MIRROR';
-  function _readMirror() {
-    try { return JSON.parse(localStorage.getItem(LOCAL_MIRROR_KEY)) || {}; }
-    catch (e) { return {}; }
+  function _markReady() {
+    _ready = true;
+    _readyQueue.forEach(fn => fn());
+    _readyQueue = [];
   }
-  function _writeMirror() {
-    try { localStorage.setItem(LOCAL_MIRROR_KEY, JSON.stringify(_cache || {})); }
-    catch (e) {}
+  function _fireChange(key, value) {
+    _changeListeners.forEach(fn => {
+      try { fn(key, value); } catch (e) { _warn('onChange listener error:', e); }
+    });
   }
-  const THEME_KEYS = [
-    'TODAY_DARK', 'ONETRACK_ACCENT', 'ONETRACK_ACCENT_DARK',
-    'ONETRACK_ACCENT_SOFT', 'ONETRACK_ACCENT_DARK_SOFT', 'ONETRACK_FONT_SCALE',
-  ];
-  // Extra per-section CSS variables some pages use (e.g. Checklists.html).
-  // Safe to set everywhere — pages that don't reference them just ignore them.
-  const EXTRA_ACCENT_VARS = ['--ft-accent', '--pt-accent', '--roh-accent', '--esh-accent', '--kal-accent', '--trv-accent', '--rtn-accent'];
-  const EXTRA_SOFT_VARS   = ['--ft-soft', '--pt-soft', '--roh-soft', '--esh-soft', '--trv-soft', '--rtn-soft'];
-
-  function _cssVars(obj) {
-    return Object.entries(obj).map(([k, v]) => `${k}:${v};`).join('');
+  function _fireSync() {
+    _syncListeners.forEach(fn => {
+      try { fn(); } catch (e) { _warn('onSync listener error:', e); }
+    });
   }
-  function _injectBaseTheme() {
-    if (document.getElementById('ot-base-theme')) return;
-    const style = document.createElement('style');
-    style.id = 'ot-base-theme';
-    style.textContent =
-      `:root{${_cssVars(BASE_THEME.light)}}` +
-      `[data-theme="dark"]{${_cssVars(BASE_THEME.dark)}}`;
-    // Inserted FIRST in <head>, before the page's own <style> block,
-    // so any leftover page-level copy of these same vars wins on
-    // source order if one still exists — this is the floor, not an
-    // override of anything more specific a page wants to layer on top.
-    document.head.insertBefore(style, document.head.firstChild);
-  }
-  // Runs instantly — document.head already exists by the time this
-  // script tag executes, well before DOMContentLoaded — so the base
-  // palette is in place before the page's own CSS even paints.
-  _injectBaseTheme();
-
-  function _hexToSoft(hex, alpha) {
-    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
-  function _applyTheme(cache) {
-    cache = cache || {};
-    const html = document.documentElement;
-
-    const darkSaved = cache['TODAY_DARK'];
-    const dark = (darkSaved !== undefined && darkSaved !== null)
-      ? darkSaved === '1'
-      : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    html.dataset.theme = dark ? 'dark' : '';
-
-    const lightHex = cache['ONETRACK_ACCENT'] || '#1d4fd6';
-    const darkHex  = cache['ONETRACK_ACCENT_DARK'] || '#5b7fff';
-    const hex  = dark ? darkHex : lightHex;
-    const soft = _hexToSoft(hex, dark ? 0.14 : 0.12);
-    html.style.setProperty('--accent', hex);
-    html.style.setProperty('--accent-soft', soft);
-    EXTRA_ACCENT_VARS.forEach(v => html.style.setProperty(v, hex));
-    EXTRA_SOFT_VARS.forEach(v => html.style.setProperty(v, soft));
-
-    const fs = parseFloat(cache['ONETRACK_FONT_SCALE'] || '1');
-    // NOTE: every page's CSS uses px, not rem, so changing the root
-    // font-size has nothing to scale. `zoom` scales the whole page
-    // (px included) proportionally, leaving the design untouched at
-    // the default value of 1.
-    html.style.zoom = fs;
-
-    try {
-      localStorage.setItem(THEME_SNAPSHOT_KEY, JSON.stringify({
-        dark: dark ? '1' : '0', accent: lightHex, accentDark: darkHex, fontScale: fs,
-      }));
-    } catch (e) {}
-  }
-
-  function _applyThemeFromSnapshot() {
-    let snap = null;
-    try { snap = JSON.parse(localStorage.getItem(THEME_SNAPSHOT_KEY)); } catch (e) {}
-    if (snap) {
-      _applyTheme({
-        TODAY_DARK: snap.dark,
-        ONETRACK_ACCENT: snap.accent,
-        ONETRACK_ACCENT_DARK: snap.accentDark,
-        ONETRACK_FONT_SCALE: snap.fontScale,
-      });
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      // No snapshot yet (first ever visit) — at least avoid a light flash
-      // if the system itself is in dark mode.
-      document.documentElement.dataset.theme = 'dark';
-    }
-  }
-
-  // Run instantly, before DOMContentLoaded — this is what prevents the
-  // "flash of wrong theme" each page used to prevent on its own.
-  _applyThemeFromSnapshot();
 
   /* ══════════════════════════════════════════════════════════
-     BRAND FOOTER — single muted line per page:
-       "{tagline} · v{version} · Last updated DD-MMM-YY HH:MM"
-     Date/time is the page's own "code last touched" stamp,
-     passed in by that page — NOT live page-load time.
+     DATA WRITES
   ══════════════════════════════════════════════════════════ */
 
-  function _injectBrandFooterStyles() {
-    if (document.getElementById('ot-brand-footer-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'ot-brand-footer-styles';
-    style.textContent = `
-      .ot-brand-footer {
-        font-family:'DM Sans',sans-serif; font-size:11px; font-style:italic;
-        color:var(--text3,#8a8478); white-space:nowrap;
-      }
-      @media (max-width:900px) { .ot-brand-footer { display:none; } }
-    `;
-    document.head.appendChild(style);
+  function _stampKey(k) {
+    _cache[KT] = Object.assign({}, _cache[KT] || {}, { [k]: Date.now() });
   }
 
-  const _MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const BRAND_TIME_ZONE = 'Australia/Sydney';
-
-  /* Formats a Date as DD-MMM-YY HH:MM (24-hour), ALWAYS in Sydney/AEST
-     time — regardless of the viewing device's own time zone. Uses
-     Intl so it correctly accounts for AEST/AEDT daylight saving. */
-  function _formatBrandDate(d) {
-    if (!(d instanceof Date) || isNaN(d.getTime())) return '';
-    const parts = new Intl.DateTimeFormat('en-AU', {
-      timeZone: BRAND_TIME_ZONE,
-      day: '2-digit', month: '2-digit', year: '2-digit',
-      hour: '2-digit', minute: '2-digit', hour12: false,
-    }).formatToParts(d);
-    const get = type => (parts.find(p => p.type === type) || {}).value || '';
-    let hh = get('hour');
-    if (hh === '24') hh = '00'; // Intl quirk: hour12:false can yield "24" for midnight
-    const monthNum = parseInt(get('month'), 10);
-    const mmm = _MONTH_ABBR[monthNum - 1] || get('month');
-    return `${get('day')}-${mmm}-${get('year')} ${hh}:${get('minute')}`;
+  function _onLocalChange() {
+    _dirty = true;
+    _writeMirror();                       // always: survives reloads and offline
+    if (_live && _tokenValid()) _schedulePush();
+    _setStatus();
   }
 
-  /**
-   * OT.renderBrandFooter(containerId, version, lastUpdated)
-   * version:     string, e.g. 'v1.0' — set by you when you finish
-   *              editing that page's code.
-   * lastUpdated: a Date — the moment you last changed that page's
-   *              code, NOT when the page happens to be viewed.
-   */
-  /* Deprecated as of the centralized footer: the footer is now ONE global
-     bottom-centre element built by _renderGlobalFooter() on every page (see
-     below). This is kept as a no-op only so the eight pages' existing
-     OT.renderBrandFooter('otBrandFooter…', 'v1.0', <date>) calls don't throw
-     and don't produce a second, duplicate footer. Nothing needs editing on
-     any page. */
-  function _renderBrandFooter(/* containerId, version, lastUpdated */) {}
-
-  /* ── GLOBAL FOOTER — single muted line, fixed at the bottom CENTRE of every
-     page, built the same page-independent way as the sync dot / sign-in
-     banner. Shows immediately (not gated behind sign-in). Replaces the old
-     per-page inline <span> approach, so TT&B, Settings, and every other page
-     get the identical footer in the identical place with no per-page code.
-       "{tagline} | {version} | Last updated DD-MMM-YY HH:MM"
-     Timestamp is THIS page's own file modification time (document.lastModified
-     — on GitHub Pages that's when you last deployed this file), formatted in
-     Sydney time by _formatBrandDate. ── */
-  function _injectGlobalFooterStyles() {
-    if (document.getElementById('ot-global-footer-styles')) return;
-    const style = document.createElement('style');
-    style.id = 'ot-global-footer-styles';
-    style.textContent = `
-      #ot-global-footer {
-        position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%);
-        z-index: 9998; pointer-events: none; text-align: center;
-        max-width: calc(100vw - 32px); white-space: nowrap;
-        overflow: hidden; text-overflow: ellipsis;
-        font-family: 'DM Sans', sans-serif; font-size: 11px; font-style: italic;
-        color: var(--text3, #8a8478);
-        background: var(--bg, transparent); padding: 3px 12px; border-radius: 8px;
-        opacity: 0.9;
-      }
-      @media (max-width: 640px) { #ot-global-footer { display: none; } }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function _renderGlobalFooter() {
-    if (!document.body) return;
-    _injectGlobalFooterStyles();
-    let el = document.getElementById('ot-global-footer');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = 'ot-global-footer';
-      document.body.appendChild(el);
-    }
-    let when = new Date(document.lastModified);
-    if (isNaN(when.getTime()) || when.getTime() === 0) when = null;
-    const stamp = _formatBrandDate(when);
-    const parts = [APP_BRAND.tagline, APP_VERSION, stamp ? ('Last updated ' + stamp) : null]
-      .filter(Boolean);
-    el.textContent = parts.join(' | ');
+  /* Replace the whole data set. Keys that disappear are timestamped as
+     deletions so the replacement wins on the next merge. */
+  function _replaceCache(newObj) {
+    const now = Date.now();
+    const old = _cache || {};
+    const times = {};
+    Object.keys(old).forEach(k => { if (k !== KT && !_has(newObj, k)) times[k] = now; });
+    Object.keys(newObj).forEach(k => { if (k !== KT) times[k] = now; });
+    _cache = Object.assign({}, newObj, { [KT]: times });
+    _onLocalChange();
+    _applyTheme(_cache);
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -992,201 +970,38 @@
     }
     _injectSharedStyles();
     _buildNav();
-    _createIndicator();
+    _createDot();
     _renderGlobalFooter();
+    _startWatchdog();
+    _trackActivity();
 
-    _startRenewalWatchdog();
+    window.addEventListener('online', _setStatus);
+    window.addEventListener('offline', _setStatus);
 
-    // If an edit is still sitting in the 300ms debounce when the page is closed
-    // or navigated away from, flush it now. _writeToFile() persists the local
-    // mirror synchronously, so a reload always keeps the last change.
+    // Best-effort: flush a pending live push when the page is left.
     window.addEventListener('pagehide', () => {
-      if (_writeTimer) { clearTimeout(_writeTimer); _writeTimer = null; _writeToFile(); }
+      if (_pushTimer) { clearTimeout(_pushTimer); _pushTimer = null; }
+      if (_dirty && _live && _tokenValid()) _liveTick();
     });
 
-    if (_checkForExistingToken()) {
-      _connectToFile();
-    } else {
-      /* v5.7: no valid token on this page load — but that does NOT
-         mean the user must sign in again. Try silently first and
-         only show the banner if that fails. This is what makes a
-         browser restart, or a token that expired overnight, invisible. */
-      _setIndicator('loading');
-      _renewSilently().then((renewed) => {
-        if (renewed) { _connectToFile(); return; }
-        _setIndicator('unlinked');
-        _showBanner(..._signInBannerMsg());
-        // No Drive this session — the local mirror IS the source of truth now.
-        // Only now is it safe for pages to seed defaults into genuinely empty data.
-        _authoritative = true;
-        _fireSync();
-      });
-      // Work offline: seed the cache from the local mirror so every page's
-      // onReady() fires and the UI renders (and stays editable) even without
-      // Drive sign-in. Signing in later reloads and Drive takes over.
-      _cache = _readMirror();
-      _applyTheme(_cache);
-      _markReady();
-    }
+    _markReady();
+    _authoritative = true;   // the device mirror is the store that pages open from
+    _fireSync();
+    if (_live) setLive(true);  // resume Live without a login if the token is still valid
+    _setStatus();
   }
 
-  /* ══════════════════════════════════════════════════════════
-     PUBLIC API
-  ══════════════════════════════════════════════════════════ */
-
-  const OT = {
-
-    brand: APP_BRAND,
-
-    // Set the browser/document title to the given page label. Pages call
-    // this on tab switch and on inline rename; without it they throw
-    // "OT.setTitle is not a function".
-    setTitle(t) {
-      if (t != null) { try { document.title = String(t); } catch (e) {} }
-    },
-
-    renderBrandFooter: _renderBrandFooter,
-
-    // Canonical theme engine, exposed so Settings.html (or any page)
-    // calls these instead of keeping its own private copy of the logic.
-    isDark() {
-      const v = _cache ? _cache['TODAY_DARK'] : null;
-      return (v !== undefined && v !== null) ? v === '1' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-    },
-    applyTheme() { _applyTheme(_cache || {}); },
-    // Real page list, single source of truth (also drives the sidebar nav).
-    navPages: NAV_PAGES.map(p => ({ ...p })),
-
-    // Renamable nav tabs. The override is stored per-page and shows on every
-    // page's sidebar. Pass a falsy label to clear the override (revert to
-    // the built-in default in NAV_PAGES).
-    getNavLabel(id) {
-      const ov = _navLabelOverride(id);
-      if (ov) return ov;
-      const p = NAV_PAGES.find(x => x.id === id) ||
-                (NAV_SETTINGS.id === id ? NAV_SETTINGS : null);
-      return p ? p.label : '';
-    },
-    setNavLabel(id, label) {
-      _setNavLabelOverride(id, label);
-      _buildNav();
-    },
-
-    isReady()   { return _ready; },
-
-    // True once the authoritative store (Drive, or the mirror when there is no
-    // Drive this session) has finished loading. Pages should not seed defaults
-    // into "empty" data until this is true.
-    isAuthoritative() { return _authoritative; },
-
-    onReady(fn) {
-      if (_ready) fn();
-      else _readyQueue.push(fn);
-    },
-
-    // Fires when authoritative data lands (and on later full reloads). If it is
-    // already authoritative when you register, fires immediately so late
-    // registrants still repaint.
-    onSync(fn) {
-      _syncListeners.push(fn);
-      if (_authoritative) { try { fn(); } catch (e) {} }
-    },
-
-    onChange(fn) {
-      _changeListeners.push(fn);
-    },
-
-    async get(key) {
-      if (!_ready || !_cache) return null;
-      const val = _cache[key];
-      return (val === undefined || val === null) ? null : String(val);
-    },
-
-    async set(key, value) {
-      if (!_cache) _cache = {};
-      _cache[key] = value;
-      _pendingLocal[key] = value;
-      _scheduleSave();
-      if (THEME_KEYS.indexOf(key) !== -1) _applyTheme(_cache);
-      _fireChange(key, value);
-    },
-
-    async remove(key) {
-      if (!_cache) return;
-      delete _cache[key];
-      _pendingLocal[key] = undefined; // tombstone: still wins over stale file value
-      _scheduleSave();
-      if (THEME_KEYS.indexOf(key) !== -1) _applyTheme(_cache);
-      _fireChange(key, null);
-    },
-
-    async keys() {
-      return _cache ? Object.keys(_cache) : [];
-    },
-
-    async getAll() {
-      return _cache ? { ..._cache } : {};
-    },
-
-    async setAll(obj) {
-      _cache = { ...obj };
-      await _writeToFile();
-      _applyTheme(_cache);
-    },
-
-    async clear() {
-      _cache = {};
-      await _writeToFile();
-      _applyTheme(_cache);
-    },
-
-    pickFile: _signIn,
-    signIn: _signIn,
-
-    async reload() {
-      if (_fileId) await _loadFromFile();
-    },
-
-    async forget() {
-      const _tokenBeingForgotten = _accessToken;
-      _accessToken = null;
-      _fileId      = null;
-      _cache       = null;
-      _ready       = false;
-      localStorage.removeItem('OT_ACCESS_TOKEN');
-      localStorage.removeItem('OT_TOKEN_EXPIRES');
-      sessionStorage.removeItem('OT_OAUTH_STATE');
-      _tokenClient = null;
-      /* Also revoke the GIS grant so "forget" really forgets, otherwise
-         the next silent renewal would just sign you straight back in. */
-      try {
-        if (window.google && google.accounts && google.accounts.oauth2 && _tokenBeingForgotten) {
-          google.accounts.oauth2.revoke(_tokenBeingForgotten, () => {});
-        }
-      } catch (e) { /* non-fatal */ }
-      _setIndicator('unlinked');
-      _showBanner(..._signInBannerMsg());
-    },
-  };
+  /* ── Top-level startup: cache from the mirror immediately ── */
+  _cache = _readMirror();
+  _loadToken();
+  _live = _lsGet(LIVE_KEY) === '1';
+  _lastSyncAt = parseInt(_lsGet(LAST_SYNC_KEY) || '0', 10) || 0;
+  _injectBaseTheme();
+  _applyThemeFromSnapshot();
+  _applyTheme(_cache);
 
   /* ══════════════════════════════════════════════════════════
-     BRAND SEQUENCE LOOP  (v5.6)
-     ------------------------------------------------------------
-     On every page load the nav brand animates on an infinite loop:
-     "Ctrl" pops in, then "+", then "A" (each with a springy scale),
-     then the logo checkbox (#logoCheck) ticks. After a short hold
-     everything resets and the sequence runs again. The name renders
-     in the normal font colour (var(--text)); the checkbox sits to
-     the RIGHT of the name.
-
-     Centralised here so all pages share ONE copy. It still takes
-     over the per-page  setTimeout(runCheck, 500)  auto-tick: we
-     replace #logoCheck with a fresh clone, which drops that inline
-     script's click handler and its pending timer (the timer then
-     fires on the now-detached original node — no visual effect),
-     so the tick is driven only by this loop. Click-to-toggle is
-     re-added below so manual ticking still works. Reduced-motion
-     users get the name + a single tick, no loop.
+     BRAND SEQUENCE LOOP (unchanged from v5.6)
   ══════════════════════════════════════════════════════════ */
 
   function _injectBrandTraceStyles() {
@@ -1194,13 +1009,10 @@
     const style = document.createElement('style');
     style.id = 'ot-brand-seq-styles';
     style.textContent = `
-      /* Brand name in the normal font colour (overrides .nav-title's accent). */
       #otBrandName{color:var(--text);}
-      /* Each part starts hidden + shrunk; .ot-in springs it into place (Pop). */
       #otBrandName .ot-seq-part{display:inline-block;opacity:0;transform:scale(.5);
         transition:opacity .3s ease, transform .42s cubic-bezier(.34,1.56,.64,1);}
       #otBrandName .ot-seq-part.ot-in{opacity:1;transform:scale(1);}
-      /* Reduced motion: show everything statically, no pop, no loop. */
       @media (prefers-reduced-motion: reduce){
         #otBrandName .ot-seq-part{opacity:1;transform:none;transition:none;}
       }
@@ -1208,8 +1020,6 @@
     document.head.appendChild(style);
   }
 
-  // Re-usable tick / untick that drive the page's existing keyframes
-  // (logoBoxFill / logoTickDraw / logoBoxUnfill / logoTickErase).
   function _tickLogo(el) {
     el.classList.remove('uncheck', 'is-checked');
     void el.offsetWidth;
@@ -1240,12 +1050,8 @@
     if (!name || !logo || name.__otTraced) return;
     name.__otTraced = true;
 
-    // Ensure the name is present so we can measure its width. (This
-    // runs before the page's own fillBrandName(); setting it here is
-    // harmless — the page sets the same text again a moment later.)
     if (!name.textContent) name.textContent = APP_BRAND.name;
 
-    // Take over the auto-tick by cloning (see banner note above).
     var fresh = logo.cloneNode(true);
     fresh.classList.remove('animating', 'is-checked', 'uncheck');
     logo.parentNode.replaceChild(fresh, logo);
@@ -1253,8 +1059,6 @@
 
     _injectBrandTraceStyles();
 
-    // Split the brand into "Ctrl" / "+" / "A" parts so each can pop in
-    // separately. Names without a "+" fall back to a single part.
     function splitBrand(s) {
       var i = s.indexOf('+');
       return i === -1 ? [s] : [s.slice(0, i), '+', s.slice(i + 1)];
@@ -1262,9 +1066,6 @@
 
     var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Build the spans + run the loop. DEFERRED (rAF / next task) so this runs
-    // AFTER each page's own fillBrandName(), which overwrites #otBrandName's
-    // textContent on DOMContentLoaded — doing it earlier would wipe our spans.
     function boot() {
       var full = name.textContent || APP_BRAND.name;
       name.textContent = '';
@@ -1276,38 +1077,33 @@
         return span;
       });
 
-      // Move the checkbox to sit AFTER the name (right side).
       if (name.nextSibling !== logo) name.parentNode.insertBefore(logo, name.nextSibling);
 
-      if (reduce) {                                   // static name + one tick, no loop
+      if (reduce) {
         parts.forEach(function (p) { p.classList.add('ot-in'); });
         _tickLogo(logo);
         return;
       }
 
-      // Ctrl -> + -> A -> tick -> hold -> reset -> loop (Pop / option B).
-      var STEP = 380, BASE = 560, HOLD = 1700;        // ms (Medium speed from the prototype)
+      var STEP = 380, BASE = 560, HOLD = 1700;
       var timers = [];
       function clearTimers() { timers.forEach(clearTimeout); timers = []; }
       function cycle() {
         clearTimers();
-        parts.forEach(function (p) { p.classList.remove('ot-in'); });   // fade out previous pass
-        if (logo.classList.contains('is-checked')) _untickLogo(logo);   // reset the tick
+        parts.forEach(function (p) { p.classList.remove('ot-in'); });
+        if (logo.classList.contains('is-checked')) _untickLogo(logo);
         parts.forEach(function (p, i) {
           timers.push(setTimeout(function () { p.classList.add('ot-in'); }, BASE + STEP * i));
         });
         timers.push(setTimeout(function () { _tickLogo(logo); }, BASE + STEP * parts.length));
-        timers.push(setTimeout(cycle,                            BASE + STEP * parts.length + HOLD));
+        timers.push(setTimeout(cycle, BASE + STEP * parts.length + HOLD));
       }
       cycle();
     }
 
-    // rAF/setTimeout guarantees boot() runs after the page's synchronous
-    // DOMContentLoaded work (incl. fillBrandName) and lets the webfont settle.
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { requestAnimationFrame(boot); });
     else setTimeout(boot, 0);
 
-    // Preserve click-to-toggle (re-added since we replaced the node).
     var checked = false;
     logo.addEventListener('animationend', function (e) {
       if (e.animationName === 'logoTickDraw') checked = true;
@@ -1319,6 +1115,141 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _runBrandTrace);
   else _runBrandTrace();
 
+  /* ══════════════════════════════════════════════════════════
+     PUBLIC API
+  ══════════════════════════════════════════════════════════ */
+
+  const OT = {
+
+    brand: APP_BRAND,
+
+    setTitle(t) {
+      if (t != null) { try { document.title = String(t); } catch (e) {} }
+    },
+
+    renderBrandFooter: _renderBrandFooter,
+
+    isDark() {
+      const v = _cache ? _cache['TODAY_DARK'] : null;
+      return (v !== undefined && v !== null) ? v === '1' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    },
+    applyTheme() { _applyTheme(_cache || {}); },
+
+    navPages: NAV_PAGES.map(p => ({ ...p })),
+
+    getNavLabel(id) {
+      const ov = _navLabelOverride(id);
+      if (ov) return ov;
+      const p = NAV_PAGES.find(x => x.id === id) || (NAV_SETTINGS.id === id ? NAV_SETTINGS : null);
+      return p ? p.label : '';
+    },
+    setNavLabel(id, label) {
+      _setNavLabelOverride(id, label);
+      _buildNav();
+    },
+
+    isReady()         { return _ready; },
+    isAuthoritative() { return _authoritative; },
+
+    onReady(fn) {
+      if (_ready) fn();
+      else _readyQueue.push(fn);
+    },
+
+    onSync(fn) {
+      _syncListeners.push(fn);
+      if (_authoritative) { try { fn(); } catch (e) {} }
+    },
+
+    onChange(fn) { _changeListeners.push(fn); },
+
+    async get(key) {
+      if (!_ready || !_cache) return null;
+      const val = _cache[key];
+      return (val === undefined || val === null) ? null : String(val);
+    },
+
+    async set(key, value) {
+      if (!_cache) _cache = {};
+      _cache[key] = value;
+      _stampKey(key);
+      _onLocalChange();
+      if (THEME_KEYS.indexOf(key) !== -1) _applyTheme(_cache);
+      _fireChange(key, value);
+    },
+
+    async remove(key) {
+      if (!_cache) return;
+      delete _cache[key];
+      _stampKey(key);                     // a timestamped delete
+      _onLocalChange();
+      if (THEME_KEYS.indexOf(key) !== -1) _applyTheme(_cache);
+      _fireChange(key, null);
+    },
+
+    async keys() {
+      return _cache ? Object.keys(_cache).filter(k => k !== KT) : [];
+    },
+
+    async getAll() {
+      if (!_cache) return {};
+      const out = { ..._cache };
+      return out;
+    },
+
+    async setAll(obj) {
+      _replaceCache(obj || {});
+      _fireSync();
+    },
+
+    async clear() {
+      _replaceCache({});
+      _fireSync();
+    },
+
+    /* ── Sync ── */
+    sync: syncNow,
+    setLive(on) { return setLive(on); },
+    isLive() { return _live; },
+    undoLastSync,
+    getBackups() {
+      return _getBackups().map(b => ({
+        at: b.at,
+        keys: Object.keys(b.data).filter(k => k !== KT).length,
+      }));
+    },
+    getStatus: _computeStatus,
+    onStatus(fn) {
+      _statusListeners.push(fn);
+      try { fn(_computeStatus()); } catch (e) {}
+    },
+    lastSyncAt() { return _lastSyncAt || null; },
+
+    /* ── Auth ── */
+    signIn() { return _interactiveSignIn().then(ok => { _setStatus(); return ok; }); },
+    pickFile() { return this.signIn(); },
+
+    async forget() {
+      const old = _token;
+      _dropToken();
+      _fileId = null;
+      _remoteMod = null;
+      _dirty = false;
+      _lsDel(SIGNED_IN_KEY);
+      _lsDel(CONSENT_KEY);
+      _tokenClient = null;
+      if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+      _live = false;
+      _lsSet(LIVE_KEY, '0');
+      _lastError = null;
+      try {
+        if (window.google && google.accounts && google.accounts.oauth2 && old) {
+          google.accounts.oauth2.revoke(old, () => {});
+        }
+      } catch (e) {}
+      _setStatus();
+    },
+  };
 
   global.OT = OT;
   _init();
