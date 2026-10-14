@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%233a8c5c'/%3E%3Cpath d='M7 16.5l6 6 12-12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
 <title data-page="Settings">Settings</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -39,7 +38,7 @@
     transition: background 0.3s, color 0.3s;
   }
 
-  /* ── NAV (links are built by storage.js) ── */
+  /* ── NAV ── */
   .nav {
     position: fixed; left: 0; top: 0; bottom: 0;
     width: var(--nav-width);
@@ -48,7 +47,6 @@
     display: flex; flex-direction: column;
     padding: 24px 0; z-index: 100;
     box-shadow: 2px 0 16px rgba(0,0,0,0.04);
-    transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease;
   }
   .nav-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -61,40 +59,15 @@
     display: flex; align-items: center; gap: 8px;
     flex: 1;
   }
-  .nav-toggle-btn {
-    display: flex; align-items: center; justify-content: center;
-    width: 22px; height: 22px;
-    border: 1px solid var(--border); border-radius: 6px;
-    background: var(--surface2); color: var(--text3);
-    cursor: pointer; font-size: 13px; line-height: 1;
-    flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
-    user-select: none;
+  .nav a {
+    display: block; padding: 8px 20px;
+    font-size: 13px; font-weight: 400;
+    color: var(--text2); text-decoration: none;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
   }
-  .nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
-  .nav.nav-collapsed {
-    width: 0 !important; padding: 0 !important;
-    overflow: hidden !important; border-right: none !important; box-shadow: none !important;
-  }
-  body.nav-is-collapsed .main { margin-left: 0 !important; }
-  #nav-show-tab {
-    display: none;
-    position: fixed; top: 50%; left: 0;
-    transform: translateY(-50%);
-    z-index: 9999;
-    writing-mode: vertical-lr;
-    background: var(--surface);
-    border: 1px solid var(--border); border-left: none;
-    border-radius: 0 8px 8px 0;
-    padding: 12px 6px;
-    font-size: 11px; font-weight: 600;
-    color: var(--text3);
-    cursor: pointer;
-    letter-spacing: 0.05em;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.08);
-    user-select: none;
-  }
-  #nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
-  body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
+  .nav a:hover { color: var(--text); background: var(--surface2); transform: translateX(4px); }
+  .nav a.active { color: var(--accent); font-weight: 600; border-left-color: var(--accent); background: var(--accent-soft); }
 
   /* ── MAIN ── */
   .main {
@@ -129,7 +102,6 @@
   .section:nth-child(4) { animation-delay: 0.16s; }
   .section:nth-child(5) { animation-delay: 0.20s; }
   .section:nth-child(6) { animation-delay: 0.24s; }
-  .section:nth-child(7) { animation-delay: 0.28s; }
 
   .section-title {
     font-size: 11px; font-weight: 600;
@@ -240,7 +212,9 @@
   [data-theme="dark"] .setting-select { color-scheme: dark; }
 
   /* ── COLOR SWATCHES ── */
-  .swatch-row { display: flex; gap: 8px; align-items: center; }
+  .swatch-row {
+    display: flex; gap: 8px; align-items: center;
+  }
   .swatch {
     width: 28px; height: 28px; border-radius: 50%;
     cursor: pointer; border: 2px solid transparent;
@@ -250,11 +224,11 @@
   .swatch:hover { transform: scale(1.15); }
   .swatch.active { border-color: var(--text); transform: scale(1.12); }
 
-  /* ── DANGER / ACTION ROWS ── */
+  /* ── DANGER ZONE ── */
   .danger-row { display: flex; align-items: center; padding: 16px 22px; border-bottom: 1px solid var(--border); gap: 16px; }
   .danger-row:last-child { border-bottom: none; }
   .danger-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--red-soft); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-  .danger-info { flex: 1; min-width: 0; }
+  .danger-info { flex: 1; }
   .danger-label { font-size: 14px; font-weight: 500; color: var(--text); }
   .danger-desc { font-size: 12px; color: var(--text3); margin-top: 2px; }
   .danger-btn {
@@ -270,7 +244,6 @@
     flex-shrink: 0;
   }
   .danger-btn:hover { background: var(--red); color: #fff; }
-  .danger-btn:disabled { opacity: 0.45; cursor: default; background: var(--red-soft); color: var(--red); }
 
   /* ── ABOUT / BUILD ── */
   .about-card {
@@ -304,6 +277,22 @@
     opacity: 1; transform: translateX(-50%) translateY(0);
   }
 
+  /* ── FOOTER ── */
+  .page-footer {
+    position: fixed; bottom: 0; left: var(--nav-width); right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex; align-items: center; justify-content: flex-end;
+    z-index: 50;
+  }
+  .build-stamp {
+    font-size: 10px; color: var(--text3);
+    letter-spacing: 0.06em;
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap; opacity: 0.75; font-style: italic;
+  }
+
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -311,22 +300,10 @@
 
   @media (max-width: 700px) {
     :root { --nav-width: 0px; }
+    .nav { display: none; }
     .main { padding: 24px 16px 100px; }
+    .page-footer { left: 0; }
   }
-
-  /* inline save indicator */
-  .saved-pill {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600;
-    color: var(--green); background: var(--green-soft);
-    border-radius: 100px; padding: 3px 10px;
-    opacity: 0; transition: opacity 0.3s;
-    pointer-events: none;
-  }
-  .saved-pill.show { opacity: 1; }
-
-  /* drive status line wraps cleanly */
-  #driveStatus { line-height: 1.5; }
 
   /* ── NAV LOGO CHECKBOX ── */
   .logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
@@ -343,12 +320,103 @@
   @keyframes logoTickDraw{from{stroke-dashoffset:28;}to{stroke-dashoffset:0;}}
   @keyframes logoBoxUnfill{0%{fill:#3a8c5c;stroke:#3a8c5c;}100%{fill:none;stroke:var(--accent);}}
   @keyframes logoTickErase{from{stroke-dashoffset:0;}to{stroke-dashoffset:28;}}
+
+  /* inline save indicator */
+  .saved-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    color: var(--green); background: var(--green-soft);
+    border-radius: 100px; padding: 3px 10px;
+    opacity: 0; transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .saved-pill.show { opacity: 1; }
+
+/* ── NAV COLLAPSE ── */
+:root { --nav-toggle-size: 22px; }
+.nav-toggle-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: var(--nav-toggle-size); height: var(--nav-toggle-size);
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface2); color: var(--text3);
+  cursor: pointer; font-size: 13px; line-height: 1;
+  flex-shrink: 0; transition: background 0.15s, color 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.nav-toggle-btn:hover { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+
+/* Collapsed nav */
+.nav.nav-collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* Shift content when nav is collapsed */
+body.nav-is-collapsed .main        { margin-left: 0 !important; }
+body.nav-is-collapsed .topbar      { left: 0 !important; }
+body.nav-is-collapsed .panels      { left: 0 !important; }
+body.nav-is-collapsed .footer-actions { left: 0 !important; }
+body.nav-is-collapsed .panel .footer-actions { left: 0 !important; }
+
+/* Floating "show nav" tab on left edge */
+#nav-show-tab {
+  display: none;
+  position: fixed; top: 50%; left: 0;
+  transform: translateY(-50%);
+  z-index: 9999;
+  writing-mode: vertical-lr;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+  padding: 12px 6px;
+  font-size: 11px; font-weight: 600;
+  color: var(--text3);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+  transition: color 0.15s, background 0.15s;
+  user-select: none;
+}
+#nav-show-tab:hover { color: var(--accent); background: var(--accent-soft); }
+body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5px; }
+
+/* Smooth width transition on nav itself */
+.nav { transition: width 0.2s ease, padding 0.2s ease, box-shadow 0.2s ease; }
+/* ── END NAV COLLAPSE ── */
+
+/* ── NAV HEADER NORMALIZED ── */
+.nav-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+  gap: 6px;
+}
+.nav-header .nav-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  font-family: 'DM Serif Display', serif;
+  font-size: 18px;
+  color: var(--accent);
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 0;
+}
+/* ── END NAV HEADER NORMALIZED ── */
 </style>
 </head>
 <body>
 <div id="nav-show-tab" title="Show sidebar">☰</div>
 
-<!-- NAV: links + drag-reorder are built by storage.js. Settings is pinned at the bottom. -->
+<!-- NAV: links + drag-reorder are built centrally by storage.js. Settings is pinned at bottom, not draggable. -->
 <nav class="nav" id="onetrack-nav">
   <div class="nav-header">
     <div class="nav-title">
@@ -381,6 +449,7 @@
     <div class="section-title">Appearance</div>
     <div class="card">
 
+      <!-- Dark Mode -->
       <div class="setting-row">
         <div class="setting-icon">🌙</div>
         <div class="setting-info">
@@ -392,6 +461,7 @@
         </div>
       </div>
 
+      <!-- Accent Colour -->
       <div class="setting-row">
         <div class="setting-icon">🎨</div>
         <div class="setting-info">
@@ -409,6 +479,7 @@
         </div>
       </div>
 
+      <!-- Font Scale -->
       <div class="setting-row">
         <div class="setting-icon">Aa</div>
         <div class="setting-info">
@@ -432,6 +503,7 @@
     <div class="section-title">Time &amp; Dates</div>
     <div class="card">
 
+      <!-- Timezone -->
       <div class="setting-row">
         <div class="setting-icon">🕐</div>
         <div class="setting-info">
@@ -443,6 +515,7 @@
         </div>
       </div>
 
+      <!-- Week starts on -->
       <div class="setting-row">
         <div class="setting-icon">📅</div>
         <div class="setting-info">
@@ -457,6 +530,7 @@
         </div>
       </div>
 
+      <!-- Time format -->
       <div class="setting-row">
         <div class="setting-icon">⏱</div>
         <div class="setting-info">
@@ -479,6 +553,7 @@
     <div class="section-title">Behaviour</div>
     <div class="card">
 
+      <!-- Auto-carry tasks -->
       <div class="setting-row">
         <div class="setting-icon">↩</div>
         <div class="setting-info">
@@ -490,6 +565,7 @@
         </div>
       </div>
 
+      <!-- Confirm before delete -->
       <div class="setting-row">
         <div class="setting-icon">🗑</div>
         <div class="setting-info">
@@ -501,6 +577,7 @@
         </div>
       </div>
 
+      <!-- Show completed tasks -->
       <div class="setting-row">
         <div class="setting-icon">✓</div>
         <div class="setting-info">
@@ -512,6 +589,7 @@
         </div>
       </div>
 
+      <!-- Sound on complete -->
       <div class="setting-row">
         <div class="setting-icon">🔔</div>
         <div class="setting-info">
@@ -531,6 +609,7 @@
     <div class="section-title">Navigation</div>
     <div class="card">
 
+      <!-- Nav pinned -->
       <div class="setting-row">
         <div class="setting-icon">📌</div>
         <div class="setting-info">
@@ -542,6 +621,7 @@
         </div>
       </div>
 
+      <!-- Default landing page -->
       <div class="setting-row">
         <div class="setting-icon">🏠</div>
         <div class="setting-info">
@@ -549,7 +629,9 @@
           <div class="setting-desc">Which page opens when you load <span class="ot-brand"></span></div>
         </div>
         <div class="setting-control">
-          <select class="setting-select" id="defaultPageSelect"></select>
+          <select class="setting-select" id="defaultPageSelect">
+            <!-- options built from OT.navPages at load time — see initAll() -->
+          </select>
         </div>
       </div>
 
@@ -588,79 +670,29 @@
     </div>
   </div>
 
-  <!-- SECTION: GOOGLE DRIVE (new in v6.0) -->
-  <div class="section">
-    <div class="section-title">Google Drive</div>
-    <div class="card">
-
-      <div class="setting-row">
-        <div class="setting-icon">☁️</div>
-        <div class="setting-info">
-          <div class="setting-label">Sync Now</div>
-          <div class="setting-desc">Backs up this device, merges with Drive (newer edit wins per item), then uploads</div>
-        </div>
-        <div class="setting-control">
-          <button class="danger-btn" id="syncBtn" style="color:var(--accent);background:var(--accent-soft);border-color:rgba(29,79,214,0.20);">Sync now</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-icon">⚡</div>
-        <div class="setting-info">
-          <div class="setting-label">Live</div>
-          <div class="setting-desc">Checks Drive every 5 s and pushes your edits about 5 s after each change</div>
-        </div>
-        <div class="setting-control">
-          <button class="toggle" id="toggleLive" role="switch" aria-checked="false"></button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-icon">↶</div>
-        <div class="setting-info">
-          <div class="setting-label">Undo Last Sync</div>
-          <div class="setting-desc" id="backupCount">0 of 5 backups kept</div>
-        </div>
-        <div class="setting-control">
-          <button class="danger-btn" id="undoBtn" disabled>Undo</button>
-        </div>
-      </div>
-
-      <div class="setting-row">
-        <div class="setting-icon">👤</div>
-        <div class="setting-info">
-          <div class="setting-label">Google Account</div>
-          <div class="setting-desc" id="driveStatus">Not signed in</div>
-        </div>
-        <div class="setting-control">
-          <button class="danger-btn" id="forgetBtn">Sign out</button>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
   <!-- SECTION: DATA -->
   <div class="section">
     <div class="section-title">Data</div>
     <div class="card">
 
+      <!-- Export -->
       <div class="danger-row">
         <div class="danger-icon" style="background:var(--green-soft);">💾</div>
         <div class="danger-info">
           <div class="danger-label">Export All Data</div>
-          <div class="danger-desc">Download a JSON backup of every <span class="ot-brand"></span> key from this device</div>
+          <div class="danger-desc">Download a JSON backup of every <span class="ot-brand"></span> key from your data file</div>
         </div>
         <button class="danger-btn" id="exportBtn" style="color:var(--green);background:var(--green-soft);border-color:rgba(58,140,92,0.20);">Export JSON</button>
       </div>
 
+      <!-- Import -->
       <div class="danger-row">
         <div class="danger-icon" style="background:var(--accent-soft);">📂</div>
         <div class="danger-info">
           <div class="danger-label">Import Data</div>
           <div class="danger-desc">Restore from a previously exported JSON backup</div>
         </div>
-        <button class="danger-btn" id="importBtn" style="color:var(--accent);background:var(--accent-soft);border-color:rgba(29,79,214,0.20);">Import JSON</button>
+        <button class="danger-btn" id="importBtn" style="color:var(--accent);background:var(--accent-soft);border-color:rgba(193,123,63,0.20);">Import JSON</button>
         <input type="file" id="importFile" accept=".json" style="display:none;">
       </div>
 
@@ -672,6 +704,7 @@
     <div class="section-title">Danger Zone</div>
     <div class="card">
 
+      <!-- Clear completed tasks -->
       <div class="danger-row">
         <div class="danger-icon">🧹</div>
         <div class="danger-info">
@@ -681,6 +714,7 @@
         <button class="danger-btn" id="clearCompletedBtn">Clear</button>
       </div>
 
+      <!-- Reset all settings -->
       <div class="danger-row">
         <div class="danger-icon">↺</div>
         <div class="danger-info">
@@ -690,6 +724,7 @@
         <button class="danger-btn" id="resetSettingsBtn">Reset</button>
       </div>
 
+      <!-- Wipe everything -->
       <div class="danger-row">
         <div class="danger-icon">💥</div>
         <div class="danger-info">
@@ -715,20 +750,29 @@
 
 </div><!-- /main -->
 
+<footer class="page-footer">
+  <span id="otBrandFooter"></span>
+</footer>
+
 <div class="toast" id="toast"></div>
 
 <script>
 /* ════════════════════════════════════════════════
-   Ctrl+A SETTINGS · Settings.html  (v6.0)
-   Keys this page reads/writes (all shared with other pages):
-     TODAY_DARK, ONETRACK_ACCENT, ONETRACK_ACCENT_DARK,
-     ONETRACK_TZ, ONETRACK_WEEK_START, ONETRACK_TIME_FMT,
-     ONETRACK_FONT_SCALE, ONETRACK_AUTO_CARRY, ONETRACK_CONFIRM_DEL,
-     ONETRACK_SHOW_DONE, ONETRACK_SOUND, ONETRACK_NAV_PINNED,
-     ONETRACK_DEFAULT_PAGE, ONETRACK_PRINT_STYLE
-   Drive sync (Sync now / Live / Undo / Sign out) is driven entirely
-   by storage.js through OT.sync, OT.setLive, OT.undoLastSync,
-   OT.forget and OT.onStatus.
+   TASKMASTER SETTINGS · Settings.html
+   All keys that other pages already use:
+     TODAY_DARK           – dark mode (shared key)
+     ONETRACK_NAV_PINNED  – sidebar pin
+     ONETRACK_ACCENT      – accent colour light
+     ONETRACK_ACCENT_DARK – accent colour dark
+     ONETRACK_TZ          – timezone string
+     ONETRACK_WEEK_START  – 0=Sun, 1=Mon
+     ONETRACK_TIME_FMT    – 12 | 24
+     ONETRACK_FONT_SCALE  – 0.9 | 1 | 1.1
+     ONETRACK_AUTO_CARRY  – 1/0
+     ONETRACK_CONFIRM_DEL – 1/0
+     ONETRACK_SHOW_DONE   – 1/0
+     ONETRACK_SOUND       – 1/0
+     ONETRACK_DEFAULT_PAGE
    ════════════════════════════════════════════════ */
 
 const K = {
@@ -751,18 +795,15 @@ const K = {
 };
 
 /* ── helpers ── */
-// Synchronous-style wrappers around OT. The cache is filled once OT is ready.
+const html = document.documentElement;
+// Synchronous-style wrappers around OT (async under the hood)
+// get() returns cached value immediately after OT is ready
 let _otCache = {};
 const get = k => { const v = _otCache[k]; return (v === undefined) ? null : v; };
-const set = (k, v) => { _otCache[k] = v; OT.set(k, v); flashSaved(); };
+const set = (k,v) => { _otCache[k] = v; OT.set(k, v); flashSaved(); };
 const del = k => { delete _otCache[k]; OT.remove(k); };
 
-async function refreshCache() {
-  _otCache = await OT.getAll();
-  initAll();
-}
-
-function showToast(msg, dur = 2200) {
+function showToast(msg, dur=2200) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(t._timer);
@@ -773,18 +814,21 @@ function flashSaved() {
   const p = document.getElementById('savedPill');
   p.classList.add('show');
   clearTimeout(_savedTimer);
-  _savedTimer = setTimeout(() => p.classList.remove('show'), 1600);
+  _savedTimer = setTimeout(()=>p.classList.remove('show'), 1600);
 }
 
 /* ── dark mode / accent / font scale ──
-   Canonical logic lives in storage.js (OT.isDark / OT.applyTheme). */
+   Canonical logic now lives in storage.js (OT.isDark / OT.applyTheme),
+   shared by every page. This file only drives ITS OWN UI on top of
+   that: toggling the dark-switch "on" class, highlighting the active
+   accent swatch, highlighting the active font-size button. */
 function isDark() { return OT.isDark(); }
 function applyDark(dark) {
-  OT.applyTheme();
+  OT.applyTheme(); // sets html.dataset.theme + accent vars + zoom for every page
   const btn = document.getElementById('toggleDark');
   btn.classList.toggle('on', dark);
   btn.setAttribute('aria-checked', dark);
-  applyAccent();
+  applyAccent(); // refresh this page's swatch highlight (accent value may differ per mode)
 }
 document.getElementById('toggleDark').onclick = () => {
   const dark = !isDark();
@@ -796,6 +840,7 @@ document.getElementById('toggleDark').onclick = () => {
 function applyAccent() {
   const lightHex = get(K.ACCENT) || '#1d4fd6';
   OT.applyTheme();
+  // mark active swatch (UI state unique to this page)
   document.querySelectorAll('.swatch').forEach(s => {
     s.classList.toggle('active', s.dataset.accent === lightHex);
   });
@@ -810,7 +855,7 @@ document.getElementById('accentSwatches').addEventListener('click', e => {
 
 /* ── font scale ── */
 function applyFontScale(val) {
-  OT.applyTheme();
+  OT.applyTheme(); // applies zoom across the page, same engine every other page uses
   document.querySelectorAll('#fontScaleSegment .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.val === String(val));
   });
@@ -826,7 +871,6 @@ document.getElementById('fontScaleSegment').addEventListener('click', e => {
 /* ── timezone ── */
 function buildTzSelect() {
   const sel = document.getElementById('tzSelect');
-  sel.innerHTML = '';
   const zones = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [
     'UTC','America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
     'America/Anchorage','Pacific/Honolulu','Europe/London','Europe/Paris','Europe/Berlin',
@@ -836,14 +880,14 @@ function buildTzSelect() {
   const saved = get(K.TZ) || Intl.DateTimeFormat().resolvedOptions().timeZone;
   zones.forEach(tz => {
     const opt = document.createElement('option');
-    opt.value = tz; opt.textContent = tz.replace(/_/g, ' ');
+    opt.value = tz; opt.textContent = tz.replace(/_/g,' ');
     if (tz === saved) opt.selected = true;
     sel.appendChild(opt);
   });
   sel.onchange = () => set(K.TZ, sel.value);
 }
 
-/* ── segmented controls ── */
+/* ── print style ── */
 function applyPrintStyle(val) {
   document.querySelectorAll('#printStyleSegment .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.val === val);
@@ -856,6 +900,7 @@ document.getElementById('printStyleSegment').addEventListener('click', e => {
   applyPrintStyle(btn.dataset.val);
 });
 
+/* ── week start ── */
 function applyWeekStart(val) {
   document.querySelectorAll('#weekStartSegment .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.val === String(val));
@@ -868,6 +913,7 @@ document.getElementById('weekStartSegment').addEventListener('click', e => {
   applyWeekStart(btn.dataset.val);
 });
 
+/* ── time format ── */
 function applyTimeFmt(val) {
   document.querySelectorAll('#timeFormatSegment .seg-btn').forEach(b => {
     b.classList.toggle('active', b.dataset.val === String(val));
@@ -910,7 +956,10 @@ document.getElementById('toggleNavPin').onclick = () => {
   applyNavPin(next);
 };
 
-/* ── default page (options come from OT.navPages, the same list as the sidebar) ── */
+/* ── default page ──
+   Options are built from OT.navPages (storage.js's NAV_PAGES — the
+   same list that drives the sidebar), so this can never drift out of
+   sync with the pages that actually exist again. */
 const dpSel = document.getElementById('defaultPageSelect');
 function buildDefaultPageSelect() {
   dpSel.innerHTML = '';
@@ -921,76 +970,19 @@ function buildDefaultPageSelect() {
     dpSel.appendChild(opt);
   });
   const saved = get(K.DEFAULT_PAGE);
-  dpSel.value = (saved && OT.navPages.some(p => p.file === saved)) ? saved : OT.navPages[0].file;
+  dpSel.value = (saved && OT.navPages.some(p => p.file === saved))
+    ? saved
+    : OT.navPages[0].file;
 }
 dpSel.onchange = () => set(K.DEFAULT_PAGE, dpSel.value);
-
-/* ══════════════════════════════════════════════════════════
-   GOOGLE DRIVE
-   Everything here goes through storage.js. The status line,
-   the Live toggle and the Undo count all repaint from OT.onStatus.
-══════════════════════════════════════════════════════════ */
-
-function renderDriveStatus(st) {
-  const s = st || OT.getStatus();
-  const labels = {
-    live: 'Live',
-    synced: 'Synced',
-    syncing: 'Syncing…',
-    paused: 'Paused — session needs a refresh',
-    offline: 'Offline',
-    unlinked: 'Not signed in',
-    error: 'Last sync failed',
-  };
-  const last = s.lastSyncAt ? 'last sync ' + new Date(s.lastSyncAt).toLocaleString() : 'never synced';
-  const signed = s.signedIn ? 'signed in' : 'signed out';
-  document.getElementById('driveStatus').textContent =
-    (labels[s.state] || s.state) + ' · ' + signed + ' · ' + last;
-
-  const tl = document.getElementById('toggleLive');
-  tl.classList.toggle('on-green', !!s.live);
-  tl.setAttribute('aria-checked', !!s.live);
-
-  const n = OT.getBackups().length;
-  document.getElementById('backupCount').textContent = n + ' of 5 backups kept';
-  document.getElementById('undoBtn').disabled = n === 0;
-
-  document.getElementById('forgetBtn').disabled = !s.signedIn;
-}
-
-document.getElementById('syncBtn').onclick = async () => {
-  const btn = document.getElementById('syncBtn');
-  btn.disabled = true;
-  const ok = await OT.sync();
-  btn.disabled = false;
-  showToast(ok ? '✅ Synced with Google Drive' : '⚠️ Sync failed — try again', 2800);
-  if (ok) await refreshCache();
-};
-
-document.getElementById('toggleLive').onclick = () => {
-  OT.setLive(!OT.isLive());
-};
-
-document.getElementById('undoBtn').onclick = async () => {
-  if (!confirm('Restore this device to the state before the last Sync now? The restored copy is uploaded to Drive.')) return;
-  const ok = await OT.undoLastSync();
-  showToast(ok ? '↶ Restored the previous backup' : 'No backup to restore', 2800);
-  await refreshCache();
-};
-
-document.getElementById('forgetBtn').onclick = async () => {
-  if (!confirm('Sign out of Google on this device? Data stays on this device; Drive sync stops until you sign in again.')) return;
-  await OT.forget();
-  showToast('Signed out of Google');
-};
 
 /* ── export ── */
 document.getElementById('exportBtn').onclick = async () => {
   const data = await OT.getAll();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'ctrl-a-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  a.download = OT.brand.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'') + '-backup-' + new Date().toISOString().slice(0,10) + '.json';
   a.click();
   showToast('📦 Backup downloaded');
 };
@@ -1003,10 +995,11 @@ document.getElementById('importFile').onchange = e => {
   reader.onload = async ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (typeof data !== 'object' || data === null) throw new Error();
-      await OT.setAll(data);           // imported keys are timestamped now
-      await refreshCache();
+      if (typeof data !== 'object') throw new Error();
+      await OT.setAll(data);
+      _otCache = { ...data };
       showToast('✅ Data imported — reload pages to see changes', 3000);
+      initAll();
     } catch {
       showToast('❌ Invalid backup file');
     }
@@ -1023,9 +1016,12 @@ document.getElementById('clearCompletedBtn').onclick = async () => {
   try {
     const blocks = JSON.parse(raw);
     Object.keys(blocks).forEach(slot => {
-      if (Array.isArray(blocks[slot])) blocks[slot] = blocks[slot].filter(t => !t.done);
+      if (Array.isArray(blocks[slot])) {
+        blocks[slot] = blocks[slot].filter(t => !t.done);
+      }
     });
-    set('TODAY_BLOCKS_V2', JSON.stringify(blocks));
+    await OT.set('TODAY_BLOCKS_V2', JSON.stringify(blocks));
+    _otCache['TODAY_BLOCKS_V2'] = JSON.stringify(blocks);
     showToast('🧹 Completed tasks cleared');
   } catch { showToast('❌ Could not parse task data'); }
 };
@@ -1041,41 +1037,114 @@ document.getElementById('resetSettingsBtn').onclick = () => {
 
 /* ── wipe ── */
 document.getElementById('wipeBtn').onclick = async () => {
-  if (!confirm('⚠️ This will permanently delete ALL ' + OT.brand.name + ' data on this device, including tasks, planners, jobs and checklists.\n\nType DELETE to confirm.')) return;
+  if (!confirm('⚠️ This will permanently delete ALL ' + OT.brand.name + ' data including tasks, planners, jobs and checklists.\n\nType DELETE to confirm.')) return;
   const answer = prompt('Type DELETE to confirm wipe:');
   if (answer !== 'DELETE') { showToast('Wipe cancelled'); return; }
   await OT.clear();
-  await refreshCache();
-  showToast('💥 All data wiped', 3000);
+  _otCache = {};
+  showToast('💥 All data wiped. Refresh pages.', 3000);
+  initAll();
 };
 
-/* ── initAll: read stored values and apply them ── */
+/* ── initAll: read all stored values and apply them ── */
 function initAll() {
+  // Dark mode
   applyDark(isDark());
+
+  // Accent
   applyAccent();
-  applyFontScale(parseFloat(get(K.FONT_SCALE) || '1'));
-  buildTzSelect();
+
+  // Font scale
+  const fs = parseFloat(get(K.FONT_SCALE) || '1');
+  applyFontScale(fs);
+
+  // Timezone
+  buildTzSelect(); // rebuilds with correct selection
+
+  // Print style
   applyPrintStyle(get(K.PRINT_STYLE) || 'bw');
+
+  // Week start
   applyWeekStart(get(K.WEEK_START) || '0');
+
+  // Time format
   applyTimeFmt(get(K.TIME_FMT) || '12');
-  wireToggle('toggleAutoCarry',     K.AUTO_CARRY, true);
-  wireToggle('toggleConfirmDelete', K.CONFIRM_DEL, true);
-  wireToggle('toggleShowCompleted', K.SHOW_DONE,   true);
-  wireToggle('toggleSound',         K.SOUND,       false);
+
+  // Toggles
+  wireToggle('toggleAutoCarry',    K.AUTO_CARRY,    true);
+  wireToggle('toggleConfirmDelete', K.CONFIRM_DEL,  true);
+  wireToggle('toggleShowCompleted', K.SHOW_DONE,    true);
+  wireToggle('toggleSound',         K.SOUND,        false);
+
+  // Nav pin
   applyNavPin(get(K.NAV_PIN) === '1');
+
+  // Default page
   buildDefaultPageSelect();
 }
 
-/* ── Boot: pages open from this device's copy straight away. No Drive
-   round-trip and no sign-in is needed to show Settings. ── */
-document.querySelectorAll('.ot-brand').forEach(el => { el.textContent = OT.brand.name; });
-document.getElementById('otBrandNameAbout').textContent = OT.brand.name;
+/* ── "Fetching from Google Drive…" overlay ── shown until the AUTHORITATIVE
+   store has loaded, so the settings UI is never populated from — nor can the
+   import / reset / export actions run against — stale browser data before Drive
+   confirms in the token-expired startup path. ── */
+function _showDriveWait(){
+  if (document.getElementById("driveWaitOverlay")) return;
+  if (!document.getElementById("driveWaitStyles")){
+    var st=document.createElement("style"); st.id="driveWaitStyles";
+    st.textContent=
+      "#driveWaitOverlay{position:fixed;inset:0;z-index:100000;display:flex;"+
+      "align-items:center;justify-content:center;background:var(--bg,#f3f2f0);}"+
+      "#driveWaitOverlay .dw-card{display:flex;flex-direction:column;align-items:center;"+
+      "gap:14px;font-family:'DM Sans',sans-serif;text-align:center;padding:0 24px;}"+
+      "#driveWaitOverlay .dw-spin{width:38px;height:38px;border-radius:50%;"+
+      "border:3px solid var(--border,rgba(0,0,0,0.12));border-top-color:var(--accent,#1d4fd6);"+
+      "animation:dwSpin .8s linear infinite;}"+
+      "#driveWaitOverlay .dw-msg{font-size:15px;font-weight:600;color:var(--text,#16151a);}"+
+      "#driveWaitOverlay .dw-sub{font-size:12.5px;color:var(--text2,#5c5a60);}"+
+      "@keyframes dwSpin{to{transform:rotate(360deg);}}"+
+      "@media (prefers-reduced-motion:reduce){#driveWaitOverlay .dw-spin{animation:none;}}";
+    (document.head||document.documentElement).appendChild(st);
+  }
+  var ov=document.createElement("div"); ov.id="driveWaitOverlay";
+  ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
+    '<div class="dw-msg">Fetching from Google Drive…</div>'+
+    '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
+  (document.body||document.documentElement).appendChild(ov);
+}
+function _hideDriveWait(){ var ov=document.getElementById("driveWaitOverlay"); if(ov) ov.remove(); }
 
-OT.onReady(async () => {
-  _otCache = await OT.getAll();
-  initAll();
-  OT.onStatus(renderDriveStatus);
-});
+/* ── Boot: wait for the AUTHORITATIVE store (Drive when signed in, or the local
+   mirror once we know there's no Drive this session), then load everything.
+   Gating on authority — not merely "ready" — is what stops the settings UI being
+   populated from a stale browser snapshot in the token-expired path. ── */
+let _stBooted = false;
+function _stBoot(){
+  if(_stBooted) return;
+  _stBooted = true;
+  (async () => {
+    try { _otCache = await OT.getAll(); } catch(e){}
+    const aboutTaglineEl = document.getElementById('otAboutTagline');
+    if (aboutTaglineEl && OT.brand) aboutTaglineEl.textContent = OT.brand.tagline;
+    OT.renderBrandFooter('otBrandFooter', 'v1.0', new Date('2026-06-28T09:20:00+10:00'));
+    _hideDriveWait();
+    initAll();
+  })();
+}
+
+_showDriveWait();  // overlay up at parse time, before the settings UI is usable
+
+/* Robust trigger — first reliable signal wins so the overlay can never stick:
+   onSync (authority, preferred), onReady with authority already known (or an old
+   storage.js that can't report it), and a hard 15s timeout as a last resort. */
+if (!window.OT){ _stBoot(); }
+else {
+  if (OT.onSync){ OT.onSync(function(){ _stBoot(); }); }
+  OT.onReady(function(){
+    var canTell = !!(OT.isAuthoritative);
+    if(!canTell || OT.isAuthoritative()){ _stBoot(); }
+  });
+  setTimeout(function(){ if(!_stBooted) _stBoot(); }, 15000);
+}
 </script>
 
 <script>
@@ -1109,8 +1178,9 @@ OT.onReady(async () => {
 })();
 </script>
 
+
 <script>
-/* ── Nav collapse/expand (state saved per device) ── */
+/* ── Nav collapse/expand ── */
 (function(){
   var KEY = 'ONETRACK_NAV_COLLAPSED';
   var nav = document.getElementById('onetrack-nav');
@@ -1118,36 +1188,69 @@ OT.onReady(async () => {
   var tab = document.getElementById('nav-show-tab');
   if (!nav) return;
 
-  function isCollapsed() { return (localStorage.getItem(KEY) === '1'); }
+  function isCollapsed() { return (_otCache['ONETRACK_NAV_COLLAPSED'] === '1'); }
+
   function applyState(collapsed, animate) {
-    if (!animate) nav.style.transition = 'none';
-    nav.classList.toggle('nav-collapsed', collapsed);
-    document.body.classList.toggle('nav-is-collapsed', collapsed);
-    if (btn) { btn.textContent = collapsed ? '›' : '‹'; btn.title = collapsed ? 'Show sidebar' : 'Hide sidebar'; }
-    if (!animate) { void nav.offsetWidth; nav.style.transition = ''; }
+    if (!animate) { nav.style.transition = 'none'; }
+    if (collapsed) {
+      nav.classList.add('nav-collapsed');
+      document.body.classList.add('nav-is-collapsed');
+      if (btn) btn.textContent = '›';
+      if (btn) btn.title = 'Show sidebar';
+    } else {
+      nav.classList.remove('nav-collapsed');
+      document.body.classList.remove('nav-is-collapsed');
+      if (btn) btn.textContent = '‹';
+      if (btn) btn.title = 'Hide sidebar';
+    }
+    if (!animate) {
+      // Force reflow then restore transition
+      void nav.offsetWidth;
+      nav.style.transition = '';
+    }
   }
-  function setCollapsed(next) {
-    try { localStorage.setItem(KEY, next ? '1' : '0'); } catch (e) {}
-    applyState(next, true);
-  }
+
+  // Apply on load (no animation)
   applyState(isCollapsed(), false);
-  if (btn) btn.addEventListener('click', function(e){ e.stopPropagation(); setCollapsed(!isCollapsed()); });
-  if (tab) tab.addEventListener('click', function(){ setCollapsed(false); });
+
+  // Toggle button in nav header
+  if (btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var next = !isCollapsed();
+      _otCache['ONETRACK_NAV_COLLAPSED'] = next ? '1' : '0';
+      OT.set('ONETRACK_NAV_COLLAPSED', next ? '1' : '0');
+      applyState(next, true);
+    });
+  }
+
+  // Floating show-tab click
+  if (tab) {
+    tab.addEventListener('click', function() {
+      _otCache['ONETRACK_NAV_COLLAPSED'] = '0';
+      OT.set('ONETRACK_NAV_COLLAPSED', '0');
+      applyState(false, true);
+    });
+  }
 })();
 </script>
-
 <script>
-/* ── Fill brand names (sidebar + About + all .ot-brand spans) from OT.brand ── */
+/* ── Fill brand name from storage.js (OT.brand.name) in BOTH the sidebar
+   (#otBrandName) and the About panel (#otBrandNameAbout) — shows
+   immediately, independent of Drive sign-in. ── */
 (function () {
   function fillBrandName() {
-    if (typeof OT === 'undefined' || !OT.brand) return;
+    if (typeof OT === "undefined" || !OT.brand) return;
     ['otBrandName', 'otBrandNameAbout'].forEach(function (id) {
       var el = document.getElementById(id);
       if (el) el.textContent = OT.brand.name;
     });
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fillBrandName);
-  else fillBrandName();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', fillBrandName);
+  } else {
+    fillBrandName();
+  }
 })();
 </script>
 </body>
