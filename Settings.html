@@ -328,6 +328,30 @@
   /* drive status line wraps cleanly */
   #driveStatus { line-height: 1.5; }
 
+  /* ── SIDEBAR LINKS ──
+     storage.js builds the links with these classes. The other pages style
+     them themselves; this page needs its own rules or they show as plain
+     underlined text. */
+  #onetrack-nav-links {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 0 10px; flex: 1; overflow-y: auto;
+  }
+  .ot-nav-link,
+  .ot-nav-link:visited {
+    display: flex; align-items: center; gap: 6px;
+    padding: 9px 12px; border-radius: 10px;
+    font-size: 14px; font-weight: 500;
+    color: var(--text2); text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+  }
+  .ot-nav-link:hover { background: var(--surface2); color: var(--text); }
+  .ot-nav-link .ot-nav-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .ot-nav-link.active,
+  .ot-nav-link.active:visited {
+    background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  }
+
   /* ── NAV LOGO CHECKBOX ── */
   .logo-check{display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;overflow:visible;}
   .logo-check svg{overflow:visible;display:block;}
