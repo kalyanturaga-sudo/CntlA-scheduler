@@ -1399,12 +1399,9 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     ov.innerHTML='<div class="dw-card"><div class="dw-spin"></div>'+
       '<div class="dw-msg">Fetching from Google Drive…</div>'+
       '<div class="dw-sub">Loading your saved data — please wait.</div></div>';
-    (document.body||document.documentElement).appendChild(ov);
-    if (!document.body){
-      document.addEventListener('DOMContentLoaded', function(){
-        if (ov.parentNode !== document.body && document.body) document.body.appendChild(ov);
-      });
-    }
+    /* Attach to <html> (always present, even in head). Never re-attach later:
+       once hidden, the overlay stays hidden. */
+    document.documentElement.appendChild(ov);
   }
   function _hideDriveWait(){
     var ov=document.getElementById('driveWaitOverlay'); if(ov) ov.remove();
@@ -1452,7 +1449,8 @@ body.nav-is-collapsed #nav-show-tab { display: flex; align-items: center; gap: 5
     setTimeout(function(){ if (!_resolved) _hideDriveWait(); }, 6000);
   });
 
-  setTimeout(function(){ if (!_resolved){ _resolved = true; sessionStorage.setItem(CYCLE_KEY,'0'); _hideDriveWait(); } }, 9000);
+  /* Hard backstop: always hide, even if the sync already resolved. */
+  setTimeout(function(){ _resolved = true; sessionStorage.setItem(CYCLE_KEY,'0'); _hideDriveWait(); }, 9000);
 })();
 </script>
 </head>
