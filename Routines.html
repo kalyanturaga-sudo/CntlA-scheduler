@@ -1547,9 +1547,7 @@ function buildRoutineTile(routineId){
     const save2=()=>{ const v=inp.value.trim(); if(!v){ render(); return; } if(routine.isBuiltin){ const n=loadNames(); n[routine.id]=v; saveNames(n); } else { const c=loadCustom(), idx=c.findIndex(x=>x.id===routine.id); if(idx>-1){ c[idx].label=v; saveCustom(c); } } render(); };
     inp.onblur=save2; inp.onkeydown=ev=>{ if(ev.key==="Enter")inp.blur(); if(ev.key==="Escape") render(); };
   };
-  const subEl=document.createElement("div"); subEl.className="r-block-subtitle";
-  subEl.textContent=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  titleDiv.appendChild(titleEl); titleDiv.appendChild(subEl);
+  titleDiv.appendChild(titleEl);
   const rGrip=document.createElement("span"); rGrip.className="r-tile-grip"; rGrip.textContent="⠿"; rGrip.title="Drag to reorder";
   rGrip.addEventListener("pointerdown",()=>{ block.draggable=true; });
   titleWrap.appendChild(rGrip); titleWrap.appendChild(iconEl); titleWrap.appendChild(titleDiv);
@@ -3444,9 +3442,7 @@ function renderSimpleContent(mode){
   };
   const td=document.createElement("div");
   const te=document.createElement("div"); te.className="r-block-title"; te.textContent=sec.label;
-  const se=document.createElement("div"); se.className="r-block-subtitle";
-  se.textContent=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  td.appendChild(te); td.appendChild(se); tw.appendChild(iconEl); tw.appendChild(td);
+  td.appendChild(te); tw.appendChild(iconEl); tw.appendChild(td);
 
   const ad=document.createElement("div"); ad.className="r-block-actions";
   const allOn=total>0&&done===total;
@@ -3739,9 +3735,7 @@ function buildWeeklyTile(dayId){
     const save2=()=>{ const v=inp.value.trim()||day.label; const dd=loadWkData()||{days:[]}; const ix=dd.days.findIndex(x=>x.id===day.id); if(ix>-1) dd.days[ix].label=v; saveWkData(dd); renderWeeklyGrid(); };
     inp.onblur=save2; inp.onkeydown=ev=>{ if(ev.key==="Enter")inp.blur(); if(ev.key==="Escape"){inp.value=day.label;inp.blur();} };
   };
-  const se=document.createElement("div"); se.className="wk-card-subtitle";
-  se.textContent=new Date().toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-  titleWrap.appendChild(te); titleWrap.appendChild(se);
+  titleWrap.appendChild(te);
   hdrLeft.appendChild(grip); hdrLeft.appendChild(titleWrap);
 
   const acts=document.createElement("div"); acts.className="wk-card-actions";
